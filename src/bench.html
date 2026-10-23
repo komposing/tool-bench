@@ -43,7 +43,9 @@ button{cursor:pointer;background:none;border:none}
 }
 .brand{display:flex;align-items:baseline;gap:9px;color:#F4F2ED;flex:none}
 .brand b{font-family:var(--mono);font-size:13px;font-weight:600;letter-spacing:.22em;text-transform:uppercase}
-.brand span{font-family:var(--mono);font-size:10px;color:#6C7B88;letter-spacing:.1em}
+.brand button{font-family:var(--mono);font-size:10px;color:#6C7B88;letter-spacing:.1em;padding:0}
+.brand button:hover{color:#E7EBEE}
+.brand button.unbuilt{color:var(--tape)}
 .search{
   flex:1;max-width:420px;display:flex;align-items:center;gap:8px;
   background:var(--chassis-2);border:1px solid #0C1014;border-radius:var(--r);padding:0 10px;height:32px;
@@ -92,7 +94,7 @@ button{cursor:pointer;background:none;border:none}
 .meter i{display:block;height:100%;background:var(--live)}
 .meter i.warn{background:var(--tape)}
 .meter i.full{background:var(--alert)}
-.foot small{font-family:var(--mono);font-size:9.5px;color:#5D6B76;letter-spacing:.06em}
+.foot small{font-family:var(--mono);font-size:9.5px;color:#5D6B76;letter-spacing:.06em;display:block}
 
 .bench{background:var(--bench);overflow-y:auto;padding:20px 22px 60px;position:relative}
 .bench.drop::after{
@@ -133,12 +135,15 @@ button{cursor:pointer;background:none;border:none}
   font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;
   color:var(--ink-2);border:1px solid var(--line);border-radius:2px;padding:2px 5px;background:#F1EFE9;
 }
+.tag.dep{text-transform:none;letter-spacing:.02em;background:#E9EEF1;border-color:#C5D0D7}
+.tag.bad{color:var(--alert);border-color:#E2B3A8;background:#F6E9E5}
 .tool .acts{display:flex;align-items:center;gap:6px;padding:11px 14px;border-top:1px dotted var(--line);margin-top:12px}
 .run{
   flex:1;background:var(--chassis);color:#F2F0EB;border-radius:var(--r);padding:7px 10px;
   font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:600;
 }
 .run:hover{background:var(--chassis-3)}
+.run.blocked{background:#5B3A33}
 .icobtn{
   width:30px;height:30px;border:1px solid var(--line);border-radius:var(--r);color:var(--ink-2);
   display:flex;align-items:center;justify-content:center;font-size:14px;background:#F5F3EE;
@@ -177,6 +182,7 @@ button{cursor:pointer;background:none;border:none}
   display:flex;align-items:center;gap:10px;background:var(--chassis);padding:12px 16px;color:#EDEBE6;
 }
 .sheethead h2{margin:0;font-family:var(--mono);font-size:12px;letter-spacing:.18em;text-transform:uppercase;font-weight:600}
+.sheethead .sub{font-family:var(--mono);font-size:10px;color:#6C7B88}
 .sheethead .x{margin-left:auto;color:#8B98A2;font-size:18px;line-height:1;padding:2px 6px}
 .sheethead .x:hover{color:#fff}
 .sheetbody{padding:16px;display:flex;flex-direction:column;gap:14px;max-height:calc(100vh - 190px);overflow-y:auto}
@@ -184,7 +190,7 @@ button{cursor:pointer;background:none;border:none}
 .sheetfoot .spacer{flex:1}
 
 label.f{display:flex;flex-direction:column;gap:5px}
-label.f > span{
+label.f > span,.lbl{
   font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-2);
 }
 .in,textarea.in,select.in{
@@ -193,6 +199,7 @@ label.f > span{
 }
 textarea.in{font-family:var(--mono);font-size:12px;line-height:1.5;resize:vertical;min-height:120px}
 .in:focus,textarea.in:focus{outline:none;border-color:var(--ink-2);box-shadow:0 0 0 2px rgba(65,77,87,.14)}
+.in[readonly]{background:#EFEDE7;color:var(--ink-2)}
 .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .hint{font-size:11.5px;color:var(--muted);margin:0}
 .tabs{display:flex;gap:0;border:1px solid var(--line);border-radius:var(--r);overflow:hidden;width:fit-content}
@@ -209,12 +216,29 @@ textarea.in{font-family:var(--mono);font-size:12px;line-height:1.5;resize:vertic
   border-left:3px solid var(--alert);background:#F6E9E5;padding:9px 11px;border-radius:2px;
   font-size:12px;color:#6A2F22;
 }
+.note{
+  border-left:3px solid var(--ink-2);background:#ECEAE3;padding:9px 11px;border-radius:2px;
+  font-size:12px;color:var(--ink-2);
+}
 .err{color:var(--alert);font-size:12px;font-family:var(--mono);min-height:16px}
+
+/* ---------- tables in sheets ---------- */
+.kv{display:grid;grid-template-columns:140px 1fr;gap:4px 12px;font-size:12.5px}
+.kv dt{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding-top:2px}
+.kv dd{margin:0;word-break:break-word}
+table.t{width:100%;border-collapse:collapse;font-size:12px;background:var(--card);border:1px solid var(--line)}
+table.t th{
+  text-align:left;font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--ink-2);background:var(--bench-2);padding:6px 8px;border-bottom:1px solid var(--line)
+}
+table.t td{padding:6px 8px;border-bottom:1px dotted var(--line);vertical-align:top}
+table.t code,.kv code{font-family:var(--mono);font-size:11px}
+.ok{color:var(--live)} .no{color:var(--alert)}
 
 /* ---------- menu ---------- */
 .menu{
   position:fixed;z-index:60;background:var(--card);border:1px solid var(--line);border-radius:var(--r);
-  box-shadow:0 10px 26px rgba(23,28,34,.22);padding:4px;min-width:180px;display:none;
+  box-shadow:0 10px 26px rgba(23,28,34,.22);padding:4px;min-width:190px;display:none;
 }
 .menu.open{display:block}
 .menu button{
@@ -239,18 +263,19 @@ textarea.in{font-family:var(--mono);font-size:12px;line-height:1.5;resize:vertic
   .rail h4,.rail hr,.rail .foot{display:none}
   .chan{width:auto;border-left:none;border-radius:var(--r);padding:6px 11px;white-space:nowrap}
   .chan.on{box-shadow:inset 0 -2px 0 var(--tape)}
-  .brand span{display:none}
   .row{grid-template-columns:1fr}
+  .kv{grid-template-columns:1fr}
+  .search{max-width:none}
 }
 </style>
 </head>
 <body>
 <div class="app">
   <header class="top">
-    <div class="brand"><b>Tool Bench</b><span id="verLabel">v1</span></div>
+    <div class="brand"><b>Tool Bench</b><button id="verLabel" title="Dependencies and build">v?</button></div>
     <div class="search">
       <span style="color:#67757F;font-family:var(--mono);font-size:12px">/</span>
-      <input id="q" type="search" placeholder="Search tools, tags, IDs" autocomplete="off">
+      <input id="q" type="search" placeholder="Search tools, tags, IDs, deps" autocomplete="off">
       <kbd>/</kbd>
     </div>
     <div class="spacer"></div>
@@ -287,33 +312,55 @@ textarea.in{font-family:var(--mono);font-size:12px;line-height:1.5;resize:vertic
 <div class="menu" id="menu"></div>
 <div class="toast" id="toast"></div>
 
+<!-- Build bundle: scripts/build.mjs replaces the marker below with the manifest and the
+     repo tools. Opened unbuilt, the bench runs with local tools only and says so. -->
+<script type="application/json" id="tb-bundle">"@@TB_BUNDLE@@"</script>
+
 <script>
 "use strict";
 
 /* =========================================================
-   Storage adapter — Claude artifact storage, else localStorage,
-   else memory. One key holds the whole registry.
+   Bundle — what the repo ships: manifest and repo tools.
    ========================================================= */
-const KEY = "toolbench:v1";
+const BUNDLE = (() => {
+  try {
+    const v = JSON.parse(document.getElementById("tb-bundle").textContent);
+    return (v && typeof v === "object" && v.manifest) ? v : null;
+  } catch (e) { return null; }
+})();
+const MANIFEST = BUNDLE ? BUNDLE.manifest : { name:"tool-bench", version:"0.0.0-unbuilt", storage:{ key:"toolbench:v2", schema:2 } };
+const KNOWN_KINDS = (MANIFEST.ca && MANIFEST.ca.kinds_known) ||
+  ["wf","tbl","cred","cap","std","doc","task","role","fmt","prj","inv","dia","run","log","lease","kind"];
+
+/* =========================================================
+   Storage — Claude artifact storage, else localStorage, else memory.
+   One key per schema version; older keys are read, never deleted (I6).
+   ========================================================= */
+const KEY = (MANIFEST.storage && MANIFEST.storage.key) || "toolbench:v2";
+const LEGACY_KEYS = ["toolbench:v1"];
+const SCHEMA = (MANIFEST.storage && MANIFEST.storage.schema) || 2;
+
 const Store = (() => {
   const ws = (typeof window !== "undefined" && window.storage && typeof window.storage.get === "function") ? window.storage : null;
-  let mem = null;
+  let ls = null;
+  try { if (typeof localStorage !== "undefined") { localStorage.getItem("__tb"); ls = localStorage; } } catch (e) { ls = null; }
+  const mem = {};
   return {
-    mode: ws ? "artifact" : (typeof localStorage !== "undefined" ? "local" : "memory"),
-    async load() {
+    mode: ws ? "artifact" : (ls ? "local" : "memory"),
+    async load(key) {
       try {
-        if (ws) { const r = await ws.get(KEY, false); return r && r.value ? JSON.parse(r.value) : null; }
-        if (typeof localStorage !== "undefined") { const v = localStorage.getItem(KEY); return v ? JSON.parse(v) : null; }
-      } catch (e) { /* no saved state yet */ }
-      return mem;
+        if (ws) { const r = await ws.get(key, false); return r && r.value ? JSON.parse(r.value) : null; }
+        if (ls) { const v = ls.getItem(key); return v ? JSON.parse(v) : null; }
+      } catch (e) { /* nothing saved under this key */ }
+      return mem[key] || null;
     },
-    async save(state) {
-      const v = JSON.stringify(state);
-      mem = state;
+    async save(key, value) {
+      const v = JSON.stringify(value);
+      mem[key] = value;
       try {
-        if (ws) { await ws.set(KEY, v, false); return true; }
-        if (typeof localStorage !== "undefined") { localStorage.setItem(KEY, v); return true; }
-      } catch (e) { toast("Couldn't save — storage is full or blocked"); return false; }
+        if (ws) { await ws.set(key, v, false); return true; }
+        if (ls) { ls.setItem(key, v); return true; }
+      } catch (e) { toast("Couldn't save: storage is full or blocked"); return false; }
       return true;
     }
   };
@@ -321,30 +368,26 @@ const Store = (() => {
 
 /* ========================= state ========================= */
 const DEFAULT_SANDBOX = { scripts:true, forms:true, modals:true, popups:true, downloads:true, sameOrigin:false };
-const PROBE = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Config probe</title>
-<style>body{font:13px ui-monospace,Menlo,monospace;padding:20px;background:#FBFAF7;color:#12161A}
-h1{font-size:14px;letter-spacing:.16em;text-transform:uppercase;margin:0 0 12px}
-pre{background:#EDEAE3;padding:12px;border-radius:3px;overflow:auto}</style></head><body>
-<h1>Config probe</h1>
-<p>This is what the bench handed to this tool as <code>window.TOOL_CONFIG</code>:</p>
-<pre id="o">reading…</pre>
-<script>document.getElementById("o").textContent =
-  JSON.stringify(window.TOOL_CONFIG || {}, null, 2) + "\\n\\n// meta\\n" +
-  JSON.stringify(window.TOOL_META || {}, null, 2);<\/script></body></html>`;
+const HISTORY_MAX = 20;
+const blankContract = () => ({ config_keys:[], requires:[] });
 
 let state = {
-  version: 1,
+  schema: SCHEMA,
   seq: 1,
   config: { note: "Shared settings. Every tool reads these as window.TOOL_CONFIG." },
-  tools: []
+  tools: [],      // local tools (origin local)
+  overlay: {}     // per-viewer state for repo tools: pinned, runs, lastRun
 };
 let filter = { cat: "*", q: "" };
 let editingId = null;
 let srcMode = "paste";
 let currentBlobUrl = null;
+let migratedFrom = null;
 
 const $ = (s, r=document) => r.querySelector(s);
 const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+const safeJson = v => JSON.stringify(v).replace(/</g, "\\u003c").replace(/\u2028/g, "\\u2028").replace(/\u2029/g, "\\u2029");
+const slug = s => String(s||"tool").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"") || "tool";
 const nextId = () => "TL:" + String(state.seq++).padStart(6, "0");
 const TAPES = ["#F0B429","#7BC4A8","#8FB8E0","#E39FB4","#B7A6E0","#D9C79A"];
 const tapeFor = cat => {
@@ -355,23 +398,120 @@ const tapeFor = cat => {
 
 function toast(msg){
   const t = $("#toast"); t.textContent = msg; t.classList.add("on");
-  clearTimeout(toast._t); toast._t = setTimeout(()=>t.classList.remove("on"), 2200);
+  clearTimeout(toast._t); toast._t = setTimeout(()=>t.classList.remove("on"), 2400);
 }
 let saveTimer = null;
-function persist(){ clearTimeout(saveTimer); saveTimer = setTimeout(()=>Store.save(state), 220); }
+function persist(){ clearTimeout(saveTimer); saveTimer = setTimeout(()=>Store.save(KEY, state), 220); }
+
+/* ========================= tools: repo + local ========================= */
+function repoTools(){
+  if (!BUNDLE || !Array.isArray(BUNDLE.tools)) return [];
+  return BUNDLE.tools.map(rt => {
+    const o = state.overlay[rt.id] || {};
+    return {
+      id: rt.id, origin:"repo", readonly:true, file: rt.file,
+      name: rt.name, description: rt.description || "", category: rt.category || "General", tags: rt.tags || [],
+      source: rt.url ? { kind:"url", url: rt.url } : { kind:"inline", html: rt.html || "" },
+      sandbox: Object.assign({}, DEFAULT_SANDBOX, rt.sandbox || {}),
+      config: rt.config || {}, contract: Object.assign(blankContract(), rt.contract || {}),
+      v: rt.version || MANIFEST.version,
+      pinned: !!o.pinned, runs: o.runs || 0, lastRun: o.lastRun || null
+    };
+  });
+}
+function allTools(){ return repoTools().concat(state.tools); }
+function findTool(id){ return allTools().find(t => t.id === id); }
+function touchRun(t){
+  if (t.origin === "repo"){
+    const o = state.overlay[t.id] = state.overlay[t.id] || {};
+    o.runs = (o.runs||0) + 1; o.lastRun = Date.now();
+  } else {
+    const lt = state.tools.find(x => x.id === t.id);
+    lt.runs = (lt.runs||0) + 1; lt.lastRun = Date.now();
+  }
+  persist();
+}
+function setPinned(t, on){
+  if (t.origin === "repo"){ (state.overlay[t.id] = state.overlay[t.id] || {}).pinned = on; }
+  else { state.tools.find(x => x.id === t.id).pinned = on; }
+  persist();
+}
+
+/* ========================= contracts ========================= */
+// A contract declares what a tool needs: config keys that must be set, and the CA_V3
+// objects it depends on, in the object model key grammar (prefix:id).
+function mergedConfig(t){ return Object.assign({}, state.config, t.config || {}); }
+function contractCheck(t){
+  const c = Object.assign(blankContract(), t.contract || {});
+  const cfg = mergedConfig(t);
+  const missing = (c.config_keys||[]).filter(k => cfg[k] === undefined || cfg[k] === null || cfg[k] === "");
+  const requires = (c.requires||[]).map(key => {
+    const m = /^([a-z][a-z_]*):(.+)$/.exec(key);
+    return { key, kind: m ? m[1] : "", ok: !!(m && KNOWN_KINDS.includes(m[1])) };
+  });
+  return { missing, requires, badKeys: requires.filter(r => !r.ok).map(r => r.key) };
+}
+function normaliseContract(raw){
+  const c = Object.assign(blankContract(), raw || {});
+  const list = v => Array.isArray(v) ? v.map(x => String(x).trim()).filter(Boolean) : [];
+  return { config_keys: list(c.config_keys), requires: list(c.requires) };
+}
+
+/* ========================= validation (import, registry edit) ========================= */
+function validateLocalTool(t, i){
+  const where = `Tool ${i+1}${t && t.name ? " (" + t.name + ")" : ""}`;
+  if (!t || typeof t !== "object") throw new Error(`${where} is not an object`);
+  if (!t.name || typeof t.name !== "string") throw new Error(`${where} needs a name`);
+  if (!t.source || typeof t.source !== "object") throw new Error(`${where} needs a source`);
+  if (t.source.kind === "url"){
+    if (!/^https?:\/\//i.test(t.source.url || "")) throw new Error(`${where} has a link that isn't http(s)`);
+  } else if (typeof t.source.html !== "string" || !t.source.html.trim()){
+    throw new Error(`${where} has no HTML`);
+  }
+  if (t.contract) normaliseContract(t.contract);
+}
+function sanitiseLocalTool(t){
+  return {
+    id: t.id, origin:"local", name: String(t.name), description: String(t.description||""),
+    category: String(t.category||"General"), tags: Array.isArray(t.tags) ? t.tags.map(String) : [],
+    source: t.source.kind === "url" ? { kind:"url", url: String(t.source.url) } : { kind:"inline", html: String(t.source.html) },
+    sandbox: Object.assign({}, DEFAULT_SANDBOX, t.sandbox || {}),
+    config: (t.config && typeof t.config === "object") ? t.config : {},
+    contract: normaliseContract(t.contract),
+    pinned: !!t.pinned, runs: +t.runs || 0, lastRun: t.lastRun || null,
+    v: +t.v || 1, history: Array.isArray(t.history) ? t.history.slice(-HISTORY_MAX) : [],
+    createdAt: t.createdAt || Date.now(), updatedAt: t.updatedAt || Date.now(),
+    forkedFrom: t.forkedFrom || undefined
+  };
+}
+function reseq(){
+  state.seq = Math.max(1, state.seq|0, ...state.tools.map(t => (parseInt(String(t.id).split(":")[1],10)||0)+1));
+}
+
+/* ========================= migration ========================= */
+// v1 -> v2: tools become origin local with a contract and a history; the v1 seed
+// "Config probe" is dropped because the repo now ships it. The v1 key is left as it was.
+function migrateV1(v1){
+  const tools = (v1.tools||[]).filter(t => !(t.name === "Config probe" && (t.category === "Bench") && (t.tags||[]).includes("diagnostic")));
+  return {
+    schema: 2, seq: v1.seq || 1, config: v1.config || {}, overlay: {},
+    tools: tools.map(t => sanitiseLocalTool(Object.assign({}, t, { v:1, history:[] })))
+  };
+}
 
 /* ========================= render ========================= */
 function categories(){
   const m = new Map();
-  state.tools.forEach(t => { const c = t.category || "General"; m.set(c, (m.get(c)||0)+1); });
+  allTools().forEach(t => { const c = t.category || "General"; m.set(c, (m.get(c)||0)+1); });
   return [...m.entries()].sort((a,b)=>a[0].localeCompare(b[0]));
 }
-
 function matches(t){
   const q = filter.q.trim().toLowerCase();
   if (filter.cat !== "*" && (t.category || "General") !== filter.cat) return false;
   if (!q) return true;
-  return [t.name, t.description, t.id, t.category, (t.tags||[]).join(" ")]
+  const c = t.contract || {};
+  return [t.name, t.description, t.id, t.category, t.origin, (t.tags||[]).join(" "),
+          (c.requires||[]).join(" "), (c.config_keys||[]).join(" ")]
     .join(" ").toLowerCase().includes(q);
 }
 
@@ -383,31 +523,32 @@ function renderRail(){
   $("#rail").innerHTML = `
     <h4>Channels</h4>
     <button class="chan ${filter.cat==="*"?"on":""}" data-cat="*">
-      <i class="led" style="background:#8B98A2"></i>All tools<span class="n">${state.tools.length}</span></button>
+      <i class="led" style="background:#8B98A2"></i>All tools<span class="n">${allTools().length}</span></button>
     ${cats.map(([c,n]) => `
       <button class="chan ${filter.cat===c?"on":""}" data-cat="${esc(c)}">
         <i class="led" style="background:${tapeFor(c)}"></i>${esc(c)}<span class="n">${n}</span></button>`).join("")}
     <hr>
     <h4>Registry</h4>
+    <button class="chan" data-act="deps">Dependencies</button>
     <button class="chan" data-act="registry">Edit registry JSON</button>
     <button class="chan" data-act="export">Export bundle</button>
     <button class="chan" data-act="import">Import bundle</button>
     <div class="foot">
-      <small>Storage · ${Store.mode}</small>
+      <small>Storage · ${Store.mode} · ${esc(KEY)}</small>
       <div class="meter"><i class="${cls}" style="width:${Math.max(2,pct)}%"></i></div>
       <small>${(bytes/1024).toFixed(0)} KB used</small>
     </div>`;
 }
 
 function renderGrid(){
-  const list = state.tools.filter(matches)
+  const tools = allTools();
+  const list = tools.filter(matches)
     .sort((a,b) => (b.pinned?1:0)-(a.pinned?1:0) || a.name.localeCompare(b.name));
 
   $("#benchTitle").textContent = filter.cat === "*" ? "All tools" : filter.cat;
-  $("#benchSub").textContent = state.tools.length
-    ? `${list.length} of ${state.tools.length} shown` : "";
+  $("#benchSub").textContent = tools.length ? `${list.length} of ${tools.length} shown` : "";
 
-  if (!state.tools.length){
+  if (!tools.length){
     $("#grid").innerHTML = `<div class="empty" style="grid-column:1/-1">
       <h2>No tools yet</h2>
       <p>Drop your .html files anywhere on this page, or add one by hand.</p>
@@ -423,17 +564,24 @@ function renderGrid(){
   $("#grid").innerHTML = list.map(t => {
     const cat = t.category || "General";
     const runs = t.runs ? `${t.runs} run${t.runs===1?"":"s"}` : "never run";
-    return `<article class="tool" data-id="${t.id}">
+    const chk = contractCheck(t);
+    const blocked = chk.missing.length > 0;
+    const src = t.origin === "repo" ? "repo" : (t.source.kind === "url" ? "link" : "local");
+    const deps = (t.contract && t.contract.requires) || [];
+    return `<article class="tool" data-id="${esc(t.id)}">
       <div class="tape" style="--tape:${tapeFor(cat)}">
-        ${esc(t.id)}<span class="cat">${t.source.kind === "url" ? "link" : "file"}</span>
+        ${esc(t.id)}<span class="cat">${src}${t.origin==="local" && t.v>1 ? " · v"+t.v : ""}</span>
       </div>
       <div class="body">
         <h3>${esc(t.name)}</h3>
         <p>${esc(t.description || "No description yet.")}</p>
-        ${(t.tags||[]).length ? `<div class="tags">${t.tags.map(x=>`<span class="tag">${esc(x)}</span>`).join("")}</div>` : ""}
+        ${(t.tags||[]).length || deps.length ? `<div class="tags">
+          ${(t.tags||[]).map(x=>`<span class="tag">${esc(x)}</span>`).join("")}
+          ${deps.map(d=>`<span class="tag dep ${chk.badKeys.includes(d)?"bad":""}" title="Depends on">${esc(d)}</span>`).join("")}
+        </div>` : ""}
       </div>
       <div class="acts">
-        <button class="run" data-act="run">Run</button>
+        <button class="run ${blocked?"blocked":""}" data-act="run" ${blocked?`title="Missing settings: ${esc(chk.missing.join(", "))}"`:""}>${blocked?"Needs settings":"Run"}</button>
         <button class="icobtn ${t.pinned?"on":""}" data-act="pin" title="${t.pinned?"Unpin":"Pin to top"}" aria-label="Pin">★</button>
         <button class="icobtn" data-act="menu" title="More" aria-label="More">⋯</button>
       </div>
@@ -444,7 +592,12 @@ function renderGrid(){
   }).join("");
 }
 
-function render(){ renderRail(); renderGrid(); }
+function renderBrand(){
+  const b = $("#verLabel");
+  b.textContent = BUNDLE ? "v" + MANIFEST.version : "unbuilt source";
+  b.classList.toggle("unbuilt", !BUNDLE);
+}
+function render(){ renderBrand(); renderRail(); renderGrid(); }
 
 /* ========================= running a tool ========================= */
 function sandboxAttr(sb){
@@ -457,30 +610,36 @@ function sandboxAttr(sb){
   if (sb.sameOrigin) out.push("allow-same-origin");
   return out.join(" ");
 }
-
-function injectConfig(html, tool){
-  const cfg = Object.assign({}, state.config, tool.config || {});
-  const meta = { id: tool.id, name: tool.name, category: tool.category || "General", host: "tool-bench" };
-  const tag = "<scr" + "ipt>window.TOOL_CONFIG=" + JSON.stringify(cfg) +
-              ";window.TOOL_META=" + JSON.stringify(meta) + ";</scr" + "ipt>";
+function toolMeta(t){
+  return { id: t.id, name: t.name, category: t.category || "General", origin: t.origin,
+           version: t.origin === "repo" ? t.v : "local-v" + (t.v||1),
+           host: "tool-bench", host_version: MANIFEST.version, contract: t.contract || blankContract() };
+}
+function injectConfig(html, t){
+  const tag = "<scr" + "ipt>window.TOOL_CONFIG=" + safeJson(mergedConfig(t)) +
+              ";window.TOOL_META=" + safeJson(toolMeta(t)) + ";</scr" + "ipt>";
   if (/<head[^>]*>/i.test(html)) return html.replace(/<head[^>]*>/i, m => m + tag);
   if (/<html[^>]*>/i.test(html)) return html.replace(/<html[^>]*>/i, m => m + "<head>" + tag + "</head>");
   return "<!DOCTYPE html><html><head><meta charset=\"utf-8\">" + tag + "</head><body>" + html + "</body></html>";
 }
 
 function openRunner(id){
-  const t = state.tools.find(x => x.id === id); if (!t) return;
-  t.runs = (t.runs || 0) + 1; t.lastRun = Date.now(); persist(); renderGrid();
+  const t = findTool(id); if (!t) return;
+  const chk = contractCheck(t);
+  if (chk.missing.length){ blockedSheet(t, chk); return; }   // fail closed (I4)
+  touchRun(t); renderGrid();
 
   const frame = $("#runFrame");
   frame.setAttribute("sandbox", sandboxAttr(t.sandbox || DEFAULT_SANDBOX));
   frame.removeAttribute("src"); frame.removeAttribute("srcdoc");
 
   if (t.source.kind === "url"){
+    let origin = "*";
+    try { origin = new URL(t.source.url).origin; } catch(e){}
     frame.src = t.source.url;
     frame.onload = () => {
       try { frame.contentWindow.postMessage(
-        { type:"toolbench:config", config: Object.assign({}, state.config, t.config||{}) }, "*"); } catch(e){}
+        { type:"toolbench:config", config: mergedConfig(t), meta: toolMeta(t) }, origin); } catch(e){}
     };
   } else {
     frame.srcdoc = injectConfig(t.source.html || "", t);
@@ -494,13 +653,11 @@ function openRunner(id){
   $("#runner").classList.add("open");
   $("#runner").dataset.id = id;
 }
-
 function closeRunner(){
   const f = $("#runFrame");
   f.removeAttribute("src"); f.removeAttribute("srcdoc"); f.onload = null;
   $("#runner").classList.remove("open");
 }
-
 function standaloneUrl(t){
   if (t.source.kind === "url") return t.source.url;
   if (currentBlobUrl) URL.revokeObjectURL(currentBlobUrl);
@@ -512,17 +669,36 @@ function standaloneUrl(t){
 function openSheet(html){ $("#sheetSlot").innerHTML = html; $("#scrim").classList.add("open"); }
 function closeSheet(){ $("#scrim").classList.remove("open"); $("#sheetSlot").innerHTML = ""; editingId = null; }
 
+function blockedSheet(t, chk){
+  openSheet(`<div class="sheet">
+    <div class="sheethead"><h2>Can't run yet</h2><span class="sub">${esc(t.id)}</span>
+      <button class="x" data-act="close" aria-label="Close">×</button></div>
+    <div class="sheetbody">
+      <p class="hint"><b>${esc(t.name)}</b> declares settings it needs, and these aren't set in the shared settings or the tool's own settings:</p>
+      <table class="t"><thead><tr><th>Setting</th><th>Status</th></tr></thead><tbody>
+        ${chk.missing.map(k => `<tr><td><code>${esc(k)}</code></td><td class="no">missing</td></tr>`).join("")}
+      </tbody></table>
+      <div class="note">Add them in Settings once and every tool that needs them can run. The bench won't start a tool with a missing setting, so it never runs half-configured.</div>
+    </div>
+    <div class="sheetfoot"><div class="spacer"></div>
+      <button class="btn" data-act="close">Cancel</button>
+      ${t.origin==="local" ? `<button class="btn" data-act="editTool" data-id="${esc(t.id)}">Edit tool</button>` : ""}
+      <button class="btn primary" data-act="openSettings">Open settings</button></div></div>`);
+}
+
 function toolSheet(tool){
   const t = tool || { id:"(new)", name:"", description:"", category:"", tags:[],
-                      source:{kind:"inline",html:"",url:""}, sandbox:Object.assign({},DEFAULT_SANDBOX), config:{} };
+                      source:{kind:"inline",html:"",url:""}, sandbox:Object.assign({},DEFAULT_SANDBOX),
+                      config:{}, contract: blankContract() };
   srcMode = t.source.kind === "url" ? "url" : "paste";
   const sb = t.sandbox || DEFAULT_SANDBOX;
-  const chk = (k,label,hint) =>
+  const c = Object.assign(blankContract(), t.contract || {});
+  const chk = (k,label) =>
     `<label class="chk"><input type="checkbox" data-sb="${k}" ${sb[k]?"checked":""}><span>${label}</span></label>`;
 
   openSheet(`<div class="sheet wide">
     <div class="sheethead"><h2>${tool ? "Edit tool" : "Add tool"}</h2>
-      <span class="sb" style="font-family:var(--mono);font-size:10px;color:#6C7B88">${esc(t.id)}</span>
+      <span class="sub">${esc(t.id)}${tool && tool.v ? " · v" + tool.v : ""}</span>
       <button class="x" data-act="close" aria-label="Close">×</button></div>
     <div class="sheetbody">
       <div class="row">
@@ -548,20 +724,28 @@ function toolSheet(tool){
         </div>
         <div id="srcUrl" ${srcMode!=="url"?'hidden':''}>
           <input class="in" id="fUrl" value="${esc(t.source.url||"")}" placeholder="https://komposing.app.n8n.cloud/webhook/tool">
-          <p class="hint">The page must allow being framed. Config arrives by postMessage instead of injection.</p>
+          <p class="hint">The page must allow being framed. Config and meta arrive by postMessage (type toolbench:config) instead of injection.</p>
         </div>
       </div>
+
+      <div class="row">
+        <label class="f"><span>Needs settings · comma separated</span>
+          <input class="in" id="fNeeds" value="${esc(c.config_keys.join(", "))}" placeholder="n8n_base, dymo_printer"></label>
+        <label class="f"><span>Depends on CA_V3 · comma separated</span>
+          <input class="in" id="fReq" value="${esc(c.requires.join(", "))}" placeholder="cap:discogs.orders.list, wf:Abc123…"></label>
+      </div>
+      <p class="hint">The contract. The bench won't run the tool while a needed setting is missing, and the dependencies are what CA_V3 sees for this tool once it's in the repo (keys in the object model grammar, prefix:id).</p>
 
       <label class="f"><span>Tool settings · merged over the shared ones</span>
         <textarea class="in" id="fConfig" style="min-height:88px">${esc(JSON.stringify(t.config||{}, null, 2))}</textarea></label>
 
       <div>
-        <span style="font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-2)">What the tool may do</span>
+        <span class="lbl">What the tool may do</span>
         <div class="checks" style="margin-top:7px">
           ${chk("scripts","Run scripts")}${chk("forms","Submit forms")}${chk("modals","Print and alerts")}
           ${chk("popups","Open windows")}${chk("downloads","Download files")}${chk("sameOrigin","Full access")}
         </div>
-        <div class="warn" style="margin-top:9px"><b>Full access</b> lets the tool read and change everything this bench has stored, including your shared settings. Turn it on only for tools you wrote yourself — and it's usually what a tool needs to call an API that blocks anonymous origins.</div>
+        <div class="warn" style="margin-top:9px"><b>Full access</b> lets the tool read and change everything this bench has stored, including your shared settings. Turn it on only for tools you wrote yourself.</div>
       </div>
       <p class="err" id="fErr"></p>
     </div>
@@ -569,7 +753,7 @@ function toolSheet(tool){
       ${tool ? `<button class="btn danger" data-act="delete">Delete</button>` : ""}
       <div class="spacer"></div>
       <button class="btn" data-act="close">Cancel</button>
-      <button class="btn primary" data-act="save">${tool ? "Save changes" : "Add tool"}</button>
+      <button class="btn primary" data-act="save">${tool ? "Save as v" + ((tool.v||1)+1) : "Add tool"}</button>
     </div></div>`);
 
   editingId = tool ? tool.id : null;
@@ -577,13 +761,22 @@ function toolSheet(tool){
 }
 
 function settingsSheet(){
+  const needed = new Map();
+  allTools().forEach(t => ((t.contract||{}).config_keys||[]).forEach(k => {
+    if (!needed.has(k)) needed.set(k, []); needed.get(k).push(t.name);
+  }));
+  const rows = [...needed.entries()].sort((a,b)=>a[0].localeCompare(b[0])).map(([k,who]) => {
+    const set = state.config[k] !== undefined && state.config[k] !== null && state.config[k] !== "";
+    return `<tr><td><code>${esc(k)}</code></td><td class="${set?"ok":"no"}">${set?"set":"not set"}</td><td>${esc(who.join(", "))}</td></tr>`;
+  }).join("");
   openSheet(`<div class="sheet">
     <div class="sheethead"><h2>Shared settings</h2><button class="x" data-act="close" aria-label="Close">×</button></div>
     <div class="sheetbody">
-      <p class="hint">Every tool gets this object as <code>window.TOOL_CONFIG</code> when it runs, with its own settings merged on top. Change a value here and it reaches every tool on the next run — no editing the files.</p>
+      <p class="hint">Every tool gets this object as <code>window.TOOL_CONFIG</code> when it runs, with its own settings merged on top. Change a value here and it reaches every tool on the next run.</p>
+      ${rows ? `<table class="t"><thead><tr><th>Needed setting</th><th>Shared</th><th>Needed by</th></tr></thead><tbody>${rows}</tbody></table>` : ""}
       <label class="f"><span>Settings JSON</span>
         <textarea class="in" id="gConfig" style="min-height:220px">${esc(JSON.stringify(state.config, null, 2))}</textarea></label>
-      <div class="warn">Stored as plain text in this browser. Fine for endpoints, table names and app IDs. Keep long-lived secrets in n8n credentials and let a webhook do the signing.</div>
+      <div class="warn">Stored as plain text in this browser. Fine for endpoints, table names and app IDs. Keep secrets in n8n credentials and let a webhook do the signing.</div>
       <p class="err" id="gErr"></p>
     </div>
     <div class="sheetfoot"><div class="spacer"></div>
@@ -592,12 +785,13 @@ function settingsSheet(){
 }
 
 function registrySheet(){
+  const editable = { schema: state.schema, seq: state.seq, config: state.config, tools: state.tools, overlay: state.overlay };
   openSheet(`<div class="sheet wide">
-    <div class="sheethead"><h2>Registry JSON</h2><button class="x" data-act="close" aria-label="Close">×</button></div>
+    <div class="sheethead"><h2>Registry JSON</h2><span class="sub">${esc(KEY)}</span><button class="x" data-act="close" aria-label="Close">×</button></div>
     <div class="sheetbody">
-      <p class="hint">The whole bench, as data. Edit and apply to bulk-rename, re-channel, or paste a registry generated elsewhere.</p>
+      <p class="hint">Your local tools, settings and per-tool state, as data. Repo tools aren't in here: they come from the build and change through the repo.</p>
       <label class="f"><span>Registry</span>
-        <textarea class="in" id="rJson" style="min-height:320px">${esc(JSON.stringify(state, null, 2))}</textarea></label>
+        <textarea class="in" id="rJson" style="min-height:320px">${esc(JSON.stringify(editable, null, 2))}</textarea></label>
       <p class="err" id="rErr"></p>
     </div>
     <div class="sheetfoot"><div class="spacer"></div>
@@ -605,7 +799,76 @@ function registrySheet(){
       <button class="btn primary" data-act="applyRegistry">Apply</button></div></div>`);
 }
 
+function depsMap(){
+  return {
+    host: { repo: MANIFEST.repo, name: MANIFEST.name, version: MANIFEST.version, protocol: MANIFEST.protocol,
+            built: BUNDLE ? BUNDLE.built : null, built_from: BUNDLE ? BUNDLE.built_from : null },
+    depends: MANIFEST.depends || {},
+    tools: allTools().map(t => ({ id:t.id, origin:t.origin, name:t.name,
+      config_keys:(t.contract||{}).config_keys||[], requires:(t.contract||{}).requires||[] }))
+  };
+}
+function depsSheet(){
+  const m = MANIFEST;
+  const gov = m.governance || {};
+  const hostDeps = ((m.depends||{}).ca || []);
+  const toolRows = allTools().map(t => {
+    const chk = contractCheck(t);
+    return `<tr><td><code>${esc(t.id)}</code><br>${esc(t.name)}</td><td>${esc(t.origin)}</td>
+      <td>${(t.contract.requires||[]).map(r=>`<code class="${chk.badKeys.includes(r)?"no":""}">${esc(r)}</code>`).join("<br>") || "—"}</td>
+      <td>${(t.contract.config_keys||[]).map(k=>`<code class="${chk.missing.includes(k)?"no":"ok"}">${esc(k)}</code>`).join("<br>") || "—"}</td></tr>`;
+  }).join("");
+  openSheet(`<div class="sheet wide">
+    <div class="sheethead"><h2>Dependencies</h2><span class="sub">${esc(m.protocol || "no manifest")}</span>
+      <button class="x" data-act="close" aria-label="Close">×</button></div>
+    <div class="sheetbody">
+      ${BUNDLE ? "" : `<div class="warn">This is the unbuilt source. Run <code>node scripts/build.mjs</code> to get the manifest and the repo tools into the bench.</div>`}
+      <dl class="kv">
+        <dt>Repo</dt><dd>${esc(m.repo || "—")}</dd>
+        <dt>Version</dt><dd>${esc(m.version)}${BUNDLE && BUNDLE.built_from ? ` · built from <code>${esc(BUNDLE.built_from)}</code>` : ""}</dd>
+        <dt>Governed by</dt><dd>${esc(gov.standard || "—")}${gov.gate ? " · " + esc(gov.gate) : ""}</dd>
+        <dt>Storage</dt><dd><code>${esc(KEY)}</code> schema ${esc(SCHEMA)}${migratedFrom ? ` · migrated from <code>${esc(migratedFrom)}</code> this session` : ""}</dd>
+        <dt>Host needs</dt><dd>${hostDeps.length ? hostDeps.map(d=>`<code>${esc(d.key)}</code> ${esc(d.why||"")}`).join("<br>") : "nothing in CA_V3"}</dd>
+      </dl>
+      <span class="lbl">Tool contracts</span>
+      <table class="t"><thead><tr><th>Tool</th><th>Origin</th><th>Depends on</th><th>Needs settings</th></tr></thead>
+        <tbody>${toolRows || `<tr><td colspan="4">No tools</td></tr>`}</tbody></table>
+      <p class="hint">Red means a key with an undeclared kind prefix, or a setting that isn't set. Local tools are only visible to CA_V3 once they're promoted to the repo (Export for repo, then a change).</p>
+    </div>
+    <div class="sheetfoot"><div class="spacer"></div>
+      <button class="btn" data-act="copyDeps">Copy dependency map</button>
+      <button class="btn primary" data-act="close">Done</button></div></div>`);
+}
+
+function historySheet(t){
+  const rows = (t.history||[]).slice().reverse().map(h => `<tr>
+    <td>v${esc(h.v)}</td><td>${esc(new Date(h.savedAt).toLocaleString())}</td>
+    <td>${esc(h.name)}</td><td>${h.source.kind==="url" ? "link" : ((h.source.html||"").length/1024).toFixed(1)+" KB"}</td>
+    <td><button class="btn" data-act="restore" data-v="${esc(h.v)}">Restore</button></td></tr>`).join("");
+  openSheet(`<div class="sheet wide">
+    <div class="sheethead"><h2>History</h2><span class="sub">${esc(t.id)} · now v${esc(t.v||1)}</span>
+      <button class="x" data-act="close" aria-label="Close">×</button></div>
+    <div class="sheetbody">
+      <p class="hint">Every save keeps the version before it (last ${HISTORY_MAX}). Restoring makes a new version from the old one, so nothing is lost.</p>
+      <table class="t"><thead><tr><th>Version</th><th>Saved</th><th>Name</th><th>Source</th><th></th></tr></thead>
+        <tbody>${rows || `<tr><td colspan="5">No earlier versions yet.</td></tr>`}</tbody></table>
+    </div>
+    <div class="sheetfoot"><div class="spacer"></div><button class="btn primary" data-act="close">Done</button></div></div>`);
+  editingId = t.id;
+}
+
 /* ========================= tool CRUD ========================= */
+function snapshot(t){
+  return { v: t.v||1, savedAt: t.updatedAt || Date.now(), name: t.name, description: t.description,
+           category: t.category, tags: (t.tags||[]).slice(), source: JSON.parse(JSON.stringify(t.source)),
+           sandbox: Object.assign({}, t.sandbox), config: JSON.parse(JSON.stringify(t.config||{})),
+           contract: normaliseContract(t.contract) };
+}
+function newVersion(t, data){
+  t.history = (t.history||[]).concat([snapshot(t)]).slice(-HISTORY_MAX);
+  Object.assign(t, data, { v: (t.v||1) + 1, updatedAt: Date.now() });
+}
+
 function readSheetIntoTool(){
   const err = $("#fErr");
   const name = $("#fName").value.trim();
@@ -614,6 +877,7 @@ function readSheetIntoTool(){
   let cfg = {};
   try { const raw = $("#fConfig").value.trim(); cfg = raw ? JSON.parse(raw) : {}; }
   catch(e){ err.textContent = "Tool settings aren't valid JSON: " + e.message; return null; }
+  if (!cfg || typeof cfg !== "object" || Array.isArray(cfg)){ err.textContent = "Tool settings must be a JSON object."; return null; }
 
   const source = { kind: srcMode === "url" ? "url" : "inline" };
   if (source.kind === "url"){
@@ -624,6 +888,11 @@ function readSheetIntoTool(){
     if (!source.html.trim()){ err.textContent = "Paste the tool's HTML, or upload the file."; return null; }
   }
 
+  const split = s => s.split(",").map(x=>x.trim()).filter(Boolean);
+  const contract = { config_keys: split($("#fNeeds").value), requires: split($("#fReq").value) };
+  const bad = contract.requires.filter(k => !/^[a-z][a-z_]*:.+$/.test(k));
+  if (bad.length){ err.textContent = "Dependencies must look like prefix:id (for example cap:ebay.market.search): " + bad.join(", "); return null; }
+
   const sandbox = {};
   document.querySelectorAll("[data-sb]").forEach(el => sandbox[el.dataset.sb] = el.checked);
 
@@ -631,8 +900,8 @@ function readSheetIntoTool(){
     name,
     description: $("#fDesc").value.trim(),
     category: $("#fCat").value.trim() || "General",
-    tags: $("#fTags").value.split(",").map(s=>s.trim()).filter(Boolean),
-    source, sandbox, config: cfg
+    tags: split($("#fTags").value),
+    source, sandbox, config: cfg, contract
   };
 }
 
@@ -640,23 +909,33 @@ function saveTool(){
   const data = readSheetIntoTool(); if (!data) return;
   if (editingId){
     const t = state.tools.find(x => x.id === editingId);
-    Object.assign(t, data, { updatedAt: Date.now() });
-    toast("Saved " + t.id);
+    newVersion(t, data);
+    toast(`Saved ${t.id} as v${t.v}`);
   } else {
-    state.tools.push(Object.assign({ id: nextId(), pinned:false, runs:0, createdAt: Date.now(), updatedAt: Date.now() }, data));
+    state.tools.push(sanitiseLocalTool(Object.assign({ id: nextId(), v:1, history:[] }, data)));
     toast("Added " + state.tools[state.tools.length-1].id);
   }
   persist(); render(); closeSheet();
 }
 
+function forkTool(t){
+  const c = sanitiseLocalTool({
+    id: nextId(), name: t.name + " (local)", description: t.description, category: t.category, tags: t.tags,
+    source: JSON.parse(JSON.stringify(t.source)), sandbox: t.sandbox, config: t.config, contract: t.contract,
+    v:1, history:[], forkedFrom: t.id + "@" + (t.v || MANIFEST.version)
+  });
+  state.tools.push(c); persist(); render(); toast(`Forked ${t.id} as ${c.id}`);
+  return c;
+}
+
 function addFromFile(file, text){
   const m = text.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
   const name = (m ? m[1].trim() : "") || file.name.replace(/\.html?$/i, "").replace(/[-_]+/g," ");
-  const t = {
+  const t = sanitiseLocalTool({
     id: nextId(), name, description: "", category: filter.cat === "*" ? "General" : filter.cat,
     tags: [], source: { kind:"inline", html: text }, sandbox: Object.assign({}, DEFAULT_SANDBOX),
-    config: {}, pinned:false, runs:0, createdAt: Date.now(), updatedAt: Date.now()
-  };
+    config: {}, contract: blankContract(), v:1, history:[]
+  });
   state.tools.push(t);
   return t;
 }
@@ -668,13 +947,28 @@ function downloadFile(name, content, type){
   setTimeout(()=>URL.revokeObjectURL(url), 4000);
 }
 
+// Promote a local tool: the file goes to tools/<slug>.html and the entry into tools/registry.json,
+// then a change lands it (see CLAUDE.md). Link tools have no file.
+function exportForRepo(t){
+  const s = slug(t.name);
+  const entry = { id: "TB:" + s, name: t.name, description: t.description || "", category: t.category || "General",
+                  tags: t.tags || [], file: t.source.kind === "url" ? null : `tools/${s}.html`,
+                  url: t.source.kind === "url" ? t.source.url : undefined,
+                  sandbox: t.sandbox, config: t.config || {}, contract: normaliseContract(t.contract) };
+  if (t.source.kind !== "url") downloadFile(`${s}.html`, t.source.html, "text/html");
+  downloadFile(`${s}.registry-entry.json`, JSON.stringify(entry, null, 2), "application/json");
+  toast("Downloaded the file and its registry entry for the repo");
+}
+
 /* ========================= events ========================= */
 $("#rail").addEventListener("click", e => {
   const b = e.target.closest("button"); if (!b) return;
   if (b.dataset.cat){ filter.cat = b.dataset.cat; render(); return; }
   const act = b.dataset.act;
+  if (act === "deps") depsSheet();
   if (act === "registry") registrySheet();
-  if (act === "export") downloadFile("tool-bench-registry.json", JSON.stringify(state, null, 2), "application/json");
+  if (act === "export") downloadFile(`tool-bench-local-${new Date().toISOString().slice(0,10)}.json`,
+      JSON.stringify({ schema: state.schema, host_version: MANIFEST.version, config: state.config, tools: state.tools }, null, 2), "application/json");
   if (act === "import") $("#importer").click();
 });
 
@@ -682,39 +976,52 @@ $("#grid").addEventListener("click", e => {
   const b = e.target.closest("button"); if (!b) return;
   if (b.dataset.act === "add"){ toolSheet(null); return; }
   const card = b.closest(".tool"); if (!card) return;
-  const t = state.tools.find(x => x.id === card.dataset.id); if (!t) return;
+  const t = findTool(card.dataset.id); if (!t) return;
   const act = b.dataset.act;
   if (act === "run") openRunner(t.id);
-  if (act === "pin"){ t.pinned = !t.pinned; persist(); renderGrid(); }
+  if (act === "pin"){ setPinned(t, !t.pinned); renderGrid(); }
   if (act === "menu") openMenu(b, t);
 });
 
 function openMenu(anchor, t){
   const m = $("#menu");
-  m.innerHTML = `
+  const local = t.origin === "local";
+  m.innerHTML = local ? `
     <button data-m="edit">Edit</button>
+    <button data-m="hist">History (v${esc(t.v||1)})</button>
     <button data-m="pop">Open standalone</button>
     <button data-m="dl">Download .html</button>
     <button data-m="dup">Duplicate</button>
-    <hr><button data-m="rm" class="rm">Delete</button>`;
+    <button data-m="promote">Export for repo</button>
+    <hr><button data-m="rm" class="rm">Delete</button>` : `
+    <button data-m="fork">Fork to local copy</button>
+    <button data-m="pop">Open standalone</button>
+    <button data-m="dl">Download .html</button>
+    <hr><button data-m="info" disabled style="opacity:.6;cursor:default">Repo tool · ${esc(t.file || "")}</button>`;
   const r = anchor.getBoundingClientRect();
   m.classList.add("open");
-  m.style.left = Math.min(r.left, window.innerWidth - 196) + "px";
+  m.style.left = Math.min(r.left, window.innerWidth - 206) + "px";
   m.style.top = Math.min(r.bottom + 6, window.innerHeight - m.offsetHeight - 10) + "px";
   m.onclick = ev => {
-    const b = ev.target.closest("button"); if (!b) return;
+    const b = ev.target.closest("button"); if (!b || b.disabled) return;
     const k = b.dataset.m; m.classList.remove("open");
-    if (k === "edit") toolSheet(t);
+    if (k === "edit") toolSheet(state.tools.find(x => x.id === t.id));
+    if (k === "hist") historySheet(state.tools.find(x => x.id === t.id));
+    if (k === "fork") toolSheet(forkTool(t));
+    if (k === "promote") exportForRepo(t);
     if (k === "pop") window.open(standaloneUrl(t), "_blank", "noopener");
-    if (k === "dl") downloadFile(t.name.replace(/\W+/g,"-").toLowerCase() + ".html",
-        t.source.kind === "url" ? `<meta http-equiv="refresh" content="0;url=${t.source.url}">` : t.source.html, "text/html");
+    if (k === "dl") downloadFile(slug(t.name) + ".html",
+        t.source.kind === "url"
+          ? `<!DOCTYPE html><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=${esc(t.source.url)}"><a href="${esc(t.source.url)}">${esc(t.source.url)}</a>`
+          : t.source.html, "text/html");
     if (k === "dup"){
-      const c = JSON.parse(JSON.stringify(t));
-      c.id = nextId(); c.name = t.name + " copy"; c.runs = 0; c.createdAt = Date.now();
+      const c = sanitiseLocalTool(Object.assign(JSON.parse(JSON.stringify(t)), {
+        id: nextId(), name: t.name + " copy", runs: 0, pinned: false, v: 1, history: [],
+        createdAt: Date.now(), updatedAt: Date.now() }));
       state.tools.push(c); persist(); render(); toast("Duplicated as " + c.id);
     }
     if (k === "rm"){
-      if (confirm(`Delete ${t.name}? The stored copy goes with it.`)){
+      if (confirm(`Delete ${t.name}? Its stored copy and history go with it.`)){
         state.tools = state.tools.filter(x => x.id !== t.id); persist(); render(); toast("Deleted " + t.id);
       }
     }
@@ -730,26 +1037,56 @@ $("#scrim").addEventListener("click", e => {
   const act = b.dataset.act;
   if (act === "close") return closeSheet();
   if (act === "save") return saveTool();
+  if (act === "openSettings"){ closeSheet(); return settingsSheet(); }
+  if (act === "editTool"){ const t = state.tools.find(x => x.id === b.dataset.id); closeSheet(); return toolSheet(t); }
+  if (act === "copyDeps"){
+    const txt = JSON.stringify(depsMap(), null, 2);
+    (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject())
+      .then(()=>toast("Dependency map copied"), ()=>downloadFile("tool-bench-deps.json", txt, "application/json"));
+    return;
+  }
+  if (act === "restore"){
+    const t = state.tools.find(x => x.id === editingId);
+    const h = t && (t.history||[]).find(x => String(x.v) === b.dataset.v);
+    if (!h) return;
+    const from = h.v;
+    newVersion(t, { name:h.name, description:h.description, category:h.category, tags:h.tags,
+                    source:h.source, sandbox:h.sandbox, config:h.config, contract:h.contract });
+    persist(); render(); closeSheet(); toast(`Restored v${from} as v${t.v}`);
+    return;
+  }
   if (act === "delete"){
     const t = state.tools.find(x => x.id === editingId);
-    if (t && confirm(`Delete ${t.name}?`)){
+    if (t && confirm(`Delete ${t.name}? Its history goes with it.`)){
       state.tools = state.tools.filter(x => x.id !== t.id); persist(); render(); closeSheet(); toast("Deleted " + t.id);
     }
     return;
   }
   if (act === "saveConfig"){
-    try { state.config = JSON.parse($("#gConfig").value || "{}"); persist(); closeSheet(); toast("Settings saved"); }
-    catch(err){ $("#gErr").textContent = "Not valid JSON: " + err.message; }
+    try {
+      const next = JSON.parse($("#gConfig").value || "{}");
+      if (!next || typeof next !== "object" || Array.isArray(next)) throw new Error("settings must be a JSON object");
+      state.config = next; persist(); render(); closeSheet(); toast("Settings saved");
+    } catch(err){ $("#gErr").textContent = "Not valid: " + err.message; }
     return;
   }
   if (act === "applyRegistry"){
     try {
       const next = JSON.parse($("#rJson").value);
       if (!Array.isArray(next.tools)) throw new Error("Registry needs a tools array");
-      next.tools.forEach((t,i) => { if (!t.id || !t.name || !t.source) throw new Error(`Tool ${i+1} is missing id, name or source`); });
-      state = Object.assign({ version:1, seq:1, config:{}, tools:[] }, next);
-      state.seq = Math.max(state.seq, ...state.tools.map(t => (parseInt(String(t.id).split(":")[1],10)||0)+1));
-      persist(); render(); closeSheet(); toast("Registry applied");
+      const ids = new Set();
+      next.tools.forEach((t,i) => {
+        validateLocalTool(t, i);
+        if (!t.id || !/^TL:\d+$/.test(t.id)) throw new Error(`Tool ${i+1} needs an id like TL:000001`);
+        if (ids.has(t.id)) throw new Error(`Duplicate id ${t.id}`);
+        ids.add(t.id);
+      });
+      state = {
+        schema: SCHEMA, seq: next.seq|0, config: (next.config && typeof next.config === "object") ? next.config : {},
+        overlay: (next.overlay && typeof next.overlay === "object") ? next.overlay : {},
+        tools: next.tools.map(sanitiseLocalTool)
+      };
+      reseq(); persist(); render(); closeSheet(); toast("Registry applied");
     } catch(err){ $("#rErr").textContent = err.message; }
     return;
   }
@@ -782,17 +1119,18 @@ $("#scrim").addEventListener("change", e => {
 
 $("#btnAdd").onclick = () => toolSheet(null);
 $("#btnSettings").onclick = settingsSheet;
+$("#verLabel").onclick = depsSheet;
 $("#q").addEventListener("input", e => { filter.q = e.target.value; renderGrid(); });
 
 $("#runClose").onclick = closeRunner;
 $("#runReload").onclick = () => openRunner($("#runner").dataset.id);
 $("#runPop").onclick = () => {
-  const t = state.tools.find(x => x.id === $("#runner").dataset.id);
+  const t = findTool($("#runner").dataset.id);
   if (t) window.open(standaloneUrl(t), "_blank", "noopener");
 };
 
 document.addEventListener("keydown", e => {
-  if (e.key === "/" && document.activeElement.tagName !== "INPUT" && document.activeElement.tagName !== "TEXTAREA"){
+  if (e.key === "/" && !["INPUT","TEXTAREA"].includes(document.activeElement.tagName)){
     e.preventDefault(); $("#q").focus(); return;
   }
   if (e.key === "Escape"){
@@ -823,37 +1161,43 @@ document.addEventListener("drop", async e => {
   else toast("Only .html files can be added this way");
 });
 
-/* hidden importer for registry bundles */
+/* importer for exported bundles: every imported tool is validated first, then
+   gets a fresh local id, so an import can never overwrite or collide. */
 const importer = document.createElement("input");
 importer.type = "file"; importer.accept = "application/json,.json"; importer.id = "importer"; importer.hidden = true;
 importer.onchange = async () => {
   const f = importer.files[0]; if (!f) return;
   try {
-    const next = JSON.parse(await f.text());
-    if (!Array.isArray(next.tools)) throw new Error("no tools array");
-    const existing = new Set(state.tools.map(t => t.id));
-    next.tools.forEach(t => { if (existing.has(t.id)) t.id = nextId(); state.tools.push(t); });
-    state.seq = Math.max(state.seq, ...state.tools.map(t => (parseInt(String(t.id).split(":")[1],10)||0)+1));
-    persist(); render(); toast(`Imported ${next.tools.length} tools`);
-  } catch(err){ toast("That file isn't a Tool Bench bundle"); }
+    let next = JSON.parse(await f.text());
+    if (next && next.version === 1 && !next.schema) next = migrateV1(next);   // a v1 export
+    if (!next || !Array.isArray(next.tools)) throw new Error("no tools array");
+    next.tools.forEach(validateLocalTool);
+    next.tools.forEach(t => state.tools.push(sanitiseLocalTool(Object.assign({}, t, { id: nextId() }))));
+    reseq(); persist(); render(); toast(`Imported ${next.tools.length} tool${next.tools.length===1?"":"s"}`);
+  } catch(err){ toast("Not a Tool Bench bundle: " + err.message); }
   importer.value = "";
 };
 document.body.appendChild(importer);
 
 /* ========================= boot ========================= */
 (async function boot(){
-  const saved = await Store.load();
-  if (saved && Array.isArray(saved.tools)) state = Object.assign(state, saved);
-  if (!state.tools.length){
-    state.tools.push({
-      id: nextId(), name: "Config probe", description: "Shows the settings the bench passes into a tool. Handy first check.",
-      category: "Bench", tags: ["diagnostic"], source: { kind:"inline", html: PROBE },
-      sandbox: Object.assign({}, DEFAULT_SANDBOX), config: { example: "tool settings win over shared ones" },
-      pinned: false, runs: 0, createdAt: Date.now(), updatedAt: Date.now()
-    });
-    persist();
+  let saved = await Store.load(KEY);
+  if (!saved){
+    for (const k of LEGACY_KEYS){
+      const old = await Store.load(k);
+      if (old && Array.isArray(old.tools)){ saved = migrateV1(old); migratedFrom = k; break; }
+    }
   }
-  $("#verLabel").textContent = "v" + state.version;
+  if (saved && Array.isArray(saved.tools)){
+    state = {
+      schema: SCHEMA, seq: saved.seq|0 || 1,
+      config: (saved.config && typeof saved.config === "object") ? saved.config : state.config,
+      overlay: (saved.overlay && typeof saved.overlay === "object") ? saved.overlay : {},
+      tools: saved.tools.map(sanitiseLocalTool)
+    };
+    reseq();
+  }
+  if (migratedFrom){ persist(); toast(`Moved ${state.tools.length} tool${state.tools.length===1?"":"s"} from ${migratedFrom}`); }
   render();
 })();
 </script>
