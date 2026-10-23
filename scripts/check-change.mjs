@@ -33,7 +33,7 @@ if (changes.size > 1) errors.push(`commits name more than one change: ${[...chan
 if (branchChange && changes.size === 1 && ![...changes][0].endsWith(branchChange)) errors.push(`branch is for C${branchChange}, commits name ${[...changes][0]}`);
 
 let baseManifest = null;
-try { baseManifest = JSON.parse(git("show", `${base}:ca.manifest.json`)); } catch (e) { /* first manifest */ }
+try { baseManifest = JSON.parse(execFileSync("git", ["show", `${base}:ca.manifest.json`], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] })); } catch (e) { /* first manifest */ }
 const changed = git("diff", "--name-only", `${base}...HEAD`).split("\n").filter(Boolean);
 const sourceChanged = changed.some(f => f.startsWith("src/") || f.startsWith("tools/") || f === "dist/tool-bench.html");
 if (baseManifest) {
