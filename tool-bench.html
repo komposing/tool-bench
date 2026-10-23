@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tool Bench</title>
+<style>
+:root{
+  --chassis:#171C22;
+  --chassis-2:#222B34;
+  --chassis-3:#2E3A45;
+  --bench:#DEDBD2;
+  --bench-2:#D2CEC3;
+  --card:#FBFAF7;
+  --ink:#12161A;
+  --ink-2:#414D57;
+  --muted:#6E7A85;
+  --line:#C3BFB3;
+  --tape:#F0B429;
+  --live:#2E7D6B;
+  --alert:#B3402E;
+  --mono:ui-monospace,"SF Mono","JetBrains Mono","Roboto Mono",Menlo,Consolas,monospace;
+  --sans:ui-sans-serif,-apple-system,"Segoe UI",Inter,Roboto,sans-serif;
+  --r:3px;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;background:var(--chassis);color:var(--ink);
+  font-family:var(--sans);font-size:14px;line-height:1.45;
+  -webkit-font-smoothing:antialiased;
+}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;background:none;border:none}
+:focus-visible{outline:2px solid var(--tape);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+/* ---------- chassis ---------- */
+.app{display:grid;grid-template-rows:auto 1fr;height:100%}
+.top{
+  display:flex;align-items:center;gap:14px;padding:0 14px;height:52px;
+  background:var(--chassis);border-bottom:1px solid #000;
+}
+.brand{display:flex;align-items:baseline;gap:9px;color:#F4F2ED;flex:none}
+.brand b{font-family:var(--mono);font-size:13px;font-weight:600;letter-spacing:.22em;text-transform:uppercase}
+.brand span{font-family:var(--mono);font-size:10px;color:#6C7B88;letter-spacing:.1em}
+.search{
+  flex:1;max-width:420px;display:flex;align-items:center;gap:8px;
+  background:var(--chassis-2);border:1px solid #0C1014;border-radius:var(--r);padding:0 10px;height:32px;
+}
+.search input{flex:1;background:none;border:none;color:#E9E7E1;font-family:var(--mono);font-size:12.5px}
+.search input::placeholder{color:#67757F}
+.search input:focus{outline:none}
+.search kbd{
+  font-family:var(--mono);font-size:10px;color:#7C8B96;border:1px solid #3A4650;
+  border-radius:2px;padding:1px 5px;
+}
+.top .spacer{flex:1}
+.btn{
+  font-family:var(--mono);font-size:11px;letter-spacing:.09em;text-transform:uppercase;
+  border:1px solid var(--chassis-3);color:#CBD3DA;background:var(--chassis-2);
+  padding:7px 12px;border-radius:var(--r);white-space:nowrap;
+}
+.btn:hover{background:var(--chassis-3);color:#fff}
+.btn.primary{background:var(--tape);border-color:#C8901A;color:#1A1305;font-weight:600}
+.btn.primary:hover{background:#FFC544}
+.btn.danger{color:#E9A093;border-color:#5A3128}
+.btn.danger:hover{background:var(--alert);color:#fff}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+
+/* ---------- body ---------- */
+.main{display:grid;grid-template-columns:198px 1fr;min-height:0}
+.rail{
+  background:var(--chassis);border-right:1px solid #000;padding:14px 0;
+  overflow-y:auto;display:flex;flex-direction:column;gap:2px;
+}
+.rail h4{
+  margin:0 0 6px;padding:0 16px;font-family:var(--mono);font-size:9.5px;letter-spacing:.2em;
+  text-transform:uppercase;color:#5D6B76;font-weight:500;
+}
+.chan{
+  display:flex;align-items:center;gap:9px;width:100%;padding:6px 16px;text-align:left;
+  color:#9BA8B2;font-family:var(--mono);font-size:12px;border-left:2px solid transparent;
+}
+.chan:hover{color:#E7EBEE;background:#1D242B}
+.chan.on{color:#fff;background:#1D242B;border-left-color:var(--tape)}
+.chan .led{width:7px;height:7px;border-radius:50%;flex:none;background:currentColor;opacity:.75}
+.chan .n{margin-left:auto;font-size:10.5px;color:#5D6B76}
+.rail hr{border:none;border-top:1px solid #262F37;margin:12px 16px}
+.rail .foot{margin-top:auto;padding:12px 16px 0}
+.meter{height:3px;background:#262F37;border-radius:2px;overflow:hidden;margin:8px 0 5px}
+.meter i{display:block;height:100%;background:var(--live)}
+.meter i.warn{background:var(--tape)}
+.meter i.full{background:var(--alert)}
+.foot small{font-family:var(--mono);font-size:9.5px;color:#5D6B76;letter-spacing:.06em}
+
+.bench{background:var(--bench);overflow-y:auto;padding:20px 22px 60px;position:relative}
+.bench.drop::after{
+  content:"Drop .html files to add them";position:absolute;inset:8px;z-index:5;
+  border:2px dashed var(--ink-2);border-radius:6px;background:rgba(222,219,210,.94);
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--mono);font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);
+}
+.benchhead{display:flex;align-items:baseline;gap:12px;margin-bottom:16px}
+.benchhead h1{margin:0;font-size:19px;font-weight:600;letter-spacing:-.01em}
+.benchhead p{margin:0;color:var(--muted);font-size:12.5px}
+
+.grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(268px,1fr))}
+
+/* ---------- tool card: a printed label ---------- */
+.tool{
+  background:var(--card);border:1px solid var(--line);border-radius:var(--r);
+  display:flex;flex-direction:column;overflow:hidden;
+  box-shadow:0 1px 0 rgba(0,0,0,.06);transition:transform .12s ease,box-shadow .12s ease;
+}
+.tool:hover{transform:translateY(-2px);box-shadow:0 6px 14px rgba(23,28,34,.14)}
+.tape{
+  position:relative;padding:6px 14px;display:flex;align-items:center;gap:8px;
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;
+  color:#1A1305;font-weight:600;
+  background:
+    radial-gradient(circle at 5px 50%, var(--card) 2.5px, transparent 2.6px),
+    radial-gradient(circle at calc(100% - 5px) 50%, var(--card) 2.5px, transparent 2.6px),
+    var(--tape);
+  border-bottom:1px solid rgba(0,0,0,.14);
+}
+.tape .cat{margin-left:auto;font-weight:500;letter-spacing:.1em;opacity:.72;text-transform:none}
+.tool .body{padding:12px 14px 0;flex:1}
+.tool h3{margin:0 0 4px;font-size:14.5px;font-weight:600;letter-spacing:-.005em}
+.tool p{margin:0;color:var(--muted);font-size:12.5px;min-height:34px}
+.tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:9px}
+.tag{
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--ink-2);border:1px solid var(--line);border-radius:2px;padding:2px 5px;background:#F1EFE9;
+}
+.tool .acts{display:flex;align-items:center;gap:6px;padding:11px 14px;border-top:1px dotted var(--line);margin-top:12px}
+.run{
+  flex:1;background:var(--chassis);color:#F2F0EB;border-radius:var(--r);padding:7px 10px;
+  font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:600;
+}
+.run:hover{background:var(--chassis-3)}
+.icobtn{
+  width:30px;height:30px;border:1px solid var(--line);border-radius:var(--r);color:var(--ink-2);
+  display:flex;align-items:center;justify-content:center;font-size:14px;background:#F5F3EE;
+}
+.icobtn:hover{background:#E8E5DD;color:var(--ink)}
+.icobtn.on{background:var(--tape);border-color:#C8901A;color:#1A1305}
+.meta{font-family:var(--mono);font-size:9.5px;color:#98A0A8;letter-spacing:.05em}
+
+.empty{
+  border:1px dashed var(--line);border-radius:6px;padding:44px 24px;text-align:center;background:rgba(251,250,247,.5);
+}
+.empty h2{margin:0 0 6px;font-size:16px}
+.empty p{margin:0 0 16px;color:var(--muted);font-size:13px}
+
+/* ---------- run view ---------- */
+.runner{position:fixed;inset:0;z-index:40;background:var(--chassis);display:none;grid-template-rows:44px 1fr}
+.runner.open{display:grid}
+.runbar{display:flex;align-items:center;gap:10px;padding:0 12px;border-bottom:1px solid #000}
+.runbar .id{
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;background:var(--tape);color:#1A1305;
+  padding:3px 8px;border-radius:2px;font-weight:600;
+}
+.runbar .nm{color:#EDEBE6;font-size:13.5px;font-weight:500}
+.runbar .sb{font-family:var(--mono);font-size:10px;color:#6C7B88;letter-spacing:.08em}
+.runner iframe{width:100%;height:100%;border:none;background:#fff}
+
+/* ---------- modal ---------- */
+.scrim{position:fixed;inset:0;z-index:50;background:rgba(12,16,20,.62);display:none;align-items:flex-start;justify-content:center;padding:36px 16px;overflow-y:auto}
+.scrim.open{display:flex}
+.sheet{
+  width:100%;max-width:620px;background:var(--bench);border-radius:5px;overflow:hidden;
+  box-shadow:0 24px 60px rgba(0,0,0,.45);
+}
+.sheet.wide{max-width:800px}
+.sheethead{
+  display:flex;align-items:center;gap:10px;background:var(--chassis);padding:12px 16px;color:#EDEBE6;
+}
+.sheethead h2{margin:0;font-family:var(--mono);font-size:12px;letter-spacing:.18em;text-transform:uppercase;font-weight:600}
+.sheethead .x{margin-left:auto;color:#8B98A2;font-size:18px;line-height:1;padding:2px 6px}
+.sheethead .x:hover{color:#fff}
+.sheetbody{padding:16px;display:flex;flex-direction:column;gap:14px;max-height:calc(100vh - 190px);overflow-y:auto}
+.sheetfoot{display:flex;gap:8px;padding:12px 16px;background:var(--bench-2);border-top:1px solid var(--line)}
+.sheetfoot .spacer{flex:1}
+
+label.f{display:flex;flex-direction:column;gap:5px}
+label.f > span{
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-2);
+}
+.in,textarea.in,select.in{
+  background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:8px 10px;
+  font-size:13px;width:100%;
+}
+textarea.in{font-family:var(--mono);font-size:12px;line-height:1.5;resize:vertical;min-height:120px}
+.in:focus,textarea.in:focus{outline:none;border-color:var(--ink-2);box-shadow:0 0 0 2px rgba(65,77,87,.14)}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.hint{font-size:11.5px;color:var(--muted);margin:0}
+.tabs{display:flex;gap:0;border:1px solid var(--line);border-radius:var(--r);overflow:hidden;width:fit-content}
+.tabs button{
+  padding:6px 13px;font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--ink-2);background:var(--bench-2);border-right:1px solid var(--line);
+}
+.tabs button:last-child{border-right:none}
+.tabs button.on{background:var(--chassis);color:#F2F0EB}
+.checks{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:7px}
+.chk{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--ink-2);cursor:pointer}
+.chk input{accent-color:var(--chassis);width:15px;height:15px}
+.warn{
+  border-left:3px solid var(--alert);background:#F6E9E5;padding:9px 11px;border-radius:2px;
+  font-size:12px;color:#6A2F22;
+}
+.err{color:var(--alert);font-size:12px;font-family:var(--mono);min-height:16px}
+
+/* ---------- menu ---------- */
+.menu{
+  position:fixed;z-index:60;background:var(--card);border:1px solid var(--line);border-radius:var(--r);
+  box-shadow:0 10px 26px rgba(23,28,34,.22);padding:4px;min-width:180px;display:none;
+}
+.menu.open{display:block}
+.menu button{
+  display:block;width:100%;text-align:left;padding:7px 10px;font-size:12.5px;border-radius:2px;color:var(--ink-2);
+}
+.menu button:hover{background:var(--bench-2);color:var(--ink)}
+.menu button.rm{color:var(--alert)}
+.menu hr{border:none;border-top:1px solid var(--line);margin:4px 0}
+
+/* ---------- toast ---------- */
+.toast{
+  position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(14px);z-index:70;
+  background:var(--chassis);color:#F2F0EB;padding:9px 16px;border-radius:var(--r);
+  font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;opacity:0;pointer-events:none;
+  transition:opacity .18s ease,transform .18s ease;box-shadow:0 8px 22px rgba(0,0,0,.3);
+}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+
+@media (max-width:760px){
+  .main{grid-template-columns:1fr;grid-template-rows:auto 1fr}
+  .rail{flex-direction:row;overflow-x:auto;padding:8px;gap:6px;border-right:none;border-bottom:1px solid #000;align-items:center}
+  .rail h4,.rail hr,.rail .foot{display:none}
+  .chan{width:auto;border-left:none;border-radius:var(--r);padding:6px 11px;white-space:nowrap}
+  .chan.on{box-shadow:inset 0 -2px 0 var(--tape)}
+  .brand span{display:none}
+  .row{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand"><b>Tool Bench</b><span id="verLabel">v1</span></div>
+    <div class="search">
+      <span style="color:#67757F;font-family:var(--mono);font-size:12px">/</span>
+      <input id="q" type="search" placeholder="Search tools, tags, IDs" autocomplete="off">
+      <kbd>/</kbd>
+    </div>
+    <div class="spacer"></div>
+    <button class="btn" id="btnSettings">Settings</button>
+    <button class="btn primary" id="btnAdd">Add tool</button>
+  </header>
+
+  <div class="main">
+    <nav class="rail" id="rail"></nav>
+    <section class="bench" id="bench">
+      <div class="benchhead">
+        <h1 id="benchTitle">All tools</h1>
+        <p id="benchSub"></p>
+      </div>
+      <div class="grid" id="grid"></div>
+    </section>
+  </div>
+</div>
+
+<div class="runner" id="runner">
+  <div class="runbar">
+    <span class="id" id="runId"></span>
+    <span class="nm" id="runName"></span>
+    <span class="sb" id="runSandbox"></span>
+    <div class="spacer" style="flex:1"></div>
+    <button class="btn" id="runReload">Reload</button>
+    <button class="btn" id="runPop">Open standalone</button>
+    <button class="btn" id="runClose">Close</button>
+  </div>
+  <iframe id="runFrame" title="Tool"></iframe>
+</div>
+
+<div class="scrim" id="scrim"><div id="sheetSlot"></div></div>
+<div class="menu" id="menu"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+
+/* =========================================================
+   Storage adapter — Claude artifact storage, else localStorage,
+   else memory. One key holds the whole registry.
+   ========================================================= */
+const KEY = "toolbench:v1";
+const Store = (() => {
+  const ws = (typeof window !== "undefined" && window.storage && typeof window.storage.get === "function") ? window.storage : null;
+  let mem = null;
+  return {
+    mode: ws ? "artifact" : (typeof localStorage !== "undefined" ? "local" : "memory"),
+    async load() {
+      try {
+        if (ws) { const r = await ws.get(KEY, false); return r && r.value ? JSON.parse(r.value) : null; }
+        if (typeof localStorage !== "undefined") { const v = localStorage.getItem(KEY); return v ? JSON.parse(v) : null; }
+      } catch (e) { /* no saved state yet */ }
+      return mem;
+    },
+    async save(state) {
+      const v = JSON.stringify(state);
+      mem = state;
+      try {
+        if (ws) { await ws.set(KEY, v, false); return true; }
+        if (typeof localStorage !== "undefined") { localStorage.setItem(KEY, v); return true; }
+      } catch (e) { toast("Couldn't save — storage is full or blocked"); return false; }
+      return true;
+    }
+  };
+})();
+
+/* ========================= state ========================= */
+const DEFAULT_SANDBOX = { scripts:true, forms:true, modals:true, popups:true, downloads:true, sameOrigin:false };
+const PROBE = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Config probe</title>
+<style>body{font:13px ui-monospace,Menlo,monospace;padding:20px;background:#FBFAF7;color:#12161A}
+h1{font-size:14px;letter-spacing:.16em;text-transform:uppercase;margin:0 0 12px}
+pre{background:#EDEAE3;padding:12px;border-radius:3px;overflow:auto}</style></head><body>
+<h1>Config probe</h1>
+<p>This is what the bench handed to this tool as <code>window.TOOL_CONFIG</code>:</p>
+<pre id="o">reading…</pre>
+<script>document.getElementById("o").textContent =
+  JSON.stringify(window.TOOL_CONFIG || {}, null, 2) + "\\n\\n// meta\\n" +
+  JSON.stringify(window.TOOL_META || {}, null, 2);<\/script></body></html>`;
+
+let state = {
+  version: 1,
+  seq: 1,
+  config: { note: "Shared settings. Every tool reads these as window.TOOL_CONFIG." },
+  tools: []
+};
+let filter = { cat: "*", q: "" };
+let editingId = null;
+let srcMode = "paste";
+let currentBlobUrl = null;
+
+const $ = (s, r=document) => r.querySelector(s);
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+const nextId = () => "TL:" + String(state.seq++).padStart(6, "0");
+const TAPES = ["#F0B429","#7BC4A8","#8FB8E0","#E39FB4","#B7A6E0","#D9C79A"];
+const tapeFor = cat => {
+  let h = 0; const s = cat || "general";
+  for (let i=0;i<s.length;i++) h = (h*31 + s.charCodeAt(i)) >>> 0;
+  return TAPES[h % TAPES.length];
+};
+
+function toast(msg){
+  const t = $("#toast"); t.textContent = msg; t.classList.add("on");
+  clearTimeout(toast._t); toast._t = setTimeout(()=>t.classList.remove("on"), 2200);
+}
+let saveTimer = null;
+function persist(){ clearTimeout(saveTimer); saveTimer = setTimeout(()=>Store.save(state), 220); }
+
+/* ========================= render ========================= */
+function categories(){
+  const m = new Map();
+  state.tools.forEach(t => { const c = t.category || "General"; m.set(c, (m.get(c)||0)+1); });
+  return [...m.entries()].sort((a,b)=>a[0].localeCompare(b[0]));
+}
+
+function matches(t){
+  const q = filter.q.trim().toLowerCase();
+  if (filter.cat !== "*" && (t.category || "General") !== filter.cat) return false;
+  if (!q) return true;
+  return [t.name, t.description, t.id, t.category, (t.tags||[]).join(" ")]
+    .join(" ").toLowerCase().includes(q);
+}
+
+function renderRail(){
+  const cats = categories();
+  const bytes = JSON.stringify(state).length;
+  const pct = Math.min(100, Math.round(bytes / 5_000_000 * 100));
+  const cls = pct > 90 ? "full" : pct > 70 ? "warn" : "";
+  $("#rail").innerHTML = `
+    <h4>Channels</h4>
+    <button class="chan ${filter.cat==="*"?"on":""}" data-cat="*">
+      <i class="led" style="background:#8B98A2"></i>All tools<span class="n">${state.tools.length}</span></button>
+    ${cats.map(([c,n]) => `
+      <button class="chan ${filter.cat===c?"on":""}" data-cat="${esc(c)}">
+        <i class="led" style="background:${tapeFor(c)}"></i>${esc(c)}<span class="n">${n}</span></button>`).join("")}
+    <hr>
+    <h4>Registry</h4>
+    <button class="chan" data-act="registry">Edit registry JSON</button>
+    <button class="chan" data-act="export">Export bundle</button>
+    <button class="chan" data-act="import">Import bundle</button>
+    <div class="foot">
+      <small>Storage · ${Store.mode}</small>
+      <div class="meter"><i class="${cls}" style="width:${Math.max(2,pct)}%"></i></div>
+      <small>${(bytes/1024).toFixed(0)} KB used</small>
+    </div>`;
+}
+
+function renderGrid(){
+  const list = state.tools.filter(matches)
+    .sort((a,b) => (b.pinned?1:0)-(a.pinned?1:0) || a.name.localeCompare(b.name));
+
+  $("#benchTitle").textContent = filter.cat === "*" ? "All tools" : filter.cat;
+  $("#benchSub").textContent = state.tools.length
+    ? `${list.length} of ${state.tools.length} shown` : "";
+
+  if (!state.tools.length){
+    $("#grid").innerHTML = `<div class="empty" style="grid-column:1/-1">
+      <h2>No tools yet</h2>
+      <p>Drop your .html files anywhere on this page, or add one by hand.</p>
+      <button class="btn primary" data-act="add">Add your first tool</button></div>`;
+    return;
+  }
+  if (!list.length){
+    $("#grid").innerHTML = `<div class="empty" style="grid-column:1/-1">
+      <h2>Nothing matches</h2><p>Try a different search or channel.</p></div>`;
+    return;
+  }
+
+  $("#grid").innerHTML = list.map(t => {
+    const cat = t.category || "General";
+    const runs = t.runs ? `${t.runs} run${t.runs===1?"":"s"}` : "never run";
+    return `<article class="tool" data-id="${t.id}">
+      <div class="tape" style="--tape:${tapeFor(cat)}">
+        ${esc(t.id)}<span class="cat">${t.source.kind === "url" ? "link" : "file"}</span>
+      </div>
+      <div class="body">
+        <h3>${esc(t.name)}</h3>
+        <p>${esc(t.description || "No description yet.")}</p>
+        ${(t.tags||[]).length ? `<div class="tags">${t.tags.map(x=>`<span class="tag">${esc(x)}</span>`).join("")}</div>` : ""}
+      </div>
+      <div class="acts">
+        <button class="run" data-act="run">Run</button>
+        <button class="icobtn ${t.pinned?"on":""}" data-act="pin" title="${t.pinned?"Unpin":"Pin to top"}" aria-label="Pin">★</button>
+        <button class="icobtn" data-act="menu" title="More" aria-label="More">⋯</button>
+      </div>
+      <div class="acts" style="border-top:none;padding-top:0;margin-top:0">
+        <span class="meta">${esc(cat)} · ${runs}</span>
+      </div>
+    </article>`;
+  }).join("");
+}
+
+function render(){ renderRail(); renderGrid(); }
+
+/* ========================= running a tool ========================= */
+function sandboxAttr(sb){
+  const out = [];
+  if (sb.scripts) out.push("allow-scripts");
+  if (sb.forms) out.push("allow-forms");
+  if (sb.modals) out.push("allow-modals");
+  if (sb.popups) out.push("allow-popups", "allow-popups-to-escape-sandbox");
+  if (sb.downloads) out.push("allow-downloads");
+  if (sb.sameOrigin) out.push("allow-same-origin");
+  return out.join(" ");
+}
+
+function injectConfig(html, tool){
+  const cfg = Object.assign({}, state.config, tool.config || {});
+  const meta = { id: tool.id, name: tool.name, category: tool.category || "General", host: "tool-bench" };
+  const tag = "<scr" + "ipt>window.TOOL_CONFIG=" + JSON.stringify(cfg) +
+              ";window.TOOL_META=" + JSON.stringify(meta) + ";</scr" + "ipt>";
+  if (/<head[^>]*>/i.test(html)) return html.replace(/<head[^>]*>/i, m => m + tag);
+  if (/<html[^>]*>/i.test(html)) return html.replace(/<html[^>]*>/i, m => m + "<head>" + tag + "</head>");
+  return "<!DOCTYPE html><html><head><meta charset=\"utf-8\">" + tag + "</head><body>" + html + "</body></html>";
+}
+
+function openRunner(id){
+  const t = state.tools.find(x => x.id === id); if (!t) return;
+  t.runs = (t.runs || 0) + 1; t.lastRun = Date.now(); persist(); renderGrid();
+
+  const frame = $("#runFrame");
+  frame.setAttribute("sandbox", sandboxAttr(t.sandbox || DEFAULT_SANDBOX));
+  frame.removeAttribute("src"); frame.removeAttribute("srcdoc");
+
+  if (t.source.kind === "url"){
+    frame.src = t.source.url;
+    frame.onload = () => {
+      try { frame.contentWindow.postMessage(
+        { type:"toolbench:config", config: Object.assign({}, state.config, t.config||{}) }, "*"); } catch(e){}
+    };
+  } else {
+    frame.srcdoc = injectConfig(t.source.html || "", t);
+    frame.onload = null;
+  }
+
+  $("#runId").textContent = t.id;
+  $("#runName").textContent = t.name;
+  const sb = t.sandbox || DEFAULT_SANDBOX;
+  $("#runSandbox").textContent = sb.sameOrigin ? "trusted · full access" : "sandboxed";
+  $("#runner").classList.add("open");
+  $("#runner").dataset.id = id;
+}
+
+function closeRunner(){
+  const f = $("#runFrame");
+  f.removeAttribute("src"); f.removeAttribute("srcdoc"); f.onload = null;
+  $("#runner").classList.remove("open");
+}
+
+function standaloneUrl(t){
+  if (t.source.kind === "url") return t.source.url;
+  if (currentBlobUrl) URL.revokeObjectURL(currentBlobUrl);
+  currentBlobUrl = URL.createObjectURL(new Blob([injectConfig(t.source.html||"", t)], { type:"text/html" }));
+  return currentBlobUrl;
+}
+
+/* ========================= sheets (modals) ========================= */
+function openSheet(html){ $("#sheetSlot").innerHTML = html; $("#scrim").classList.add("open"); }
+function closeSheet(){ $("#scrim").classList.remove("open"); $("#sheetSlot").innerHTML = ""; editingId = null; }
+
+function toolSheet(tool){
+  const t = tool || { id:"(new)", name:"", description:"", category:"", tags:[],
+                      source:{kind:"inline",html:"",url:""}, sandbox:Object.assign({},DEFAULT_SANDBOX), config:{} };
+  srcMode = t.source.kind === "url" ? "url" : "paste";
+  const sb = t.sandbox || DEFAULT_SANDBOX;
+  const chk = (k,label,hint) =>
+    `<label class="chk"><input type="checkbox" data-sb="${k}" ${sb[k]?"checked":""}><span>${label}</span></label>`;
+
+  openSheet(`<div class="sheet wide">
+    <div class="sheethead"><h2>${tool ? "Edit tool" : "Add tool"}</h2>
+      <span class="sb" style="font-family:var(--mono);font-size:10px;color:#6C7B88">${esc(t.id)}</span>
+      <button class="x" data-act="close" aria-label="Close">×</button></div>
+    <div class="sheetbody">
+      <div class="row">
+        <label class="f"><span>Name</span><input class="in" id="fName" value="${esc(t.name)}" placeholder="AppSheet row lookup"></label>
+        <label class="f"><span>Channel</span><input class="in" id="fCat" value="${esc(t.category||"")}" placeholder="Labels" list="catlist">
+          <datalist id="catlist">${categories().map(([c])=>`<option value="${esc(c)}">`).join("")}</datalist></label>
+      </div>
+      <label class="f"><span>What it does</span><input class="in" id="fDesc" value="${esc(t.description||"")}" placeholder="Looks up a row by key and prints a DYMO label"></label>
+      <label class="f"><span>Tags · comma separated</span><input class="in" id="fTags" value="${esc((t.tags||[]).join(", "))}" placeholder="dymo, appsheet, print"></label>
+
+      <div>
+        <div class="tabs" id="srcTabs" style="margin-bottom:8px">
+          <button data-src="paste" class="${srcMode==="paste"?"on":""}">Paste HTML</button>
+          <button data-src="file" class="${srcMode==="file"?"on":""}">Upload file</button>
+          <button data-src="url" class="${srcMode==="url"?"on":""}">Link to URL</button>
+        </div>
+        <div id="srcPaste" ${srcMode!=="paste"?'hidden':''}>
+          <textarea class="in" id="fHtml" placeholder="&lt;!DOCTYPE html&gt;…">${esc(t.source.html||"")}</textarea>
+        </div>
+        <div id="srcFile" ${srcMode!=="file"?'hidden':''}>
+          <input type="file" accept=".html,.htm,text/html" id="fFile" class="in">
+          <p class="hint">The file is read once and stored here. Editing the original later won't update this copy.</p>
+        </div>
+        <div id="srcUrl" ${srcMode!=="url"?'hidden':''}>
+          <input class="in" id="fUrl" value="${esc(t.source.url||"")}" placeholder="https://komposing.app.n8n.cloud/webhook/tool">
+          <p class="hint">The page must allow being framed. Config arrives by postMessage instead of injection.</p>
+        </div>
+      </div>
+
+      <label class="f"><span>Tool settings · merged over the shared ones</span>
+        <textarea class="in" id="fConfig" style="min-height:88px">${esc(JSON.stringify(t.config||{}, null, 2))}</textarea></label>
+
+      <div>
+        <span style="font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-2)">What the tool may do</span>
+        <div class="checks" style="margin-top:7px">
+          ${chk("scripts","Run scripts")}${chk("forms","Submit forms")}${chk("modals","Print and alerts")}
+          ${chk("popups","Open windows")}${chk("downloads","Download files")}${chk("sameOrigin","Full access")}
+        </div>
+        <div class="warn" style="margin-top:9px"><b>Full access</b> lets the tool read and change everything this bench has stored, including your shared settings. Turn it on only for tools you wrote yourself — and it's usually what a tool needs to call an API that blocks anonymous origins.</div>
+      </div>
+      <p class="err" id="fErr"></p>
+    </div>
+    <div class="sheetfoot">
+      ${tool ? `<button class="btn danger" data-act="delete">Delete</button>` : ""}
+      <div class="spacer"></div>
+      <button class="btn" data-act="close">Cancel</button>
+      <button class="btn primary" data-act="save">${tool ? "Save changes" : "Add tool"}</button>
+    </div></div>`);
+
+  editingId = tool ? tool.id : null;
+  $("#fName").focus();
+}
+
+function settingsSheet(){
+  openSheet(`<div class="sheet">
+    <div class="sheethead"><h2>Shared settings</h2><button class="x" data-act="close" aria-label="Close">×</button></div>
+    <div class="sheetbody">
+      <p class="hint">Every tool gets this object as <code>window.TOOL_CONFIG</code> when it runs, with its own settings merged on top. Change a value here and it reaches every tool on the next run — no editing the files.</p>
+      <label class="f"><span>Settings JSON</span>
+        <textarea class="in" id="gConfig" style="min-height:220px">${esc(JSON.stringify(state.config, null, 2))}</textarea></label>
+      <div class="warn">Stored as plain text in this browser. Fine for endpoints, table names and app IDs. Keep long-lived secrets in n8n credentials and let a webhook do the signing.</div>
+      <p class="err" id="gErr"></p>
+    </div>
+    <div class="sheetfoot"><div class="spacer"></div>
+      <button class="btn" data-act="close">Cancel</button>
+      <button class="btn primary" data-act="saveConfig">Save settings</button></div></div>`);
+}
+
+function registrySheet(){
+  openSheet(`<div class="sheet wide">
+    <div class="sheethead"><h2>Registry JSON</h2><button class="x" data-act="close" aria-label="Close">×</button></div>
+    <div class="sheetbody">
+      <p class="hint">The whole bench, as data. Edit and apply to bulk-rename, re-channel, or paste a registry generated elsewhere.</p>
+      <label class="f"><span>Registry</span>
+        <textarea class="in" id="rJson" style="min-height:320px">${esc(JSON.stringify(state, null, 2))}</textarea></label>
+      <p class="err" id="rErr"></p>
+    </div>
+    <div class="sheetfoot"><div class="spacer"></div>
+      <button class="btn" data-act="close">Cancel</button>
+      <button class="btn primary" data-act="applyRegistry">Apply</button></div></div>`);
+}
+
+/* ========================= tool CRUD ========================= */
+function readSheetIntoTool(){
+  const err = $("#fErr");
+  const name = $("#fName").value.trim();
+  if (!name){ err.textContent = "Give the tool a name."; return null; }
+
+  let cfg = {};
+  try { const raw = $("#fConfig").value.trim(); cfg = raw ? JSON.parse(raw) : {}; }
+  catch(e){ err.textContent = "Tool settings aren't valid JSON: " + e.message; return null; }
+
+  const source = { kind: srcMode === "url" ? "url" : "inline" };
+  if (source.kind === "url"){
+    source.url = $("#fUrl").value.trim();
+    if (!/^https?:\/\//i.test(source.url)){ err.textContent = "Enter a full URL starting with http:// or https://"; return null; }
+  } else {
+    source.html = $("#fHtml").value;
+    if (!source.html.trim()){ err.textContent = "Paste the tool's HTML, or upload the file."; return null; }
+  }
+
+  const sandbox = {};
+  document.querySelectorAll("[data-sb]").forEach(el => sandbox[el.dataset.sb] = el.checked);
+
+  return {
+    name,
+    description: $("#fDesc").value.trim(),
+    category: $("#fCat").value.trim() || "General",
+    tags: $("#fTags").value.split(",").map(s=>s.trim()).filter(Boolean),
+    source, sandbox, config: cfg
+  };
+}
+
+function saveTool(){
+  const data = readSheetIntoTool(); if (!data) return;
+  if (editingId){
+    const t = state.tools.find(x => x.id === editingId);
+    Object.assign(t, data, { updatedAt: Date.now() });
+    toast("Saved " + t.id);
+  } else {
+    state.tools.push(Object.assign({ id: nextId(), pinned:false, runs:0, createdAt: Date.now(), updatedAt: Date.now() }, data));
+    toast("Added " + state.tools[state.tools.length-1].id);
+  }
+  persist(); render(); closeSheet();
+}
+
+function addFromFile(file, text){
+  const m = text.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+  const name = (m ? m[1].trim() : "") || file.name.replace(/\.html?$/i, "").replace(/[-_]+/g," ");
+  const t = {
+    id: nextId(), name, description: "", category: filter.cat === "*" ? "General" : filter.cat,
+    tags: [], source: { kind:"inline", html: text }, sandbox: Object.assign({}, DEFAULT_SANDBOX),
+    config: {}, pinned:false, runs:0, createdAt: Date.now(), updatedAt: Date.now()
+  };
+  state.tools.push(t);
+  return t;
+}
+
+function downloadFile(name, content, type){
+  const url = URL.createObjectURL(new Blob([content], { type }));
+  const a = document.createElement("a");
+  a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 4000);
+}
+
+/* ========================= events ========================= */
+$("#rail").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.cat){ filter.cat = b.dataset.cat; render(); return; }
+  const act = b.dataset.act;
+  if (act === "registry") registrySheet();
+  if (act === "export") downloadFile("tool-bench-registry.json", JSON.stringify(state, null, 2), "application/json");
+  if (act === "import") $("#importer").click();
+});
+
+$("#grid").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.act === "add"){ toolSheet(null); return; }
+  const card = b.closest(".tool"); if (!card) return;
+  const t = state.tools.find(x => x.id === card.dataset.id); if (!t) return;
+  const act = b.dataset.act;
+  if (act === "run") openRunner(t.id);
+  if (act === "pin"){ t.pinned = !t.pinned; persist(); renderGrid(); }
+  if (act === "menu") openMenu(b, t);
+});
+
+function openMenu(anchor, t){
+  const m = $("#menu");
+  m.innerHTML = `
+    <button data-m="edit">Edit</button>
+    <button data-m="pop">Open standalone</button>
+    <button data-m="dl">Download .html</button>
+    <button data-m="dup">Duplicate</button>
+    <hr><button data-m="rm" class="rm">Delete</button>`;
+  const r = anchor.getBoundingClientRect();
+  m.classList.add("open");
+  m.style.left = Math.min(r.left, window.innerWidth - 196) + "px";
+  m.style.top = Math.min(r.bottom + 6, window.innerHeight - m.offsetHeight - 10) + "px";
+  m.onclick = ev => {
+    const b = ev.target.closest("button"); if (!b) return;
+    const k = b.dataset.m; m.classList.remove("open");
+    if (k === "edit") toolSheet(t);
+    if (k === "pop") window.open(standaloneUrl(t), "_blank", "noopener");
+    if (k === "dl") downloadFile(t.name.replace(/\W+/g,"-").toLowerCase() + ".html",
+        t.source.kind === "url" ? `<meta http-equiv="refresh" content="0;url=${t.source.url}">` : t.source.html, "text/html");
+    if (k === "dup"){
+      const c = JSON.parse(JSON.stringify(t));
+      c.id = nextId(); c.name = t.name + " copy"; c.runs = 0; c.createdAt = Date.now();
+      state.tools.push(c); persist(); render(); toast("Duplicated as " + c.id);
+    }
+    if (k === "rm"){
+      if (confirm(`Delete ${t.name}? The stored copy goes with it.`)){
+        state.tools = state.tools.filter(x => x.id !== t.id); persist(); render(); toast("Deleted " + t.id);
+      }
+    }
+  };
+}
+document.addEventListener("click", e => {
+  if (!e.target.closest("#menu") && !e.target.closest('[data-act="menu"]')) $("#menu").classList.remove("open");
+});
+
+$("#scrim").addEventListener("click", e => {
+  if (e.target === $("#scrim")) return closeSheet();
+  const b = e.target.closest("button"); if (!b) return;
+  const act = b.dataset.act;
+  if (act === "close") return closeSheet();
+  if (act === "save") return saveTool();
+  if (act === "delete"){
+    const t = state.tools.find(x => x.id === editingId);
+    if (t && confirm(`Delete ${t.name}?`)){
+      state.tools = state.tools.filter(x => x.id !== t.id); persist(); render(); closeSheet(); toast("Deleted " + t.id);
+    }
+    return;
+  }
+  if (act === "saveConfig"){
+    try { state.config = JSON.parse($("#gConfig").value || "{}"); persist(); closeSheet(); toast("Settings saved"); }
+    catch(err){ $("#gErr").textContent = "Not valid JSON: " + err.message; }
+    return;
+  }
+  if (act === "applyRegistry"){
+    try {
+      const next = JSON.parse($("#rJson").value);
+      if (!Array.isArray(next.tools)) throw new Error("Registry needs a tools array");
+      next.tools.forEach((t,i) => { if (!t.id || !t.name || !t.source) throw new Error(`Tool ${i+1} is missing id, name or source`); });
+      state = Object.assign({ version:1, seq:1, config:{}, tools:[] }, next);
+      state.seq = Math.max(state.seq, ...state.tools.map(t => (parseInt(String(t.id).split(":")[1],10)||0)+1));
+      persist(); render(); closeSheet(); toast("Registry applied");
+    } catch(err){ $("#rErr").textContent = err.message; }
+    return;
+  }
+  if (b.dataset.src){
+    srcMode = b.dataset.src;
+    document.querySelectorAll("#srcTabs button").forEach(x => x.classList.toggle("on", x.dataset.src === srcMode));
+    $("#srcPaste").hidden = srcMode !== "paste";
+    $("#srcFile").hidden = srcMode !== "file";
+    $("#srcUrl").hidden = srcMode !== "url";
+  }
+});
+
+$("#scrim").addEventListener("change", e => {
+  if (e.target.id !== "fFile") return;
+  const f = e.target.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = () => {
+    $("#fHtml").value = r.result;
+    if (!$("#fName").value.trim()){
+      const m = String(r.result).match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+      $("#fName").value = (m ? m[1].trim() : "") || f.name.replace(/\.html?$/i,"");
+    }
+    srcMode = "paste";
+    document.querySelectorAll("#srcTabs button").forEach(x => x.classList.toggle("on", x.dataset.src === "paste"));
+    $("#srcPaste").hidden = false; $("#srcFile").hidden = true;
+    toast("Loaded " + f.name);
+  };
+  r.readAsText(f);
+});
+
+$("#btnAdd").onclick = () => toolSheet(null);
+$("#btnSettings").onclick = settingsSheet;
+$("#q").addEventListener("input", e => { filter.q = e.target.value; renderGrid(); });
+
+$("#runClose").onclick = closeRunner;
+$("#runReload").onclick = () => openRunner($("#runner").dataset.id);
+$("#runPop").onclick = () => {
+  const t = state.tools.find(x => x.id === $("#runner").dataset.id);
+  if (t) window.open(standaloneUrl(t), "_blank", "noopener");
+};
+
+document.addEventListener("keydown", e => {
+  if (e.key === "/" && document.activeElement.tagName !== "INPUT" && document.activeElement.tagName !== "TEXTAREA"){
+    e.preventDefault(); $("#q").focus(); return;
+  }
+  if (e.key === "Escape"){
+    if ($("#scrim").classList.contains("open")) closeSheet();
+    else if ($("#runner").classList.contains("open")) closeRunner();
+  }
+});
+
+/* drag and drop .html anywhere */
+const bench = $("#bench");
+["dragenter","dragover"].forEach(ev => document.addEventListener(ev, e => {
+  if (![...(e.dataTransfer?.types||[])].includes("Files")) return;
+  e.preventDefault(); bench.classList.add("drop");
+}));
+["dragleave","drop"].forEach(ev => document.addEventListener(ev, e => {
+  if (ev === "dragleave" && e.relatedTarget) return;
+  bench.classList.remove("drop");
+}));
+document.addEventListener("drop", async e => {
+  const files = [...(e.dataTransfer?.files||[])]; if (!files.length) return;
+  e.preventDefault();
+  let n = 0;
+  for (const f of files){
+    if (!/\.html?$/i.test(f.name) && f.type !== "text/html") continue;
+    addFromFile(f, await f.text()); n++;
+  }
+  if (n){ persist(); render(); toast(`Added ${n} tool${n===1?"":"s"}`); }
+  else toast("Only .html files can be added this way");
+});
+
+/* hidden importer for registry bundles */
+const importer = document.createElement("input");
+importer.type = "file"; importer.accept = "application/json,.json"; importer.id = "importer"; importer.hidden = true;
+importer.onchange = async () => {
+  const f = importer.files[0]; if (!f) return;
+  try {
+    const next = JSON.parse(await f.text());
+    if (!Array.isArray(next.tools)) throw new Error("no tools array");
+    const existing = new Set(state.tools.map(t => t.id));
+    next.tools.forEach(t => { if (existing.has(t.id)) t.id = nextId(); state.tools.push(t); });
+    state.seq = Math.max(state.seq, ...state.tools.map(t => (parseInt(String(t.id).split(":")[1],10)||0)+1));
+    persist(); render(); toast(`Imported ${next.tools.length} tools`);
+  } catch(err){ toast("That file isn't a Tool Bench bundle"); }
+  importer.value = "";
+};
+document.body.appendChild(importer);
+
+/* ========================= boot ========================= */
+(async function boot(){
+  const saved = await Store.load();
+  if (saved && Array.isArray(saved.tools)) state = Object.assign(state, saved);
+  if (!state.tools.length){
+    state.tools.push({
+      id: nextId(), name: "Config probe", description: "Shows the settings the bench passes into a tool. Handy first check.",
+      category: "Bench", tags: ["diagnostic"], source: { kind:"inline", html: PROBE },
+      sandbox: Object.assign({}, DEFAULT_SANDBOX), config: { example: "tool settings win over shared ones" },
+      pinned: false, runs: 0, createdAt: Date.now(), updatedAt: Date.now()
+    });
+    persist();
+  }
+  $("#verLabel").textContent = "v" + state.version;
+  render();
+})();
+</script>
+</body>
+</html>
