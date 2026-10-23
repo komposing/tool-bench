@@ -1,0 +1,24 @@
+name: ca.repo/1 release tags
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Build is fresh
+        run: node scripts/build.mjs --check
+      - name: Tag releases named in the manifest
+        run: |
+          git config user.name "tool-bench release"
+          git config user.email "actions@users.noreply.github.com"
+          node scripts/tag-releases.mjs "$GITHUB_SHA" | tee tags.log
+          if grep -q TAGS_MADE=1 tags.log; then git push origin --tags; fi

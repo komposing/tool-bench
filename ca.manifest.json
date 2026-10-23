@@ -1,0 +1,96 @@
+{
+  "$schema": "schema/ca.manifest.schema.json",
+  "protocol": "ca.repo/1",
+  "repo": "komposing/tool-bench",
+  "key": "repo:komposing/tool-bench",
+  "name": "tool-bench",
+  "title": "Tool Bench",
+  "version": "2.0.0",
+  "purpose": "Single-file host for small HTML tools that front CA_V3 flows: shared config injection, sandboxed runs, tool contracts naming the CA_V3 objects each tool depends on.",
+  "owner": "Nick",
+  "lifecycle": "active",
+  "data_class": "internal",
+  "criticality": "ignore",
+  "entry": "dist/tool-bench.html",
+  "source": [
+    "src/bench.html",
+    "tools/registry.json",
+    "tools/"
+  ],
+  "storage": {
+    "key": "toolbench:v2",
+    "schema": 2,
+    "migrations": [
+      {
+        "from": "toolbench:v1",
+        "to": "toolbench:v2",
+        "since": "2.0.0",
+        "keeps_source": true
+      }
+    ]
+  },
+  "provides": {
+    "protocols": [
+      {
+        "name": "tool_config_injection",
+        "detail": "window.TOOL_CONFIG and window.TOOL_META injected into inline tools before their own scripts"
+      },
+      {
+        "name": "toolbench_config_message",
+        "detail": "postMessage {type: toolbench:config, config, meta} to linked tools, targeted at the link's origin"
+      }
+    ]
+  },
+  "depends": {
+    "ca": [
+      {
+        "key": "std:source_repo",
+        "why": "mutation protocol this repo follows (ca.repo/1)"
+      }
+    ],
+    "tools": []
+  },
+  "ca": {
+    "kinds_known": [
+      "wf",
+      "tbl",
+      "cred",
+      "cap",
+      "std",
+      "doc",
+      "task",
+      "role",
+      "fmt",
+      "prj",
+      "inv",
+      "dia",
+      "run",
+      "log",
+      "lease",
+      "kind"
+    ],
+    "kinds_note": "snapshot of the declared kind prefixes (std kind via std change_broker kinds_known v9, 2026-10-23); used by the bench to flag kind_undeclared keys in tool contracts"
+  },
+  "governance": {
+    "standard": "std:source_repo",
+    "gate": "merge to main only after the change's deploy card lands",
+    "branch_pattern": "^c[0-9]{3,}/[a-z0-9][a-z0-9-]*$",
+    "trailers": [
+      "CA-Change",
+      "CA-Session"
+    ]
+  },
+  "releases": [
+    {
+      "version": "1.0.0",
+      "commit": "d148a516d9a068520a1ee56eb81fd2de2d1fdd77",
+      "change": "C308",
+      "note": "baseline: v1 as delivered"
+    },
+    {
+      "version": "2.0.0",
+      "change": "C308",
+      "note": "repo build, manifest, schema-2 storage with v1 migration, tool contracts, per-tool history, hardening"
+    }
+  ]
+}
