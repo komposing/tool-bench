@@ -4,10 +4,10 @@
 //   node scripts/build.mjs --check  write nothing; exit 1 if either is stale or invalid
 //
 // Generated, never hand-edited: dist/tool-bench.html and ca.manifest.json depends.tools
-// (the union of every repo tool's contract.requires). That keeps what CA_V3 reads about
+// (the union of every repo tool's contract.requires, read from each tool file's block). That keeps what CA_V3 reads about
 // this repo's dependencies derived from the tools themselves (I7).
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
-import { readJson, validate, sha256, KEY_RE } from "./lib.mjs";
+import { readJson, validate, sha256, KEY_RE, readToolBlock } from "./lib.mjs";
 
 const CHECK = process.argv.includes("--check");
 const fail = msgs => { console.error(msgs.map(m => "  - " + m).join("\n")); process.exit(1); };
@@ -17,37 +17,39 @@ const schema = readJson("schema/ca.manifest.schema.json");
 const registry = readJson("tools/registry.json");
 const template = readFileSync("src/bench.html", "utf8");
 
-// 1. tools: validate entries and read their files
+// 1. tools: each file carries its own fields (toolbench.tool/1 block); a link tool has
+//    no file, so its fields sit in its registry entry. Both are validated the same way.
 const errors = [];
 const ids = new Set();
-const SB = ["scripts", "forms", "modals", "popups", "downloads", "sameOrigin"];
-const tools = (registry.tools || []).map((t, i) => {
-  const at = `tools/registry.json tools[${i}]`;
-  if (!/^TB:[a-z0-9][a-z0-9-]*$/.test(t.id || "")) errors.push(`${at}: id must be TB:<slug>`);
-  if (ids.has(t.id)) errors.push(`${at}: duplicate id ${t.id}`); ids.add(t.id);
-  if (!t.name) errors.push(`${at}: name missing`);
-  if (!t.file && !t.url) errors.push(`${at}: needs file or url`);
-  if (t.url && !/^https:\/\//.test(t.url)) errors.push(`${at}: url must be https`);
-  for (const k of Object.keys(t.sandbox || {})) if (!SB.includes(k)) errors.push(`${at}: unknown sandbox flag ${k}`);
-  const c = t.contract || {};
+const toolSchema = readJson("schema/toolbench.tool.schema.json");
+const tools = (registry.tools || []).map((entry, i) => {
+  const at = entry.file ? entry.file : `tools/registry.json tools[${i}]`;
+  let html = "", f = null;
+  if (entry.file) {
+    if (!existsSync(entry.file)) { errors.push(`${at}: file not found`); return null; }
+    html = readFileSync(entry.file, "utf8");
+    const r = readToolBlock(html);
+    if (r.error) { errors.push(`${at}: ${r.error}`); return null; }
+    f = r.fields;
+  } else if (entry.url) {
+    f = Object.assign({}, entry);
+  } else { errors.push(`${at}: needs file or url`); return null; }
+  errors.push(...validate(toolSchema, f).map(e => `${at} ${e}`));
+  if (!/^TB:/.test(f.id || "")) errors.push(`${at}: repo tools need a TB:<slug> id, got ${f.id}`);
+  if (ids.has(f.id)) errors.push(`${at}: duplicate id ${f.id}`); ids.add(f.id);
+  const c = f.contract || {};
   for (const k of c.requires || []) {
     const m = KEY_RE.exec(k);
-    if (!m) errors.push(`${at}: requires ${k} is not prefix:id`);
-    else if (!(manifest.ca?.kinds_known || []).includes(m[1])) errors.push(`${at}: requires ${k} uses undeclared kind ${m[1]} (kind_undeclared)`);
-  }
-  let html = "";
-  if (t.file) {
-    if (!existsSync(t.file)) errors.push(`${at}: file ${t.file} not found`);
-    else html = readFileSync(t.file, "utf8");
+    if (m && !(manifest.ca?.kinds_known || []).includes(m[1])) errors.push(`${at}: requires ${k} uses undeclared kind ${m[1]} (kind_undeclared)`);
   }
   return {
-    id: t.id, name: t.name, description: t.description || "", category: t.category || "General",
-    tags: t.tags || [], file: t.file || null, version: t.version || manifest.version,
-    sandbox: t.sandbox || {}, config: t.config || {},
+    id: f.id, name: f.name, description: f.description || "", category: f.category || "General",
+    tags: f.tags || [], file: entry.file || null, version: f.version,
+    sandbox: f.sandbox || {}, config: f.config || {},
     contract: { config_keys: c.config_keys || [], requires: c.requires || [] },
-    html, url: t.url
+    html, url: entry.file ? undefined : f.url
   };
-});
+}).filter(Boolean);
 
 // 2. manifest: regenerate depends.tools, then validate against the vendored schema
 const byKey = new Map();

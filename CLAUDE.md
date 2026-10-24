@@ -19,7 +19,8 @@ pointer and a checklist, not a second copy of the rules.
   ```
 - Source lives in `src/bench.html` and `tools/`. `dist/tool-bench.html` and `depends.tools` in
   `ca.manifest.json` are generated: run `node scripts/build.mjs` and commit the result. Never edit them by hand.
-- A tool declares what it needs in its `contract` in `tools/registry.json`: `config_keys` (settings that must be
+- Each tool file carries its own fields in its `toolbench-tool` block (format `toolbench.tool/1`); `tools/registry.json` only lists the files.
+  Changing a tool file means bumping the `version` in its block (CI checks). A tool declares what it needs in the block's `contract`: `config_keys` (settings that must be
   set or the bench refuses to run it) and `requires` (CA_V3 objects, `prefix:id` in the object model grammar).
 - Bump `version` in `ca.manifest.json` (semver: major for a storage, injection or manifest break; minor for a new tool or
   feature; patch for a fix), append a `releases` entry with your change id, and add `## <version>` to `CHANGELOG.md`.

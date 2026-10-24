@@ -1,12 +1,30 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"><title>Config probe</title>
+<script type="application/json" id="toolbench-tool">
+{
+  "format": "toolbench.tool/1",
+  "id": "TB:config-probe",
+  "name": "Config probe",
+  "description": "Shows the settings and meta the bench passes into a tool. Handy first check.",
+  "category": "Bench",
+  "tags": ["diagnostic"],
+  "version": "2.1.0",
+  "contract": { "config_keys": [], "requires": [] },
+  "sandbox": { "scripts": true, "forms": false, "modals": false, "popups": false, "downloads": false, "sameOrigin": false },
+  "config": { "example": "tool settings win over shared ones" }
+}
+</script>
 <style>body{font:13px ui-monospace,Menlo,monospace;padding:20px;background:#FBFAF7;color:#12161A}
 h1{font-size:14px;letter-spacing:.16em;text-transform:uppercase;margin:0 0 12px}
 pre{background:#EDEAE3;padding:12px;border-radius:3px;overflow:auto}</style></head><body>
 <h1>Config probe</h1>
-<p>What the bench handed to this tool as <code>window.TOOL_CONFIG</code> and <code>window.TOOL_META</code>:</p>
+<p>What the bench handed to this tool as <code>window.TOOL_CONFIG</code> and <code>window.TOOL_META</code>, and the tool's own block:</p>
 <pre id="o">reading…</pre>
-<script>document.getElementById("o").textContent =
+<script>
+var block = document.getElementById("toolbench-tool");
+document.getElementById("o").textContent =
   JSON.stringify(window.TOOL_CONFIG || {}, null, 2) + "\n\n// meta\n" +
-  JSON.stringify(window.TOOL_META || {}, null, 2);</script>
+  JSON.stringify(window.TOOL_META || {}, null, 2) + "\n\n// file block\n" +
+  (block ? block.textContent.trim() : "(none)");
+</script>
 </body></html>

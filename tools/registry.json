@@ -1,16 +1,6 @@
 {
+  "note": "One line per repo tool. Each tool file carries its own fields in its toolbench-tool block (format toolbench.tool/1); a link tool has no file, so its fields live here with url.",
   "tools": [
-    {
-      "id": "TB:config-probe",
-      "name": "Config probe",
-      "description": "Shows the settings and meta the bench passes into a tool. Handy first check.",
-      "category": "Bench",
-      "tags": ["diagnostic"],
-      "file": "tools/config-probe.html",
-      "version": "2.0.0",
-      "sandbox": { "scripts": true, "forms": false, "modals": false, "popups": false, "downloads": false, "sameOrigin": false },
-      "config": { "example": "tool settings win over shared ones" },
-      "contract": { "config_keys": [], "requires": [] }
-    }
+    { "file": "tools/config-probe.html" }
   ]
 }

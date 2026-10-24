@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "toolbench.tool/1",
+  "title": "Tool Bench tool block",
+  "description": "The fields a tool file carries in <script type=\"application/json\" id=\"toolbench-tool\">, the same fields its card shows. The bench reads them on import and rewrites them, with a higher version, on every save.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "id", "name", "version"],
+  "properties": {
+    "format": { "const": "toolbench.tool/1" },
+    "id": { "type": "string", "pattern": "^(TB:[a-z0-9][a-z0-9-]*|TL:[0-9]+)$" },
+    "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+    "description": { "type": "string", "maxLength": 400 },
+    "category": { "type": "string", "maxLength": 40 },
+    "tags": { "type": "array", "maxItems": 20, "items": { "type": "string", "maxLength": 30 } },
+    "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "contract": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "config_keys": { "type": "array", "maxItems": 30, "items": { "type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_.-]*$" } },
+        "requires": { "type": "array", "maxItems": 30, "items": { "type": "string", "pattern": "^[a-z][a-z_]*:.+$" } }
+      }
+    },
+    "sandbox": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "scripts": { "type": "boolean" }, "forms": { "type": "boolean" }, "modals": { "type": "boolean" },
+        "popups": { "type": "boolean" }, "downloads": { "type": "boolean" }, "sameOrigin": { "type": "boolean" }
+      }
+    },
+    "config": { "type": "object" },
+    "url": { "type": "string", "pattern": "^https://" }
+  }
+}

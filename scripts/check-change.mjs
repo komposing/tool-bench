@@ -7,7 +7,7 @@
 // for the version; a released version's commit or a storage migration was rewritten.
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
-import { readJson, semverCmp, TRAILER_RE } from "./lib.mjs";
+import { readJson, semverCmp, TRAILER_RE, readToolBlock } from "./lib.mjs";
 
 const [base = "origin/main", branch = process.env.GITHUB_HEAD_REF || ""] = process.argv.slice(2);
 const git = (...a) => execFileSync("git", a, { encoding: "utf8" }).trim();
@@ -53,6 +53,15 @@ if (baseManifest) {
       !(manifest.storage.migrations || []).some(x => x.from === baseManifest.storage.key && x.to === manifest.storage.key)) {
     errors.push(`storage key changed ${baseManifest.storage.key} -> ${manifest.storage.key} without a migration`);
   }
+}
+// A changed tool file must carry a higher version in its block than on the base, and keep its id.
+for (const file of changed.filter(f => /^tools\/.+\.html?$/.test(f))) {
+  let now = null, was = null;
+  try { now = readToolBlock(readFileSync(file, "utf8")).fields; } catch (e) { continue; }   // deleted file
+  try { was = readToolBlock(execFileSync("git", ["show", `${base}:${file}`], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] })).fields; } catch (e) { /* new file */ }
+  if (!now) { errors.push(`${file}: no valid toolbench-tool block`); continue; }
+  if (was && was.version && semverCmp(now.version, was.version) <= 0) errors.push(`${file}: changed but version is ${now.version} (was ${was.version}); bump it in the file's block`);
+  if (was && was.id && now.id !== was.id) errors.push(`${file}: id changed ${was.id} -> ${now.id}; a new id is a new tool`);
 }
 const changelog = readFileSync("CHANGELOG.md", "utf8");
 if (!new RegExp(`^## ${manifest.version.replace(/\./g, "\\.")}\\b`, "m").test(changelog)) errors.push(`CHANGELOG.md has no "## ${manifest.version}" entry`);
