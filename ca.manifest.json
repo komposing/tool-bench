@@ -5,7 +5,7 @@
   "key": "repo:komposing/tool-bench",
   "name": "tool-bench",
   "title": "Tool Bench",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "purpose": "Single-file host for small HTML tools that front CA_V3 flows: shared config injection, sandboxed runs, tool contracts naming the CA_V3 objects each tool depends on.",
   "owner": "Nick",
   "lifecycle": "active",
@@ -18,13 +18,19 @@
     "tools/"
   ],
   "storage": {
-    "key": "toolbench:v2",
-    "schema": 2,
+    "key": "toolbench:v3",
+    "schema": 3,
     "migrations": [
       {
         "from": "toolbench:v1",
         "to": "toolbench:v2",
         "since": "2.0.0",
+        "keeps_source": true
+      },
+      {
+        "from": "toolbench:v2",
+        "to": "toolbench:v3",
+        "since": "3.0.0",
         "keeps_source": true
       }
     ]
@@ -38,6 +44,14 @@
       {
         "name": "toolbench_config_message",
         "detail": "postMessage {type: toolbench:config, config, meta} to linked tools, targeted at the link's origin"
+      },
+      {
+        "name": "tool_file_block",
+        "detail": "each tool HTML carries its card fields and version in <script type=application/json id=toolbench-tool> (toolbench.tool/1, schema/toolbench.tool.schema.json); read on import, rewritten with a higher version on save"
+      },
+      {
+        "name": "local_storage_only",
+        "detail": "state lives in the browser's localStorage only; artifact storage from earlier builds is read once to migrate, never written"
       }
     ]
   },
@@ -91,6 +105,11 @@
       "version": "2.0.0",
       "change": "C308",
       "note": "repo build, manifest, schema-2 storage with v1 migration, tool contracts, per-tool history, hardening"
+    },
+    {
+      "version": "3.0.0",
+      "change": "C350",
+      "note": "localStorage-only storage (schema 3); tool files carry their card fields and a version the bench bumps on save"
     }
   ]
 }

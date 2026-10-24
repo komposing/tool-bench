@@ -58,3 +58,12 @@ export function semverCmp(a, b) {
 
 export const KEY_RE = /^([a-z][a-z_]*):(.+)$/;
 export const TRAILER_RE = { "CA-Change": /^CA-Change:\s*(C[0-9]{3,})\s*$/m, "CA-Session": /^CA-Session:\s*(S[0-9]{4,})\s*$/m };
+
+// The tool file block (toolbench.tool/1): the same pattern the bench uses.
+export const BLOCK_RE = /<script\b[^>]*\bid=["']toolbench-tool["'][^>]*>([\s\S]*?)<\/script>/i;
+export function readToolBlock(html) {
+  const m = BLOCK_RE.exec(html || "");
+  if (!m) return { found: false, fields: null, error: "no toolbench-tool block" };
+  try { return { found: true, fields: JSON.parse(m[1]), error: "" }; }
+  catch (e) { return { found: true, fields: null, error: "block is not valid JSON: " + e.message }; }
+}
