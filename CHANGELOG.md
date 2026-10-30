@@ -1,5 +1,33 @@
 # Changelog
 
+## 3.3.0 — C783
+
+- **Tool settings belong to the tool.** `toolbench.tool/1` gains an optional `config_schema`:
+  `{namespace, fields: [{path, label, type, required, default, values, secret, help}]}` with types
+  `url|string|header|secret|number|boolean|enum` and dot paths inside the namespace (segments may hold `-` and capitals,
+  e.g. `dashboard.headers.X-Api-Key`). The namespace must also be in `contract.config_keys`; paths are unique and don't
+  overlap; enum fields list `values`; defaults match the type; secret fields carry no default. Checked by the schema,
+  `scripts/build.mjs` for repo tools and the bench for local ones. Tools without it work as before.
+- **Settings** shows a form per tool that declares settings (repo, local or fetched), prefilled from
+  `state.config[namespace]` or the defaults; secret fields are password inputs with Show. Saving checks the types and
+  writes the nested object into `state.config[namespace]`, keeping keys the schema doesn't name. The global JSON editor
+  stays for everything else and shows secrets as `••••` (left masked, the stored value is kept). The bench never knows a
+  setting by name.
+- **Runs**: a tool with `config_schema` is refused while a required field is missing, empty or a `<placeholder>`, or a url
+  field isn't http(s); the sheet names the fields and opens that tool's settings. Its namespace is injected with defaults
+  filled in.
+- **Tool-side save**: the running tool may post `{type: "toolbench:config:set", namespace, values}` for the namespace it
+  declares. The bench drops unknown paths, checks types and required fields, stores, answers
+  `{type: "toolbench:config:result", ok: true, persisted}` (or `ok: false, errors`), toasts and reloads the tool. If local
+  storage fails the settings last for the session (`persisted: false`).
+- **Secrets stay on this device**: the local bundle export, Registry JSON, tool blocks, downloads and Export for repo
+  never carry a secret field's value; an edit that leaves a secret masked or absent keeps the stored one.
+- **CA_V3 Viewer** (`TB:ca-v3-viewer`, still v0.4.0) declares its `cav3` settings: Dashboard API, Framework Graph and
+  Sessions API urls (with defaults) and the viewer key (`dashboard.headers.X-Api-Key`, secret, required).
+
+### Fixed
+- none
+
 ## 3.2.0 — C765
 
 - **Fetched tools**: a registry link entry with `"run": "fetch"` (new optional field in `toolbench.tool/1`; entries

@@ -34,6 +34,40 @@
         "downloads": false,
         "sameOrigin": false
       },
+      "config_schema": {
+        "namespace": "cav3",
+        "fields": [
+          {
+            "path": "dashboard.url",
+            "label": "Dashboard API",
+            "type": "url",
+            "required": true,
+            "default": "https://komposing.app.n8n.cloud/webhook/ca-v3-state-v3"
+          },
+          {
+            "path": "framework.url",
+            "label": "Framework Graph",
+            "type": "url",
+            "required": true,
+            "default": "https://komposing.app.n8n.cloud/webhook/ca-v3-framework"
+          },
+          {
+            "path": "sessions.url",
+            "label": "Sessions API",
+            "type": "url",
+            "required": true,
+            "default": "https://komposing.app.n8n.cloud/webhook/ca-v3-sessions"
+          },
+          {
+            "path": "dashboard.headers.X-Api-Key",
+            "label": "Viewer key (X-Api-Key)",
+            "type": "secret",
+            "required": true,
+            "secret": true,
+            "help": "CA_V3 viewer key; sent to all three endpoints"
+          }
+        ]
+      },
       "url": "https://komposing.app.n8n.cloud/webhook/ca-v3-viewer",
       "run": "fetch"
     }

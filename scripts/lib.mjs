@@ -91,3 +91,39 @@ export function parseFixed(changelog, version) {
   }
   return { found: true, fixed, errors };
 }
+
+// Tool settings (toolbench.tool/1 config_schema): what the schema dialect can't say.
+// The bench (src/bench.html) applies the same rules to local tools.
+export const CONFIG_FIELD_TYPES = ["url", "string", "header", "secret", "number", "boolean", "enum"];
+const BAD_SEGMENTS = new Set(["__proto__", "prototype", "constructor"]);
+export function configValueError(f, v) {
+  if (typeof v === "string" && /^\s*<[^>]*>\s*$/.test(v)) return "is a placeholder";
+  switch (f.type) {
+    case "url": return typeof v === "string" && /^https?:\/\/\S+$/i.test(v) ? "" : "must be an http(s) URL";
+    case "number": return typeof v === "number" && isFinite(v) ? "" : "must be a number";
+    case "boolean": return typeof v === "boolean" ? "" : "must be true or false";
+    case "enum": return (f.values || []).includes(v) ? "" : `must be one of ${(f.values || []).join(", ")}`;
+    default: return typeof v === "string" ? "" : "must be a string";
+  }
+}
+export function checkConfigSchema(cs, configKeys) {
+  const errors = [];
+  if (!cs) return errors;
+  if (!(configKeys || []).includes(cs.namespace)) errors.push(`config_schema namespace ${cs.namespace} is not in contract.config_keys`);
+  const paths = [];
+  for (const [i, f] of (cs.fields || []).entries()) {
+    const at = `config_schema.fields[${i}] ${f.path}`;
+    if (f.path.split(".").some(s => BAD_SEGMENTS.has(s))) errors.push(`${at}: path segment not allowed`);
+    if (paths.includes(f.path)) errors.push(`${at}: duplicate path`);
+    for (const p of paths) if (p.startsWith(f.path + ".") || f.path.startsWith(p + ".")) errors.push(`${at}: path overlaps ${p}`);
+    paths.push(f.path);
+    if (f.type === "enum" && !(f.values || []).length) errors.push(`${at}: enum needs values`);
+    if (f.type !== "enum" && f.values) errors.push(`${at}: values is for enum fields only`);
+    const secret = f.type === "secret" || f.secret === true;
+    if ("default" in f) {
+      if (secret) errors.push(`${at}: a secret field carries no default (I5)`);
+      else { const e = configValueError(f, f.default); if (e) errors.push(`${at}: default ${e}`); }
+    }
+  }
+  return errors;
+}

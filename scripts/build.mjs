@@ -7,7 +7,7 @@
 // (the union of every repo tool's contract.requires, read from each tool file's block). That keeps what CA_V3 reads about
 // this repo's dependencies derived from the tools themselves (I7).
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
-import { readJson, validate, sha256, KEY_RE, readToolBlock, parseFixed } from "./lib.mjs";
+import { readJson, validate, sha256, KEY_RE, readToolBlock, parseFixed, checkConfigSchema } from "./lib.mjs";
 
 const CHECK = process.argv.includes("--check");
 const fail = msgs => { console.error(msgs.map(m => "  - " + m).join("\n")); process.exit(1); };
@@ -39,6 +39,7 @@ const tools = (registry.tools || []).map((entry, i) => {
   if (!/^TB:/.test(f.id || "")) errors.push(`${at}: repo tools need a TB:<slug> id, got ${f.id}`);
   if (ids.has(f.id)) errors.push(`${at}: duplicate id ${f.id}`); ids.add(f.id);
   const c = f.contract || {};
+  errors.push(...checkConfigSchema(f.config_schema, c.config_keys).map(e => `${at}: ${e}`));
   for (const k of c.requires || []) {
     const m = KEY_RE.exec(k);
     if (m && !(manifest.ca?.kinds_known || []).includes(m[1])) errors.push(`${at}: requires ${k} uses undeclared kind ${m[1]} (kind_undeclared)`);
@@ -48,6 +49,7 @@ const tools = (registry.tools || []).map((entry, i) => {
     tags: f.tags || [], file: entry.file || null, version: f.version,
     sandbox: f.sandbox || {}, config: f.config || {},
     contract: { config_keys: c.config_keys || [], requires: c.requires || [] },
+    config_schema: f.config_schema || undefined,
     html, url: entry.file ? undefined : f.url, run: entry.file ? undefined : (f.run || undefined)
   };
 }).filter(Boolean);

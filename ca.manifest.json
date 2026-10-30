@@ -5,7 +5,7 @@
   "key": "repo:komposing/tool-bench",
   "name": "tool-bench",
   "title": "Tool Bench",
-  "version": "3.2.0",
+  "version": "3.3.0",
   "purpose": "Single-file host for small HTML tools that front CA_V3 flows: shared config injection, sandboxed runs, tool contracts naming the CA_V3 objects each tool depends on.",
   "owner": "Nick",
   "lifecycle": "active",
@@ -72,6 +72,14 @@
       {
         "name": "fetched_tool",
         "detail": "a registry url entry with run fetch is fetched without credentials, its X-CA-SHA256 header (when sent) checked against the body with crypto.subtle, and run inline with tool_config_injection and error_reporter; held in memory only"
+      },
+      {
+        "name": "config_schema",
+        "detail": "toolbench.tool/1 config_schema {namespace, fields[path,label,type,required,default,values,secret,help]}: the bench renders a Settings form, refuses a run on a missing, placeholder or invalid field, stores state.config[namespace] and injects it with defaults; secret values never leave the device"
+      },
+      {
+        "name": "toolbench_config_set",
+        "detail": "the running frame posts {type: toolbench:config:set, namespace, values} for the namespace its config_schema declares; the bench validates, stores, answers {type: toolbench:config:result, ok, errors|persisted, dropped} and reloads the tool"
       }
     ]
   },
@@ -164,6 +172,11 @@
       "version": "3.2.0",
       "change": "C765",
       "note": "CA_V3 Viewer registered as a repo link tool (served by CA_V3 Viewer Host), fetched and run inline (run fetch, X-CA-SHA256 checked)"
+    },
+    {
+      "version": "3.3.0",
+      "change": "C783",
+      "note": "tool settings declared by the tool (config_schema): Settings form, run checks, tool-side save (toolbench:config:set), secrets kept on the device; CA_V3 Viewer declares its cav3 settings"
     }
   ]
 }
