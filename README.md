@@ -61,6 +61,12 @@ A file whose `id` is one of your local tools updates it only when its `version` 
 The bench won't run a tool whose `config_keys` aren't set (it shows which). `requires` keys are collected
 by the build into `depends.tools` in the manifest, which is how CA_V3 sees what this repo depends on.
 
+## Errors and fixes
+
+**Errors and fixes** in the sidebar logs errors from your tools (reported from inside the frame) and from the bench
+itself, in this browser only. **Copy** turns an entry into a CA_V3 bug report; the bug series is the record of what broke
+and what fixed it. The section also lists what this version fixed (from `### Fixed` in the CHANGELOG).
+
 ## Storage
 
 The browser's local storage only: schema 3 under `toolbench:v3`. On first run it migrates `toolbench:v2` or `toolbench:v1`

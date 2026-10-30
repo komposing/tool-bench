@@ -314,7 +314,7 @@ table.t code,.kv code{font-family:var(--mono);font-size:11px}
 
 <!-- Build bundle: scripts/build.mjs replaces the marker below with the manifest and the
      repo tools. Opened unbuilt, the bench runs with local tools only and says so. -->
-<script type="application/json" id="tb-bundle">{"manifest":{"$schema":"schema/ca.manifest.schema.json","protocol":"ca.repo/1","repo":"komposing/tool-bench","key":"repo:komposing/tool-bench","name":"tool-bench","title":"Tool Bench","version":"3.0.1","purpose":"Single-file host for small HTML tools that front CA_V3 flows: shared config injection, sandboxed runs, tool contracts naming the CA_V3 objects each tool depends on.","owner":"Nick","lifecycle":"active","data_class":"internal","criticality":"ignore","entry":"dist/tool-bench.html","distribution":{"channel":"github_release","asset":"tool-bench.html","latest":"https://github.com/komposing/tool-bench/releases/latest/download/tool-bench.html","record":"std:external_links repos[komposing/tool-bench]"},"source":["src/bench.html","tools/registry.json","tools/"],"storage":{"key":"toolbench:v3","schema":3,"migrations":[{"from":"toolbench:v1","to":"toolbench:v2","since":"2.0.0","keeps_source":true},{"from":"toolbench:v2","to":"toolbench:v3","since":"3.0.0","keeps_source":true}]},"provides":{"protocols":[{"name":"tool_config_injection","detail":"window.TOOL_CONFIG and window.TOOL_META injected into inline tools before their own scripts"},{"name":"toolbench_config_message","detail":"postMessage {type: toolbench:config, config, meta} to linked tools, targeted at the link's origin"},{"name":"tool_file_block","detail":"each tool HTML carries its card fields and version in \u003cscript type=application/json id=toolbench-tool> (toolbench.tool/1, schema/toolbench.tool.schema.json); read on import, rewritten with a higher version on save"},{"name":"local_storage_only","detail":"state lives in the browser's localStorage only; artifact storage from earlier builds is read once to migrate, never written"}]},"depends":{"ca":[{"key":"std:source_repo","why":"mutation protocol this repo follows (ca.repo/1)"}],"tools":[]},"ca":{"kinds_known":["wf","tbl","cred","cap","std","doc","task","role","fmt","prj","inv","dia","run","log","lease","kind"],"kinds_note":"snapshot of the declared kind prefixes (std kind via std change_broker kinds_known v9, 2026-10-23); used by the bench to flag kind_undeclared keys in tool contracts"},"governance":{"standard":"std:source_repo","gate":"merge only after the change's deploy card lands; for a release that card writes the release record to std external_links; a change that cuts no release is gated by acceptance","branch_pattern":"^c[0-9]{3,}/[a-z0-9][a-z0-9-]*$","trailers":["CA-Change","CA-Session"]},"releases":[{"version":"1.0.0","commit":"d148a516d9a068520a1ee56eb81fd2de2d1fdd77","change":"C308","note":"baseline: v1 as delivered"},{"version":"2.0.0","change":"C308","note":"repo build, manifest, schema-2 storage with v1 migration, tool contracts, per-tool history, hardening"},{"version":"3.0.0","change":"C350","note":"localStorage-only storage (schema 3); tool files carry their card fields and a version the bench bumps on save"},{"version":"3.0.1","change":"C579","note":"each release is published as a GitHub Release with the built file attached; manifest declares distribution"}]},"built_from":"src@76014f72fbaa","built":"3.0.1","tools":[{"id":"TB:config-probe","name":"Config probe","description":"Shows the settings and meta the bench passes into a tool. Handy first check.","category":"Bench","tags":["diagnostic"],"file":"tools/config-probe.html","version":"2.1.0","sandbox":{"scripts":true,"forms":false,"modals":false,"popups":false,"downloads":false,"sameOrigin":false},"config":{"example":"tool settings win over shared ones"},"contract":{"config_keys":[],"requires":[]},"html":"\u003c!DOCTYPE html>\n\u003chtml lang=\"en\">\u003chead>\u003cmeta charset=\"utf-8\">\u003ctitle>Config probe\u003c/title>\n\u003cscript type=\"application/json\" id=\"toolbench-tool\">\n{\n  \"format\": \"toolbench.tool/1\",\n  \"id\": \"TB:config-probe\",\n  \"name\": \"Config probe\",\n  \"description\": \"Shows the settings and meta the bench passes into a tool. Handy first check.\",\n  \"category\": \"Bench\",\n  \"tags\": [\"diagnostic\"],\n  \"version\": \"2.1.0\",\n  \"contract\": { \"config_keys\": [], \"requires\": [] },\n  \"sandbox\": { \"scripts\": true, \"forms\": false, \"modals\": false, \"popups\": false, \"downloads\": false, \"sameOrigin\": false },\n  \"config\": { \"example\": \"tool settings win over shared ones\" }\n}\n\u003c/script>\n\u003cstyle>body{font:13px ui-monospace,Menlo,monospace;padding:20px;background:#FBFAF7;color:#12161A}\nh1{font-size:14px;letter-spacing:.16em;text-transform:uppercase;margin:0 0 12px}\npre{background:#EDEAE3;padding:12px;border-radius:3px;overflow:auto}\u003c/style>\u003c/head>\u003cbody>\n\u003ch1>Config probe\u003c/h1>\n\u003cp>What the bench handed to this tool as \u003ccode>window.TOOL_CONFIG\u003c/code> and \u003ccode>window.TOOL_META\u003c/code>, and the tool's own block:\u003c/p>\n\u003cpre id=\"o\">reading…\u003c/pre>\n\u003cscript>\nvar block = document.getElementById(\"toolbench-tool\");\ndocument.getElementById(\"o\").textContent =\n  JSON.stringify(window.TOOL_CONFIG || {}, null, 2) + \"\\n\\n// meta\\n\" +\n  JSON.stringify(window.TOOL_META || {}, null, 2) + \"\\n\\n// file block\\n\" +\n  (block ? block.textContent.trim() : \"(none)\");\n\u003c/script>\n\u003c/body>\u003c/html>\n"}]}</script>
+<script type="application/json" id="tb-bundle">{"manifest":{"$schema":"schema/ca.manifest.schema.json","protocol":"ca.repo/1","repo":"komposing/tool-bench","key":"repo:komposing/tool-bench","name":"tool-bench","title":"Tool Bench","version":"3.1.0","purpose":"Single-file host for small HTML tools that front CA_V3 flows: shared config injection, sandboxed runs, tool contracts naming the CA_V3 objects each tool depends on.","owner":"Nick","lifecycle":"active","data_class":"internal","criticality":"ignore","entry":"dist/tool-bench.html","distribution":{"channel":"github_release","asset":"tool-bench.html","latest":"https://github.com/komposing/tool-bench/releases/latest/download/tool-bench.html","record":"std:external_links repos[komposing/tool-bench]"},"bugs":{"object_key":"std:source_repo/komposing/tool-bench","ledger":"CA_V3 bug series (dev.bug.report, dev.bug.get)","trailer":"CA-Bug","changelog":"### Fixed"},"source":["src/bench.html","tools/registry.json","tools/"],"storage":{"key":"toolbench:v3","schema":3,"migrations":[{"from":"toolbench:v1","to":"toolbench:v2","since":"2.0.0","keeps_source":true},{"from":"toolbench:v2","to":"toolbench:v3","since":"3.0.0","keeps_source":true}]},"provides":{"protocols":[{"name":"tool_config_injection","detail":"window.TOOL_CONFIG and window.TOOL_META injected into inline tools before their own scripts"},{"name":"toolbench_config_message","detail":"postMessage {type: toolbench:config, config, meta} to linked tools, targeted at the link's origin"},{"name":"tool_file_block","detail":"each tool HTML carries its card fields and version in \u003cscript type=application/json id=toolbench-tool> (toolbench.tool/1, schema/toolbench.tool.schema.json); read on import, rewritten with a higher version on save"},{"name":"local_storage_only","detail":"state lives in the browser's localStorage only; artifact storage from earlier builds is read once to migrate, never written"},{"name":"error_reporter","detail":"inline tools get a reporter ahead of their scripts that posts {type: toolbench:error, kind, message, source, line, col, stack} to the bench; the bench logs it locally with its own errors and copies an entry out as a dev.bug.report payload"}]},"depends":{"ca":[{"key":"std:source_repo","why":"mutation protocol this repo follows (ca.repo/1)"}],"tools":[]},"ca":{"kinds_known":["wf","tbl","cred","cap","std","doc","task","role","fmt","prj","inv","dia","run","log","lease","kind"],"kinds_note":"snapshot of the declared kind prefixes (std kind via std change_broker kinds_known v9, 2026-10-23); used by the bench to flag kind_undeclared keys in tool contracts"},"governance":{"standard":"std:source_repo","gate":"merge only after the change's deploy card lands; for a release that card writes the release record to std external_links; a change that cuts no release is gated by acceptance","branch_pattern":"^c[0-9]{3,}/[a-z0-9][a-z0-9-]*$","trailers":["CA-Change","CA-Session"]},"releases":[{"version":"1.0.0","commit":"d148a516d9a068520a1ee56eb81fd2de2d1fdd77","change":"C308","note":"baseline: v1 as delivered"},{"version":"2.0.0","change":"C308","note":"repo build, manifest, schema-2 storage with v1 migration, tool contracts, per-tool history, hardening"},{"version":"3.0.0","change":"C350","note":"localStorage-only storage (schema 3); tool files carry their card fields and a version the bench bumps on save"},{"version":"3.0.1","change":"C579","note":"each release is published as a GitHub Release with the built file attached; manifest declares distribution"},{"version":"3.1.0","change":"C688","note":"Errors and fixes: error log panel (tool and bench errors, copy as bug report), Fixed in this version; CA-Bug trailer and ### Fixed checks (ca.repo/1 v3)"}]},"built_from":"src@17bf715f022b","built":"3.1.0","tools":[{"id":"TB:config-probe","name":"Config probe","description":"Shows the settings and meta the bench passes into a tool. Handy first check.","category":"Bench","tags":["diagnostic"],"file":"tools/config-probe.html","version":"2.1.0","sandbox":{"scripts":true,"forms":false,"modals":false,"popups":false,"downloads":false,"sameOrigin":false},"config":{"example":"tool settings win over shared ones"},"contract":{"config_keys":[],"requires":[]},"html":"\u003c!DOCTYPE html>\n\u003chtml lang=\"en\">\u003chead>\u003cmeta charset=\"utf-8\">\u003ctitle>Config probe\u003c/title>\n\u003cscript type=\"application/json\" id=\"toolbench-tool\">\n{\n  \"format\": \"toolbench.tool/1\",\n  \"id\": \"TB:config-probe\",\n  \"name\": \"Config probe\",\n  \"description\": \"Shows the settings and meta the bench passes into a tool. Handy first check.\",\n  \"category\": \"Bench\",\n  \"tags\": [\"diagnostic\"],\n  \"version\": \"2.1.0\",\n  \"contract\": { \"config_keys\": [], \"requires\": [] },\n  \"sandbox\": { \"scripts\": true, \"forms\": false, \"modals\": false, \"popups\": false, \"downloads\": false, \"sameOrigin\": false },\n  \"config\": { \"example\": \"tool settings win over shared ones\" }\n}\n\u003c/script>\n\u003cstyle>body{font:13px ui-monospace,Menlo,monospace;padding:20px;background:#FBFAF7;color:#12161A}\nh1{font-size:14px;letter-spacing:.16em;text-transform:uppercase;margin:0 0 12px}\npre{background:#EDEAE3;padding:12px;border-radius:3px;overflow:auto}\u003c/style>\u003c/head>\u003cbody>\n\u003ch1>Config probe\u003c/h1>\n\u003cp>What the bench handed to this tool as \u003ccode>window.TOOL_CONFIG\u003c/code> and \u003ccode>window.TOOL_META\u003c/code>, and the tool's own block:\u003c/p>\n\u003cpre id=\"o\">reading…\u003c/pre>\n\u003cscript>\nvar block = document.getElementById(\"toolbench-tool\");\ndocument.getElementById(\"o\").textContent =\n  JSON.stringify(window.TOOL_CONFIG || {}, null, 2) + \"\\n\\n// meta\\n\" +\n  JSON.stringify(window.TOOL_META || {}, null, 2) + \"\\n\\n// file block\\n\" +\n  (block ? block.textContent.trim() : \"(none)\");\n\u003c/script>\n\u003c/body>\u003c/html>\n"}],"fixed":[]}</script>
 
 <script>
 "use strict";
@@ -440,9 +440,94 @@ let state = {
   seq: 1,
   config: { note: "Shared settings. Every tool reads these as window.TOOL_CONFIG." },
   tools: [],      // local tools (origin local)
-  overlay: {}     // per-viewer state for repo tools: pinned, runs, lastRun
+  overlay: {},    // per-viewer state for repo tools: pinned, runs, lastRun
+  errors: [],     // error log: tool and bench errors, newest last, capped (ERRORS_MAX)
+  errorsSeen: 0   // ts of the newest error the viewer has seen in the Errors sheet
 };
 let filter = { cat: "*", q: "" };
+
+/* =========================================================
+   Errors log — tool errors (reported from inside the frame) and the
+   bench's own errors, kept locally. The source of truth for bugs is the
+   CA_V3 bug series: an entry can be copied out as a dev.bug.report payload.
+   ========================================================= */
+const ERRORS_MAX = 200;
+const BUG_KEY = MANIFEST.bugs && MANIFEST.bugs.object_key
+  ? MANIFEST.bugs.object_key : "std:source_repo/" + (MANIFEST.repo || "komposing/tool-bench");
+const FIXED = (BUNDLE && Array.isArray(BUNDLE.fixed)) ? BUNDLE.fixed : [];
+const clip = (s, n) => { s = String(s == null ? "" : s); return s.length > n ? s.slice(0, n - 1) + "…" : s; };
+let lastErrTs = 0;
+function logError(e){
+  const ts = Math.max(Date.now(), lastErrTs + 1); lastErrTs = ts;   // unique, ordered
+  const entry = {
+    ts, scope: e.scope === "tool" ? "tool" : "bench",
+    tool: e.tool ? { id: String(e.tool.id), name: clip(e.tool.name, 80), version: String(e.tool.version || ""), origin: String(e.tool.origin || "") } : null,
+    kind: clip(e.kind || "error", 20), message: clip(e.message || "Unknown error", 500),
+    source: clip(e.source || "", 200), line: +e.line || 0, col: +e.col || 0, stack: clip(e.stack || "", 2000),
+    host_version: MANIFEST.version
+  };
+  // fold an identical repeat into a count rather than flooding the log
+  const last = state.errors[state.errors.length - 1];
+  if (last && last.message === entry.message && last.source === entry.source && last.line === entry.line &&
+      ((last.tool && last.tool.id) || "") === ((entry.tool && entry.tool.id) || "")){
+    last.count = (last.count || 1) + 1; last.ts = ts;
+  } else {
+    state.errors.push(entry);
+    if (state.errors.length > ERRORS_MAX) state.errors = state.errors.slice(-ERRORS_MAX);
+  }
+  persist();
+  try { renderRail(); renderGrid(); } catch (x) { /* rendering itself failed; the entry is kept */ }
+}
+function sanitiseErrors(list){
+  return (Array.isArray(list) ? list : []).filter(x => x && typeof x === "object" && x.ts && x.message).slice(-ERRORS_MAX);
+}
+function unseenErrors(){ return state.errors.filter(e => e.ts > (state.errorsSeen || 0)).length; }
+function toolErrorCount(id){ return state.errors.filter(e => e.tool && e.tool.id === id).reduce((n, e) => n + (e.count || 1), 0); }
+function bugReport(e){
+  const where = e.scope === "tool" && e.tool
+    ? `tool ${e.tool.id} "${e.tool.name}" v${e.tool.version} (${e.tool.origin})`
+    : "the bench itself";
+  const loc = e.source ? ` at ${e.source}${e.line ? ":" + e.line + (e.col ? ":" + e.col : "") : ""}` : "";
+  return {
+    object_key: BUG_KEY,
+    class: "defect",
+    title: clip(`${e.scope === "tool" && e.tool ? e.tool.name : "Tool Bench"}: ${e.message}`, 120),
+    text: clip(`Tool Bench v${e.host_version}, ${where}: ${e.kind} "${e.message}"${loc}` +
+               `${e.count > 1 ? `, seen ${e.count} times` : ""}, last ${new Date(e.ts).toISOString()}.` +
+               (e.stack ? `\n${e.stack}` : ""), 1500),
+    reproducible: e.count > 1 ? "sometimes" : "unknown",
+    signature: clip(`${BUG_KEY}:${e.scope}:${e.tool ? e.tool.id : "bench"}:${e.message}`, 120)
+  };
+}
+window.addEventListener("error", ev => {
+  if (ev.target && ev.target !== window) return;   // resource load errors are not code errors
+  logError({ scope:"bench", kind:"error", message: ev.message, source: ev.filename, line: ev.lineno, col: ev.colno, stack: ev.error && ev.error.stack });
+});
+window.addEventListener("unhandledrejection", ev => {
+  const r = ev.reason;
+  logError({ scope:"bench", kind:"rejection", message: (r && r.message) || String(r), stack: r && r.stack });
+});
+// A tool reports through the reporter injected ahead of its own scripts. Only the frame the
+// bench is running may report, and only for the tool it is running.
+window.addEventListener("message", ev => {
+  const d = ev.data;
+  if (!d || d.type !== "toolbench:error") return;
+  const frame = document.getElementById("runFrame");
+  if (!frame || ev.source !== frame.contentWindow) return;
+  const t = findTool(document.getElementById("runner").dataset.id);
+  if (!t) return;
+  logError({ scope:"tool", tool:{ id:t.id, name:t.name, version:t.version, origin:t.origin },
+             kind: d.kind, message: d.message, source: d.source, line: d.line, col: d.col, stack: d.stack });
+});
+const REPORTER = "(function(){function s(k,m,src,l,c,st){try{parent.postMessage({type:'toolbench:error',kind:k," +
+  "message:String(m||'').slice(0,500),source:String(src||'').slice(0,200),line:l||0,col:c||0," +
+  "stack:String(st||'').slice(0,2000)},'*')}catch(e){}}" +
+  "window.addEventListener('error',function(e){if(e.target&&e.target!==window){s('resource','Failed to load '+(e.target.src||e.target.href||e.target.tagName),'',0,0,'');return}" +
+  "s('error',e.message,e.filename,e.lineno,e.colno,e.error&&e.error.stack)},true);" +
+  "window.addEventListener('unhandledrejection',function(e){var r=e.reason;s('rejection',(r&&r.message)||String(r),'',0,0,r&&r.stack)});" +
+  "var ce=console.error;console.error=function(){try{s('console',Array.prototype.map.call(arguments,function(a){" +
+  "return a&&a.message?a.message:typeof a==='object'?JSON.stringify(a):String(a)}).join(' '),'',0,0,'')}catch(e){}" +
+  "return ce.apply(console,arguments)}})();";
 let editingId = null;
 let srcMode = "paste";
 let currentBlobUrl = null;
@@ -601,6 +686,7 @@ function renderRail(){
         <i class="led" style="background:${tapeFor(c)}"></i>${esc(c)}<span class="n">${n}</span></button>`).join("")}
     <hr>
     <h4>Registry</h4>
+    <button class="chan" data-act="errors">Errors and fixes${state.errors.length ? `<span class="n" style="${unseenErrors() ? "color:#E9A093" : ""}">${unseenErrors() ? unseenErrors() + " new" : state.errors.length}</span>` : ""}</button>
     <button class="chan" data-act="deps">Dependencies</button>
     <button class="chan" data-act="registry">Edit registry JSON</button>
     <button class="chan" data-act="export">Export bundle</button>
@@ -640,6 +726,7 @@ function renderGrid(){
     const blocked = chk.missing.length > 0;
     const src = t.origin === "repo" ? "repo" : (t.source.kind === "url" ? "link" : "local");
     const deps = (t.contract && t.contract.requires) || [];
+    const nErr = toolErrorCount(t.id);
     return `<article class="tool" data-id="${esc(t.id)}">
       <div class="tape" style="--tape:${tapeFor(cat)}">
         ${esc(t.id)}<span class="cat">${src} · v${esc(t.version || "?")}</span>
@@ -647,7 +734,8 @@ function renderGrid(){
       <div class="body">
         <h3>${esc(t.name)}</h3>
         <p>${esc(t.description || "No description yet.")}</p>
-        ${(t.tags||[]).length || deps.length ? `<div class="tags">
+        ${(t.tags||[]).length || deps.length || nErr ? `<div class="tags">
+          ${nErr ? `<span class="tag bad" title="Errors logged for this tool (Errors and fixes)">${nErr} error${nErr===1?"":"s"}</span>` : ""}
           ${(t.tags||[]).map(x=>`<span class="tag">${esc(x)}</span>`).join("")}
           ${deps.map(d=>`<span class="tag dep ${chk.badKeys.includes(d)?"bad":""}" title="Depends on">${esc(d)}</span>`).join("")}
         </div>` : ""}
@@ -686,8 +774,9 @@ function toolMeta(t){
   return { id: t.id, name: t.name, category: t.category || "General", origin: t.origin, version: t.version,
            host: "tool-bench", host_version: MANIFEST.version, contract: t.contract || blankContract() };
 }
-function injectConfig(html, t){
-  const tag = "<scr" + "ipt>window.TOOL_CONFIG=" + safeJson(mergedConfig(t)) +
+function injectConfig(html, t, opts){
+  const reporter = (opts && opts.reporter === false) ? "" : REPORTER;
+  const tag = "<scr" + "ipt>" + reporter + "window.TOOL_CONFIG=" + safeJson(mergedConfig(t)) +
               ";window.TOOL_META=" + safeJson(toolMeta(t)) + ";</scr" + "ipt>";
   if (/<head[^>]*>/i.test(html)) return html.replace(/<head[^>]*>/i, m => m + tag);
   if (/<html[^>]*>/i.test(html)) return html.replace(/<html[^>]*>/i, m => m + "<head>" + tag + "</head>");
@@ -921,6 +1010,41 @@ function depsMap(){
       config_keys:(t.contract||{}).config_keys||[], requires:(t.contract||{}).requires||[] }))
   };
 }
+function fixedHtml(){
+  return FIXED.length
+    ? `<ul style="margin:4px 0 0;padding-left:18px">${FIXED.map(f => `<li><code>${esc(f.id)}</code> ${esc(f.text)}</li>`).join("")}</ul>`
+    : `<span class="hint">No bug fixes in this release.</span>`;
+}
+function errorsSheet(){
+  state.errorsSeen = state.errors.length ? state.errors[state.errors.length - 1].ts : 0;
+  persist(); renderRail();
+  const rows = state.errors.slice().reverse().map(e => `<tr>
+      <td style="white-space:nowrap">${esc(new Date(e.ts).toLocaleString())}${e.count > 1 ? `<br><span class="hint">×${e.count}</span>` : ""}</td>
+      <td>${e.scope === "tool" && e.tool ? `<code>${esc(e.tool.id)}</code><br>${esc(e.tool.name)} v${esc(e.tool.version)}` : "Bench"}</td>
+      <td>${esc(e.kind)}: ${esc(e.message)}${e.source ? `<br><span class="hint">${esc(e.source)}${e.line ? ":" + e.line : ""}</span>` : ""}</td>
+      <td><button class="btn" data-act="copyBug" data-ts="${esc(e.ts)}">Copy</button></td></tr>`).join("");
+  openSheet(`<div class="sheet wide">
+    <div class="sheethead"><h2>Errors and fixes</h2><span class="sub">v${esc(MANIFEST.version)}</span>
+      <button class="x" data-act="close" aria-label="Close">×</button></div>
+    <div class="sheetbody">
+      <span class="lbl">Fixed in this version</span>
+      <div>${fixedHtml()}</div>
+      <span class="lbl">Errors seen here (${state.errors.length}, newest first, last ${ERRORS_MAX} kept)</span>
+      <table class="t"><thead><tr><th>When</th><th>Where</th><th>What</th><th></th></tr></thead>
+        <tbody>${rows || `<tr><td colspan="4">No errors logged. Tool errors and the bench's own errors appear here.</td></tr>`}</tbody></table>
+      <div class="note">This log stays in this browser. To report one, tap Copy: it copies a bug report for CA_V3 (<code>dev.bug.report</code>, object <code>${esc(BUG_KEY)}</code>). Check the text before you file it: an error message can contain data your tool was handling.</div>
+    </div>
+    <div class="sheetfoot">
+      ${state.errors.length ? `<button class="btn danger" data-act="clearErrors">Clear log</button>` : ""}
+      <div class="spacer"></div>
+      ${state.errors.length ? `<button class="btn" data-act="exportErrors">Export JSON</button>` : ""}
+      <button class="btn primary" data-act="close">Done</button></div></div>`);
+}
+function copyText(txt, okMsg, fileName){
+  (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject())
+    .then(() => toast(okMsg), () => downloadFile(fileName, txt, "application/json"));
+}
+
 function depsSheet(){
   const m = MANIFEST;
   const gov = m.governance || {};
@@ -941,6 +1065,8 @@ function depsSheet(){
         <dt>Version</dt><dd>${esc(m.version)}${BUNDLE && BUNDLE.built_from ? ` · built from <code>${esc(BUNDLE.built_from)}</code>` : ""}</dd>
         <dt>Governed by</dt><dd>${esc(gov.standard || "—")}${gov.gate ? " · " + esc(gov.gate) : ""}</dd>
         <dt>Storage</dt><dd>${Store.mode === "local" ? "local storage" : "<span class='no'>memory only</span>"} · <code>${esc(KEY)}</code> schema ${esc(SCHEMA)}${migratedFrom ? ` · migrated from <code>${esc(migratedFrom)}</code> this session` : ""}</dd>
+        <dt>Fixed in v${esc(m.version)}</dt><dd>${fixedHtml()}</dd>
+        <dt>Bugs filed on</dt><dd><code>${esc(BUG_KEY)}</code> (CA_V3 bug series)</dd>
         <dt>Host needs</dt><dd>${hostDeps.length ? hostDeps.map(d=>`<code>${esc(d.key)}</code> ${esc(d.why||"")}`).join("<br>") : "nothing in CA_V3"}</dd>
       </dl>
       <span class="lbl">Tool contracts</span>
@@ -1107,6 +1233,7 @@ $("#rail").addEventListener("click", e => {
   if (b.dataset.cat){ filter.cat = b.dataset.cat; render(); return; }
   const act = b.dataset.act;
   if (act === "deps") depsSheet();
+  if (act === "errors") errorsSheet();
   if (act === "registry") registrySheet();
   if (act === "export") downloadFile(`tool-bench-local-${new Date().toISOString().slice(0,10)}.json`,
       JSON.stringify({ schema: state.schema, host_version: MANIFEST.version, config: state.config,
@@ -1182,6 +1309,22 @@ $("#scrim").addEventListener("click", e => {
   if (act === "close") return closeSheet();
   if (act === "save") return saveTool();
   if (act === "openSettings"){ closeSheet(); return settingsSheet(); }
+  if (act === "copyBug"){
+    const e = state.errors.find(x => String(x.ts) === b.dataset.ts);
+    if (e) copyText(JSON.stringify(bugReport(e), null, 2), "Bug report copied", "tool-bench-bug.json");
+    return;
+  }
+  if (act === "exportErrors"){
+    downloadFile(`tool-bench-errors-${new Date().toISOString().slice(0,10)}.json`,
+      JSON.stringify({ host: MANIFEST.repo, host_version: MANIFEST.version, object_key: BUG_KEY, errors: state.errors }, null, 2), "application/json");
+    return;
+  }
+  if (act === "clearErrors"){
+    if (confirm(`Clear ${state.errors.length} logged error${state.errors.length===1?"":"s"}? Copy or export anything you want to report first.`)){
+      state.errors = []; state.errorsSeen = 0; persist(); render(); closeSheet(); toast("Error log cleared");
+    }
+    return;
+  }
   if (act === "editTool"){ const t = state.tools.find(x => x.id === b.dataset.id); closeSheet(); return toolSheet(t); }
   if (act === "copyDeps"){
     const txt = JSON.stringify(depsMap(), null, 2);
@@ -1227,6 +1370,7 @@ $("#scrim").addEventListener("click", e => {
       state = {
         schema: SCHEMA, seq: next.seq|0, config: (next.config && typeof next.config === "object") ? next.config : {},
         overlay: (next.overlay && typeof next.overlay === "object") ? next.overlay : {},
+        errors: state.errors, errorsSeen: state.errorsSeen,   // the error log is not part of the editable registry
         tools: next.tools.map(sanitiseLocalTool)
       };
       reseq(); persist(); render(); closeSheet(); toast("Registry applied");
@@ -1351,6 +1495,7 @@ document.body.appendChild(importer);
       schema: SCHEMA, seq: saved.seq|0 || 1,
       config: (saved.config && typeof saved.config === "object") ? saved.config : state.config,
       overlay: (saved.overlay && typeof saved.overlay === "object") ? saved.overlay : {},
+      errors: sanitiseErrors(saved.errors), errorsSeen: +saved.errorsSeen || 0,
       tools: saved.tools.map(sanitiseLocalTool)
     };
     reseq();

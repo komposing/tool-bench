@@ -26,6 +26,11 @@ pointer and a checklist, not a second copy of the rules.
   feature; patch for a fix), append a `releases` entry with your change id, and add `## <version>` to `CHANGELOG.md`.
 - Changing the storage schema means a new key plus a forward migration that reads the old key and never deletes it.
 - No secrets anywhere in the repo (I5): endpoints and ids only.
+- Errors and fixes: a bug in this repo is filed in CA_V3 (`dev.bug.report`, object `std:source_repo/komposing/tool-bench`).
+  A commit that fixes one adds a `CA-Bug: U###` trailer, and the release's CHANGELOG section lists it under `### Fixed`
+  as `- U###: what was wrong` (`- none` when nothing was fixed); CI checks both directions. After the release, move each
+  bug to fixed then verified (`dev.bug.update` with the fix change) and refresh the Errors and fixes table in doc
+  `source_repo/design` in the same change.
 
 ## Landing
 - Run `node scripts/build.mjs --check` and `node scripts/check-change.mjs origin/main <branch>` locally; CI runs both on the PR.

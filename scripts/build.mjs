@@ -7,7 +7,7 @@
 // (the union of every repo tool's contract.requires, read from each tool file's block). That keeps what CA_V3 reads about
 // this repo's dependencies derived from the tools themselves (I7).
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
-import { readJson, validate, sha256, KEY_RE, readToolBlock } from "./lib.mjs";
+import { readJson, validate, sha256, KEY_RE, readToolBlock, parseFixed } from "./lib.mjs";
 
 const CHECK = process.argv.includes("--check");
 const fail = msgs => { console.error(msgs.map(m => "  - " + m).join("\n")); process.exit(1); };
@@ -63,11 +63,15 @@ errors.push(...validate(schema, nextManifest).map(e => "ca.manifest.json " + e))
 const lastRelease = nextManifest.releases[nextManifest.releases.length - 1];
 if (lastRelease.version !== nextManifest.version) errors.push(`ca.manifest.json: last releases entry is ${lastRelease.version}, version is ${nextManifest.version}`);
 if (!template.includes('"@@TB_BUNDLE@@"')) errors.push("src/bench.html: bundle marker missing");
+// errors and fixes (ca.repo/1 v3): the current release's "### Fixed" list ships in the bundle
+const changelog = readFileSync("CHANGELOG.md", "utf8");
+const fx = parseFixed(changelog, nextManifest.version);
+errors.push(...fx.errors);
 if (errors.length) fail(errors);
 
 // 3. bundle: deterministic (a content hash, no timestamp), so --check is stable
-const sourceHash = sha256(JSON.stringify({ template, registry, tools: tools.map(t => t.html), manifest: nextManifest })).slice(0, 12);
-const bundle = { manifest: nextManifest, built_from: "src@" + sourceHash, built: nextManifest.version, tools };
+const sourceHash = sha256(JSON.stringify({ template, registry, tools: tools.map(t => t.html), manifest: nextManifest, fixed: fx.fixed })).slice(0, 12);
+const bundle = { manifest: nextManifest, built_from: "src@" + sourceHash, built: nextManifest.version, tools, fixed: fx.fixed };
 const safe = JSON.stringify(bundle).replace(/</g, "\\u003c").replace(/\u2028/g, "\\u2028").replace(/\u2029/g, "\\u2029");
 const out = template.replace('"@@TB_BUNDLE@@"', () => safe);
 
