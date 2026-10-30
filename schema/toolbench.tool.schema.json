@@ -29,6 +29,7 @@
       }
     },
     "config": { "type": "object" },
-    "url": { "type": "string", "pattern": "^https://" }
+    "url": { "type": "string", "pattern": "^https://" },
+    "run": { "enum": ["link", "fetch"], "description": "How the bench runs a url tool: link (default) frames the url; fetch reads it (no credentials, X-CA-SHA256 checked when sent) and runs it inline like a file tool." }
   }
 }

@@ -34,7 +34,8 @@
         "downloads": false,
         "sameOrigin": false
       },
-      "url": "https://komposing.app.n8n.cloud/webhook/ca-v3-viewer"
+      "url": "https://komposing.app.n8n.cloud/webhook/ca-v3-viewer",
+      "run": "fetch"
     }
   ]
 }

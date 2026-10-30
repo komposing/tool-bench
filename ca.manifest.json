@@ -68,6 +68,10 @@
       {
         "name": "error_reporter",
         "detail": "inline tools get a reporter ahead of their scripts that posts {type: toolbench:error, kind, message, source, line, col, stack} to the bench; the bench logs it locally with its own errors and copies an entry out as a dev.bug.report payload"
+      },
+      {
+        "name": "fetched_tool",
+        "detail": "a registry url entry with run fetch is fetched without credentials, its X-CA-SHA256 header (when sent) checked against the body with crypto.subtle, and run inline with tool_config_injection and error_reporter; held in memory only"
       }
     ]
   },
@@ -159,7 +163,7 @@
     {
       "version": "3.2.0",
       "change": "C765",
-      "note": "CA_V3 Viewer registered as a repo link tool (served by CA_V3 Viewer Host)"
+      "note": "CA_V3 Viewer registered as a repo link tool (served by CA_V3 Viewer Host), fetched and run inline (run fetch, X-CA-SHA256 checked)"
     }
   ]
 }
