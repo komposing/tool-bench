@@ -5,7 +5,7 @@
   "key": "repo:komposing/tool-bench",
   "name": "tool-bench",
   "title": "Tool Bench",
-  "version": "3.1.0",
+  "version": "3.2.0",
   "purpose": "Single-file host for small HTML tools that front CA_V3 flows: shared config injection, sandboxed runs, tool contracts naming the CA_V3 objects each tool depends on.",
   "owner": "Nick",
   "lifecycle": "active",
@@ -68,6 +68,10 @@
       {
         "name": "error_reporter",
         "detail": "inline tools get a reporter ahead of their scripts that posts {type: toolbench:error, kind, message, source, line, col, stack} to the bench; the bench logs it locally with its own errors and copies an entry out as a dev.bug.report payload"
+      },
+      {
+        "name": "fetched_tool",
+        "detail": "a registry url entry with run fetch is fetched without credentials, its X-CA-SHA256 header (when sent) checked against the body with crypto.subtle, and run inline with tool_config_injection and error_reporter; held in memory only"
       }
     ]
   },
@@ -78,7 +82,26 @@
         "why": "mutation protocol this repo follows (ca.repo/1)"
       }
     ],
-    "tools": []
+    "tools": [
+      {
+        "key": "wf:kg2yQ5MPCCNaWPZw",
+        "by": [
+          "TB:ca-v3-viewer"
+        ]
+      },
+      {
+        "key": "wf:knSoXj0bFCnAHpRV",
+        "by": [
+          "TB:ca-v3-viewer"
+        ]
+      },
+      {
+        "key": "wf:MtUvdRCD3VY7OcNu",
+        "by": [
+          "TB:ca-v3-viewer"
+        ]
+      }
+    ]
   },
   "ca": {
     "kinds_known": [
@@ -136,6 +159,11 @@
       "version": "3.1.0",
       "change": "C688",
       "note": "Errors and fixes: error log panel (tool and bench errors, copy as bug report), Fixed in this version; CA-Bug trailer and ### Fixed checks (ca.repo/1 v3)"
+    },
+    {
+      "version": "3.2.0",
+      "change": "C765",
+      "note": "CA_V3 Viewer registered as a repo link tool (served by CA_V3 Viewer Host), fetched and run inline (run fetch, X-CA-SHA256 checked)"
     }
   ]
 }

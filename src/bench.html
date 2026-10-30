@@ -428,7 +428,7 @@ function writeToolBlock(html, fields){
   return "<!DOCTYPE html><html><head><meta charset=\"utf-8\">\n" + tag + "\n</head><body>\n" + html + "\n</body></html>";
 }
 // the source with its block brought up to date (link tools have no file)
-function withBlock(t){ return t.source.kind === "url" ? t.source : { kind:"inline", html: writeToolBlock(t.source.html, toolFields(t)) }; }
+function withBlock(t){ return t.source.kind !== "inline" ? t.source : { kind:"inline", html: writeToolBlock(t.source.html, toolFields(t)) }; }
 
 /* ========================= state ========================= */
 const DEFAULT_SANDBOX = { scripts:true, forms:true, modals:true, popups:true, downloads:true, sameOrigin:false };
@@ -560,7 +560,7 @@ function repoTools(){
     return {
       id: rt.id, origin:"repo", readonly:true, file: rt.file,
       name: rt.name, description: rt.description || "", category: rt.category || "General", tags: rt.tags || [],
-      source: rt.url ? { kind:"url", url: rt.url } : { kind:"inline", html: rt.html || "" },
+      source: rt.url ? { kind: rt.run === "fetch" ? "fetch" : "url", url: rt.url } : { kind:"inline", html: rt.html || "" },
       sandbox: Object.assign({}, DEFAULT_SANDBOX, rt.sandbox || {}),
       config: rt.config || {}, contract: Object.assign(blankContract(), rt.contract || {}),
       version: rt.version,
@@ -612,7 +612,7 @@ function validateLocalTool(t, i){
   if (!t || typeof t !== "object") throw new Error(`${where} is not an object`);
   if (!t.name || typeof t.name !== "string") throw new Error(`${where} needs a name`);
   if (!t.source || typeof t.source !== "object") throw new Error(`${where} needs a source`);
-  if (t.source.kind === "url"){
+  if (t.source.kind === "url" || t.source.kind === "fetch"){
     if (!/^https?:\/\//i.test(t.source.url || "")) throw new Error(`${where} has a link that isn't http(s)`);
   } else if (typeof t.source.html !== "string" || !t.source.html.trim()){
     throw new Error(`${where} has no HTML`);
@@ -629,7 +629,7 @@ function sanitiseLocalTool(t){
   return {
     id: t.id, origin:"local", name: String(t.name), description: String(t.description||""),
     category: String(t.category||"General"), tags: Array.isArray(t.tags) ? t.tags.map(String) : [],
-    source: t.source.kind === "url" ? { kind:"url", url: String(t.source.url) } : { kind:"inline", html: String(t.source.html) },
+    source: (t.source.kind === "url" || t.source.kind === "fetch") ? { kind: t.source.kind, url: String(t.source.url) } : { kind:"inline", html: String(t.source.html) },
     sandbox: Object.assign({}, DEFAULT_SANDBOX, t.sandbox || {}),
     config: (t.config && typeof t.config === "object" && !Array.isArray(t.config)) ? t.config : {},
     contract: normaliseContract(t.contract),
@@ -724,7 +724,7 @@ function renderGrid(){
     const runs = t.runs ? `${t.runs} run${t.runs===1?"":"s"}` : "never run";
     const chk = contractCheck(t);
     const blocked = chk.missing.length > 0;
-    const src = t.origin === "repo" ? "repo" : (t.source.kind === "url" ? "link" : "local");
+    const src = t.origin === "repo" ? "repo" : (t.source.kind === "url" ? "link" : t.source.kind === "fetch" ? "fetched" : "local");
     const deps = (t.contract && t.contract.requires) || [];
     const nErr = toolErrorCount(t.id);
     return `<article class="tool" data-id="${esc(t.id)}">
@@ -783,7 +783,67 @@ function injectConfig(html, t, opts){
   return "<!DOCTYPE html><html><head><meta charset=\"utf-8\">" + tag + "</head><body>" + html + "</body></html>";
 }
 
-function openRunner(id){
+/* Fetched tools (registry run "fetch"): the url is read with fetch() (no credentials), its
+   X-CA-SHA256 header, when sent, is checked against the body, and the html runs inline like a
+   file tool (same sandbox, injection and reporter). The html is kept in memory for this page
+   only, never in localStorage. */
+const FETCHED = new Map();   // url -> { html, sha256, verified, version }
+const hex = buf => Array.from(new Uint8Array(buf), b => b.toString(16).padStart(2, "0")).join("");
+async function fetchTool(t, fresh){
+  const url = t.source.url;
+  if (!fresh && FETCHED.has(url)) return FETCHED.get(url);
+  let res;
+  try { res = await fetch(url, { credentials:"omit", cache:"no-store", redirect:"follow" }); }
+  catch(e){ throw Object.assign(new Error("Could not fetch the tool (network error or CORS refused): " + (e.message || e)), { status: 0 }); }
+  if (!res.ok) throw Object.assign(new Error(`The host answered HTTP ${res.status}${res.statusText ? " " + res.statusText : ""}`), { status: res.status });
+  const buf = await res.arrayBuffer();
+  const want = (res.headers.get("X-CA-SHA256") || "").trim().toLowerCase();
+  let got = "";
+  if (want){
+    if (!(window.crypto && crypto.subtle)) throw Object.assign(new Error("The host sent X-CA-SHA256 but this page can't hash (no crypto.subtle; open the bench over https or file)"), { status: res.status });
+    got = hex(await crypto.subtle.digest("SHA-256", buf));
+    if (got !== want) throw Object.assign(new Error(`Hash mismatch: X-CA-SHA256 ${want}, body ${got}`), { status: res.status, mismatch: true });
+  }
+  const entry = { html: new TextDecoder("utf-8").decode(buf), sha256: got || want, verified: !!want,
+                  version: res.headers.get("X-CA-Version") || "", bytes: buf.byteLength };
+  FETCHED.set(url, entry);
+  return entry;
+}
+let runToken = 0;
+async function runFetched(t, frame, token, fresh){
+  frame.srcdoc = `<!DOCTYPE html><meta charset="utf-8"><body style="font:13px ui-monospace,Menlo,monospace;padding:20px;color:#6b6a64">Fetching ${esc(t.source.url)}…</body>`;
+  try {
+    const f = await fetchTool(t, fresh);
+    if (token !== runToken) return;   // another run started meanwhile
+    $("#runSandbox").textContent = (t.sandbox && t.sandbox.sameOrigin ? "trusted · full access" : "sandboxed") +
+      (f.verified ? " · sha256 ok" : " · unverified (no X-CA-SHA256)") + (f.version ? " · host v" + f.version : "");
+    frame.dataset.sha256 = f.sha256 || "";
+    frame.srcdoc = injectConfig(f.html, t);
+  } catch(e){
+    if (token !== runToken) return;
+    logError({ scope:"bench", kind: e.mismatch ? "integrity" : "fetch",
+               message: `${t.id} v${t.version}: ${e.message}`, source: t.source.url });
+    closeRunner();
+    fetchErrorSheet(t, e);
+  }
+}
+function fetchErrorSheet(t, e){
+  openSheet(`<div class="sheet">
+    <div class="sheethead"><h2>${e.mismatch ? "Refused: hash mismatch" : "Couldn't fetch the tool"}</h2><span class="sub">${esc(t.id)}</span>
+      <button class="x" data-act="close" aria-label="Close">×</button></div>
+    <div class="sheetbody">
+      <table class="t"><tbody>
+        <tr><td>Tool</td><td>${esc(t.name)} · v${esc(t.version)}</td></tr>
+        <tr><td>URL</td><td><code>${esc(t.source.url)}</code></td></tr>
+        <tr><td>Status</td><td class="no">${e.status ? "HTTP " + esc(e.status) : "no response (network or CORS)"}</td></tr>
+        <tr><td>Detail</td><td>${esc(e.message)}</td></tr>
+      </tbody></table>
+      <div class="note">${e.mismatch ? "The body doesn't match the hash the host sent, so the bench won't run it." : "The bench fetches this tool without credentials; the host must answer 200 with CORS allowing this page."} It's in Errors and fixes.</div>
+    </div>
+    <div class="sheetfoot"><div class="spacer"></div><button class="btn primary" data-act="close">Close</button></div></div>`);
+}
+
+function openRunner(id, fresh){
   const t = findTool(id); if (!t) return;
   const chk = contractCheck(t);
   if (chk.missing.length){ blockedSheet(t, chk); return; }   // fail closed (I4)
@@ -792,8 +852,12 @@ function openRunner(id){
   const frame = $("#runFrame");
   frame.setAttribute("sandbox", sandboxAttr(t.sandbox || DEFAULT_SANDBOX));
   frame.removeAttribute("src"); frame.removeAttribute("srcdoc");
+  const token = ++runToken;
 
-  if (t.source.kind === "url"){
+  if (t.source.kind === "fetch"){
+    frame.onload = null;
+    runFetched(t, frame, token, fresh);
+  } else if (t.source.kind === "url"){
     let origin = "*";
     try { origin = new URL(t.source.url).origin; } catch(e){}
     frame.src = t.source.url;
@@ -814,12 +878,20 @@ function openRunner(id){
   $("#runner").dataset.id = id;
 }
 function closeRunner(){
+  runToken++;
   const f = $("#runFrame");
   f.removeAttribute("src"); f.removeAttribute("srcdoc"); f.onload = null;
   $("#runner").classList.remove("open");
 }
 function standaloneUrl(t){
   if (t.source.kind === "url") return t.source.url;
+  if (t.source.kind === "fetch"){
+    const f = FETCHED.get(t.source.url);
+    if (!f) return t.source.url;   // not fetched yet this session
+    if (currentBlobUrl) URL.revokeObjectURL(currentBlobUrl);
+    currentBlobUrl = URL.createObjectURL(new Blob([injectConfig(f.html, t)], { type:"text/html" }));
+    return currentBlobUrl;
+  }
   if (currentBlobUrl) URL.revokeObjectURL(currentBlobUrl);
   currentBlobUrl = URL.createObjectURL(new Blob([injectConfig(withBlock(t).html, t)], { type:"text/html" }));
   return currentBlobUrl;
@@ -851,7 +923,7 @@ function toolSheet(tool){
   const t = tool || { id:"(new)", name:"", description:"", category:"", tags:[], version:null,
                       source:{kind:"inline",html:"",url:""}, sandbox:Object.assign({},DEFAULT_SANDBOX),
                       config:{}, contract: blankContract() };
-  srcMode = t.source.kind === "url" ? "url" : "paste";
+  srcMode = t.source.kind === "url" || t.source.kind === "fetch" ? "url" : "paste";
   sheetBase = tool ? t.version : null;
   const nextVer = tool ? bump(t.version) : "1.0.0";
   const sb = t.sandbox || DEFAULT_SANDBOX;
@@ -1082,7 +1154,7 @@ function depsSheet(){
 function historySheet(t){
   const rows = (t.history||[]).slice().reverse().map(h => `<tr>
     <td>v${esc(h.version)}</td><td>${esc(new Date(h.savedAt).toLocaleString())}</td>
-    <td>${esc(h.name)}</td><td>${h.source.kind==="url" ? "link" : ((h.source.html||"").length/1024).toFixed(1)+" KB"}</td>
+    <td>${esc(h.name)}</td><td>${h.source.kind==="url" ? "link" : h.source.kind==="fetch" ? "fetched" : ((h.source.html||"").length/1024).toFixed(1)+" KB"}</td>
     <td><button class="btn" data-act="restore" data-ver="${esc(h.version)}">Restore</button></td></tr>`).join("");
   openSheet(`<div class="sheet wide">
     <div class="sheethead"><h2>History</h2><span class="sub">${esc(t.id)} · now v${esc(t.version)}</span>
@@ -1125,7 +1197,8 @@ function readSheetIntoTool(){
   catch(e){ err.textContent = "Tool settings aren't valid JSON: " + e.message; return null; }
   if (!cfg || typeof cfg !== "object" || Array.isArray(cfg)){ err.textContent = "Tool settings must be a JSON object."; return null; }
 
-  const source = { kind: srcMode === "url" ? "url" : "inline" };
+  const was = editingId && state.tools.find(x => x.id === editingId);
+  const source = { kind: srcMode === "url" ? (was && was.source.kind === "fetch" ? "fetch" : "url") : "inline" };
   if (source.kind === "url"){
     source.url = $("#fUrl").value.trim();
     if (!/^https?:\/\//i.test(source.url)){ err.textContent = "Enter a full URL starting with http:// or https://"; return null; }
@@ -1216,8 +1289,9 @@ function downloadFile(name, content, type){
 // and the registry gets one line {"file": ...}; then a change lands it (see CLAUDE.md).
 function exportForRepo(t){
   const s = slug(t.name);
-  if (t.source.kind === "url"){
-    const entry = Object.assign(toolFields(Object.assign({}, t, { id: "TB:" + s })), { url: t.source.url });
+  if (t.source.kind === "url" || t.source.kind === "fetch"){
+    const entry = Object.assign(toolFields(Object.assign({}, t, { id: "TB:" + s })), { url: t.source.url },
+                                t.source.kind === "fetch" ? { run: "fetch" } : {});
     downloadFile(`${s}.registry-entry.json`, JSON.stringify(entry, null, 2), "application/json");
   } else {
     const html = writeToolBlock(t.source.html, toolFields(Object.assign({}, t, { id: "TB:" + s })));
@@ -1280,7 +1354,8 @@ function openMenu(anchor, t){
     if (k === "promote") exportForRepo(t);
     if (k === "pop") window.open(standaloneUrl(t), "_blank", "noopener");
     if (k === "dl") downloadFile(`${slug(t.name)}-${t.version}.html`,
-        t.source.kind === "url"
+        t.source.kind === "fetch" && FETCHED.has(t.source.url) ? FETCHED.get(t.source.url).html
+        : t.source.kind !== "inline"
           ? `<!DOCTYPE html><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=${esc(t.source.url)}"><a href="${esc(t.source.url)}">${esc(t.source.url)}</a>`
           : withBlock(t).html, "text/html");
     if (k === "dup"){
@@ -1410,7 +1485,7 @@ $("#verLabel").onclick = depsSheet;
 $("#q").addEventListener("input", e => { filter.q = e.target.value; renderGrid(); });
 
 $("#runClose").onclick = closeRunner;
-$("#runReload").onclick = () => openRunner($("#runner").dataset.id);
+$("#runReload").onclick = () => openRunner($("#runner").dataset.id, true);   // a fetched tool is read again
 $("#runPop").onclick = () => {
   const t = findTool($("#runner").dataset.id);
   if (t) window.open(standaloneUrl(t), "_blank", "noopener");

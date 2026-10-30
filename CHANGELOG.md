@@ -1,5 +1,22 @@
 # Changelog
 
+## 3.2.0 — C765
+
+- **Fetched tools**: a registry link entry with `"run": "fetch"` (new optional field in `toolbench.tool/1`; entries
+  without it keep framing the url) is read with `fetch()` (no credentials) and run inline like a file tool: same
+  sandbox, `TOOL_CONFIG`/`TOOL_META` injection and error reporter. When the host sends `X-CA-SHA256` the bench checks
+  the body with `crypto.subtle` and refuses to run it on a mismatch. A failed fetch (network, CORS, non-200) or a
+  mismatch shows an error card with the status and is logged in Errors and fixes. The html is kept in memory for the
+  page only, never in localStorage; **Reload** fetches it again. Cards show `fetched`.
+- **CA_V3 Viewer** is a repo fetched tool: `tools/registry.json` lists `TB:ca-v3-viewer` v0.4.0 with its card fields
+  (the viewer's `toolbench-tool` block from komposing/ca-v3-viewer) and `url`
+  `https://komposing.app.n8n.cloud/webhook/ca-v3-viewer` (CA_V3 Viewer Host, which n8n Cloud won't let be framed).
+  It needs the `cav3` setting and requires the Dashboard, Sessions and Framework Graph workflows. Its release record is
+  `std:external_links repos[komposing/ca-v3-viewer]`.
+
+### Fixed
+- none
+
 ## 3.1.0 — C688
 
 - **Errors and fixes** in the sidebar: one log of errors from your tools and from the bench itself, kept in this browser

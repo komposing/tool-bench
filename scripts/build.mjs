@@ -35,6 +35,7 @@ const tools = (registry.tools || []).map((entry, i) => {
     f = Object.assign({}, entry);
   } else { errors.push(`${at}: needs file or url`); return null; }
   errors.push(...validate(toolSchema, f).map(e => `${at} ${e}`));
+  if (f.run && !f.url) errors.push(`${at}: run ${f.run} needs a url`);
   if (!/^TB:/.test(f.id || "")) errors.push(`${at}: repo tools need a TB:<slug> id, got ${f.id}`);
   if (ids.has(f.id)) errors.push(`${at}: duplicate id ${f.id}`); ids.add(f.id);
   const c = f.contract || {};
@@ -47,7 +48,7 @@ const tools = (registry.tools || []).map((entry, i) => {
     tags: f.tags || [], file: entry.file || null, version: f.version,
     sandbox: f.sandbox || {}, config: f.config || {},
     contract: { config_keys: c.config_keys || [], requires: c.requires || [] },
-    html, url: entry.file ? undefined : f.url
+    html, url: entry.file ? undefined : f.url, run: entry.file ? undefined : (f.run || undefined)
   };
 }).filter(Boolean);
 
