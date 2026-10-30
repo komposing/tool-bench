@@ -1,5 +1,15 @@
 # Changelog
 
+## 3.0.1 — C579
+
+- Every release is now a GitHub Release with the built `tool-bench.html` attached, so
+  `https://github.com/komposing/tool-bench/releases/latest/download/tool-bench.html` always downloads the newest build.
+  The release workflow publishes any version that doesn't have a Release yet (1.0.0, 2.0.0 and 3.0.0 are backfilled)
+  and never changes an existing one.
+- `ca.manifest.json` declares `distribution` (ca.repo/1 v2): channel, asset, the latest-download link and where CA_V3
+  records each release (std `external_links`, shown on the tasks bot under Power Tools > Builds & links).
+- No change to how the bench works; the patch version is because the bundled manifest changed.
+
 ## 3.0.0 — C350
 
 - Storage is the browser's local storage only (`toolbench:v3`, schema 3). Earlier builds' data is migrated on first run
