@@ -1,6 +1,40 @@
 {
   "note": "One line per repo tool. Each tool file carries its own fields in its toolbench-tool block (format toolbench.tool/1); a link tool has no file, so its fields live here with url.",
   "tools": [
-    { "file": "tools/config-probe.html" }
+    { "file": "tools/config-probe.html" },
+    {
+      "format": "toolbench.tool/1",
+      "id": "TB:ca-v3-viewer",
+      "name": "CA_V3 Viewer",
+      "description": "Read-only Android viewer for CA_V3 (also one self-contained HTML file for a PC browser or the Tool Bench): system design, open tasks, health, live sessions, drift and the framework graph, from the CA_V3 Dashboard, Sessions and Framework Graph APIs. Never writes to CA_V3. Release record: std:external_links repos[komposing/ca-v3-viewer].",
+      "category": "CA_V3",
+      "tags": [
+        "viewer",
+        "read-only",
+        "dashboard",
+        "sessions",
+        "framework"
+      ],
+      "version": "0.4.0",
+      "contract": {
+        "config_keys": [
+          "cav3"
+        ],
+        "requires": [
+          "wf:kg2yQ5MPCCNaWPZw",
+          "wf:MtUvdRCD3VY7OcNu",
+          "wf:knSoXj0bFCnAHpRV"
+        ]
+      },
+      "sandbox": {
+        "scripts": true,
+        "forms": false,
+        "modals": false,
+        "popups": false,
+        "downloads": false,
+        "sameOrigin": false
+      },
+      "url": "https://komposing.app.n8n.cloud/webhook/ca-v3-viewer"
+    }
   ]
 }

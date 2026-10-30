@@ -1,5 +1,16 @@
 # Changelog
 
+## 3.2.0 — C765
+
+- **CA_V3 Viewer** is a repo link tool: `tools/registry.json` lists `TB:ca-v3-viewer` v0.4.0 with its card fields (the
+  viewer's `toolbench-tool` block from komposing/ca-v3-viewer) and `url` `https://komposing.app.n8n.cloud/webhook/ca-v3-viewer`,
+  served by CA_V3 Viewer Host. It needs the `cav3` setting and requires the Dashboard, Sessions and Framework Graph
+  workflows. Its release record is `std:external_links repos[komposing/ca-v3-viewer]`.
+- No change to how the bench works.
+
+### Fixed
+- none
+
 ## 3.1.0 — C688
 
 - **Errors and fixes** in the sidebar: one log of errors from your tools and from the bench itself, kept in this browser
