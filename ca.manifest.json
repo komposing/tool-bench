@@ -5,13 +5,19 @@
   "key": "repo:komposing/tool-bench",
   "name": "tool-bench",
   "title": "Tool Bench",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "purpose": "Single-file host for small HTML tools that front CA_V3 flows: shared config injection, sandboxed runs, tool contracts naming the CA_V3 objects each tool depends on.",
   "owner": "Nick",
   "lifecycle": "active",
   "data_class": "internal",
   "criticality": "ignore",
   "entry": "dist/tool-bench.html",
+  "distribution": {
+    "channel": "github_release",
+    "asset": "tool-bench.html",
+    "latest": "https://github.com/komposing/tool-bench/releases/latest/download/tool-bench.html",
+    "record": "std:external_links repos[komposing/tool-bench]"
+  },
   "source": [
     "src/bench.html",
     "tools/registry.json",
@@ -87,7 +93,7 @@
   },
   "governance": {
     "standard": "std:source_repo",
-    "gate": "merge to main only after the change's deploy card lands",
+    "gate": "merge only after the change's deploy card lands; for a release that card writes the release record to std external_links; a change that cuts no release is gated by acceptance",
     "branch_pattern": "^c[0-9]{3,}/[a-z0-9][a-z0-9-]*$",
     "trailers": [
       "CA-Change",
@@ -110,6 +116,11 @@
       "version": "3.0.0",
       "change": "C350",
       "note": "localStorage-only storage (schema 3); tool files carry their card fields and a version the bench bumps on save"
+    },
+    {
+      "version": "3.0.1",
+      "change": "C579",
+      "note": "each release is published as a GitHub Release with the built file attached; manifest declares distribution"
     }
   ]
 }

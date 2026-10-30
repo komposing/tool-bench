@@ -1,4 +1,4 @@
-name: ca.repo/1 release tags
+name: ca.repo/1 releases
 on:
   push:
     branches: [main]
@@ -22,3 +22,7 @@ jobs:
           git config user.email "actions@users.noreply.github.com"
           node scripts/tag-releases.mjs "$GITHUB_SHA" | tee tags.log
           if grep -q TAGS_MADE=1 tags.log; then git push origin --tags; fi
+      - name: Publish a GitHub Release with the built file for each tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/publish-releases.mjs

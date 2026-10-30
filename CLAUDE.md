@@ -30,7 +30,11 @@ pointer and a checklist, not a second copy of the rules.
 ## Landing
 - Run `node scripts/build.mjs --check` and `node scripts/check-change.mjs origin/main <branch>` locally; CI runs both on the PR.
 - One PR per change, title starting with the change id.
-- Merge only after the change's deploy card has landed (`dev.change.get` shows it landed). Put the PR URL,
-  head sha and merge sha in the change's stage evidence.
-- Tags are made by the release workflow from `releases` in the manifest. Don't create, move or delete tags.
+- Merge only after the change's deploy card has landed (`dev.change.get` shows it landed). For a release, that card is the
+  write of the release record to CA_standards `external_links` (`repos` entry: version, released date, download link
+  `releases/download/v<version>/tool-bench.html`, change). A change that cuts no release is gated by the acceptance card.
+  Put the PR URL, head sha and merge sha in the change's stage evidence.
+- After the merge, confirm the release workflow made the tag and the GitHub Release with its asset, and that the recorded
+  download link answers; if anything differs, fix the record in a new change.
+- Tags and GitHub Releases are made by the release workflow from `releases` in the manifest. Don't create, move or delete them.
 - Rollback is a new change (revert PR or redeploy a previous tag), never a history rewrite or force push.
