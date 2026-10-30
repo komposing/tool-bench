@@ -7,7 +7,7 @@
 // for the version; a released version's commit or a storage migration was rewritten.
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
-import { readJson, semverCmp, TRAILER_RE, readToolBlock } from "./lib.mjs";
+import { readJson, semverCmp, TRAILER_RE, readToolBlock, BUG_TRAILER_RE, parseFixed } from "./lib.mjs";
 
 const [base = "origin/main", branch = process.env.GITHUB_HEAD_REF || ""] = process.argv.slice(2);
 const git = (...a) => execFileSync("git", a, { encoding: "utf8" }).trim();
@@ -21,8 +21,10 @@ const branchChange = (/^c([0-9]{3,})\//.exec(branch) || [])[1];
 const shas = git("rev-list", "--no-merges", `${base}..HEAD`).split("\n").filter(Boolean);
 if (!shas.length) errors.push("no commits on the branch");
 const changes = new Set();
+const bugTrailers = new Set();
 for (const sha of shas) {
   const msg = git("log", "-1", "--format=%B", sha);
+  for (const m of msg.matchAll(BUG_TRAILER_RE)) bugTrailers.add(m[1]);
   for (const [name, re] of Object.entries(TRAILER_RE)) {
     const m = re.exec(msg);
     if (!m) errors.push(`${sha.slice(0, 7)}: missing ${name} trailer`);
@@ -64,6 +66,16 @@ for (const file of changed.filter(f => /^tools\/.+\.html?$/.test(f))) {
   if (was && was.id && now.id !== was.id) errors.push(`${file}: id changed ${was.id} -> ${now.id}; a new id is a new tool`);
 }
 const changelog = readFileSync("CHANGELOG.md", "utf8");
+// Errors and fixes (ca.repo/1 v3): a release lists exactly the bugs its commits fix.
+if (!baseManifest || semverCmp(manifest.version, baseManifest.version) > 0) {
+  const fx = parseFixed(changelog, manifest.version);
+  if (semverCmp(manifest.version, "3.1.0") >= 0) errors.push(...fx.errors);
+  const listed = new Set(fx.fixed.map(f => f.id));
+  for (const u of bugTrailers) if (!listed.has(u)) errors.push(`commit trailer CA-Bug: ${u} is not in CHANGELOG ## ${manifest.version} ### Fixed`);
+  for (const u of listed) if (!bugTrailers.has(u)) errors.push(`CHANGELOG ### Fixed lists ${u} but no commit carries CA-Bug: ${u}`);
+} else if (bugTrailers.size) {
+  errors.push(`CA-Bug trailers (${[...bugTrailers].join(", ")}) need a release: bump the version and list them under ### Fixed`);
+}
 if (!new RegExp(`^## ${manifest.version.replace(/\./g, "\\.")}\\b`, "m").test(changelog)) errors.push(`CHANGELOG.md has no "## ${manifest.version}" entry`);
 
 if (errors.length) { console.error("ca.repo/1 change checks failed:\n" + errors.map(e => "  - " + e).join("\n")); process.exit(1); }

@@ -5,7 +5,7 @@
   "key": "repo:komposing/tool-bench",
   "name": "tool-bench",
   "title": "Tool Bench",
-  "version": "3.0.1",
+  "version": "3.1.0",
   "purpose": "Single-file host for small HTML tools that front CA_V3 flows: shared config injection, sandboxed runs, tool contracts naming the CA_V3 objects each tool depends on.",
   "owner": "Nick",
   "lifecycle": "active",
@@ -17,6 +17,12 @@
     "asset": "tool-bench.html",
     "latest": "https://github.com/komposing/tool-bench/releases/latest/download/tool-bench.html",
     "record": "std:external_links repos[komposing/tool-bench]"
+  },
+  "bugs": {
+    "object_key": "std:source_repo/komposing/tool-bench",
+    "ledger": "CA_V3 bug series (dev.bug.report, dev.bug.get)",
+    "trailer": "CA-Bug",
+    "changelog": "### Fixed"
   },
   "source": [
     "src/bench.html",
@@ -58,6 +64,10 @@
       {
         "name": "local_storage_only",
         "detail": "state lives in the browser's localStorage only; artifact storage from earlier builds is read once to migrate, never written"
+      },
+      {
+        "name": "error_reporter",
+        "detail": "inline tools get a reporter ahead of their scripts that posts {type: toolbench:error, kind, message, source, line, col, stack} to the bench; the bench logs it locally with its own errors and copies an entry out as a dev.bug.report payload"
       }
     ]
   },
@@ -121,6 +131,11 @@
       "version": "3.0.1",
       "change": "C579",
       "note": "each release is published as a GitHub Release with the built file attached; manifest declares distribution"
+    },
+    {
+      "version": "3.1.0",
+      "change": "C688",
+      "note": "Errors and fixes: error log panel (tool and bench errors, copy as bug report), Fixed in this version; CA-Bug trailer and ### Fixed checks (ca.repo/1 v3)"
     }
   ]
 }

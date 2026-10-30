@@ -1,5 +1,21 @@
 # Changelog
 
+## 3.1.0 — C688
+
+- **Errors and fixes** in the sidebar: one log of errors from your tools and from the bench itself, kept in this browser
+  (last 200, repeats folded into a count). Tools report through a small reporter the bench puts ahead of their own
+  scripts (uncaught errors, unhandled promise rejections, `console.error`, failed resource loads); only the frame the
+  bench is running can report. A tool with logged errors shows a red count on its card.
+- **Copy** on any entry copies a CA_V3 bug report (`dev.bug.report` fields, object `std:source_repo/komposing/tool-bench`);
+  **Export JSON** saves the whole log; **Clear log** asks first. The log is not part of the registry or bundle exports.
+- **Fixed in this version**: the build ships this section's `### Fixed` list; it shows in Errors and fixes and in
+  Dependencies.
+- ca.repo/1 v3: a fix commit names its bug in a `CA-Bug: U###` trailer, and the release lists it under `### Fixed`; CI
+  refuses a mismatch either way, or a `CA-Bug` trailer on a change that cuts no release. `ca.manifest.json` declares `bugs`.
+
+### Fixed
+- none
+
 ## 3.0.1 — C579
 
 - Every release is now a GitHub Release with the built `tool-bench.html` attached, so

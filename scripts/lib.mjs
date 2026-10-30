@@ -67,3 +67,27 @@ export function readToolBlock(html) {
   try { return { found: true, fields: JSON.parse(m[1]), error: "" }; }
   catch (e) { return { found: true, fields: null, error: "block is not valid JSON: " + e.message }; }
 }
+
+// Errors and fixes (ca.repo/1 v3). A fix commit names each bug it fixes in a trailer
+// "CA-Bug: U###"; the release's CHANGELOG section lists them under "### Fixed" as
+// "- U###: what was wrong" (or "- none"). CI checks the two agree.
+export const BUG_TRAILER_RE = /^CA-Bug:\s*(U[0-9]{3,})\s*$/gm;
+export function changelogSection(changelog, version) {
+  const v = version.replace(/\./g, "\\.");
+  const m = new RegExp(`^## ${v}\\b[^\\n]*\\n([\\s\\S]*?)(?=^## |(?![\\s\\S]))`, "m").exec(changelog);
+  return m ? m[1] : null;
+}
+export function parseFixed(changelog, version) {
+  const sec = changelogSection(changelog, version);
+  if (sec === null) return { found: false, fixed: [], errors: [`CHANGELOG has no "## ${version}" section`] };
+  const m = /^### Fixed[ \t]*\n([\s\S]*?)(?=^### |(?![\s\S]))/m.exec(sec);
+  if (!m) return { found: false, fixed: [], errors: [`CHANGELOG ## ${version} has no "### Fixed" list (use "- none" when nothing was fixed)`] };
+  const fixed = [], errors = [];
+  for (const line of m[1].split("\n").map(l => l.trim()).filter(l => l.startsWith("- "))) {
+    if (/^- none$/i.test(line)) continue;
+    const b = /^- (U[0-9]{3,}):\s*(.+)$/.exec(line);
+    if (b) fixed.push({ id: b[1], text: b[2].trim() });
+    else errors.push(`CHANGELOG ## ${version} ### Fixed line is not "- U###: text": ${line}`);
+  }
+  return { found: true, fixed, errors };
+}
