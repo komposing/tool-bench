@@ -221,6 +221,10 @@ textarea.in{font-family:var(--mono);font-size:12px;line-height:1.5;resize:vertic
   font-size:12px;color:var(--ink-2);
 }
 .err{color:var(--alert);font-size:12px;font-family:var(--mono);min-height:16px}
+.cfgsec{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px 4px;display:flex;flex-direction:column;gap:12px}
+.cfghead{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.cfghead h3{margin:0;font-size:14px;font-weight:600}
+.cfgfoot{display:flex;align-items:center;gap:10px;border-top:1px dotted var(--line);padding-top:10px}
 
 /* ---------- tables in sheets ---------- */
 .kv{display:grid;grid-template-columns:140px 1fr;gap:4px 12px;font-size:12.5px}
@@ -415,7 +419,8 @@ function toolFields(t){
     format: TOOL_FORMAT, id: t.id, name: t.name, description: t.description || "",
     category: t.category || "General", tags: t.tags || [], version: t.version,
     contract: normaliseContract(t.contract), sandbox: Object.assign({}, DEFAULT_SANDBOX, t.sandbox || {}),
-    config: t.config || {}
+    config: stripSecrets(t.config || {}),          // secret values never leave the device in a file
+    ...(t.config_schema ? { config_schema: clone(t.config_schema) } : {})
   };
 }
 function writeToolBlock(html, fields){
@@ -519,6 +524,37 @@ window.addEventListener("message", ev => {
   logError({ scope:"tool", tool:{ id:t.id, name:t.name, version:t.version, origin:t.origin },
              kind: d.kind, message: d.message, source: d.source, line: d.line, col: d.col, stack: d.stack });
 });
+// A running tool may save its own settings: {type:"toolbench:config:set", namespace, values}. Only the
+// frame the bench is running, only for the namespace that tool declares in config_schema, and only
+// values its schema names (others are dropped) with the right types. The answer goes back to that
+// frame as {type:"toolbench:config:result", ok, ...}; on success the tool is re-injected and reloaded.
+window.addEventListener("message", ev => {
+  const d = ev.data;
+  if (!d || d.type !== "toolbench:config:set") return;
+  const frame = document.getElementById("runFrame");
+  if (!frame || ev.source !== frame.contentWindow || !document.getElementById("runner").classList.contains("open")) return;
+  const t = findTool(document.getElementById("runner").dataset.id);
+  if (!t) return;
+  const ns = typeof d.namespace === "string" ? d.namespace : "";
+  const reply = m => { try { ev.source.postMessage(Object.assign({ type:"toolbench:config:result", namespace: ns }, m),
+                                                    ev.origin && ev.origin !== "null" ? ev.origin : "*"); } catch(e){} };
+  const refuse = errors => { reply({ ok:false, errors }); toast(`Settings refused for ${t.name}: ${errors[0]}${errors.length > 1 ? ` (+${errors.length - 1} more)` : ""}`); };
+  if (!t.config_schema) return refuse([`${t.name} declares no settings (config_schema)`]);
+  if (ns !== t.config_schema.namespace) return refuse([`${t.name} may only set its own namespace ${t.config_schema.namespace}, not ${ns || "(none)"}`]);
+  if (!isObj(d.values)) return refuse(["values must be an object"]);
+  const r = applySettings(t, d.values, true);
+  if (r.errors.length) return refuse(r.errors);
+  state.config[ns] = r.next;
+  clearTimeout(saveTimer);
+  Store.save(KEY, state).then(persisted => {
+    reply({ ok:true, persisted, dropped: r.dropped });
+    toast(persisted ? `Settings saved for ${t.name}` : `Settings saved for ${t.name} for this session only: local storage isn't available`);
+    render();
+    setTimeout(() => {   // let the tool see the answer, then run it again with the new settings
+      if ($("#runner").classList.contains("open") && $("#runner").dataset.id === t.id) openRunner(t.id, false, { reload:true });
+    }, 300);
+  });
+});
 const REPORTER = "(function(){function s(k,m,src,l,c,st){try{parent.postMessage({type:'toolbench:error',kind:k," +
   "message:String(m||'').slice(0,500),source:String(src||'').slice(0,200),line:l||0,col:c||0," +
   "stack:String(st||'').slice(0,2000)},'*')}catch(e){}}" +
@@ -563,6 +599,7 @@ function repoTools(){
       source: rt.url ? { kind: rt.run === "fetch" ? "fetch" : "url", url: rt.url } : { kind:"inline", html: rt.html || "" },
       sandbox: Object.assign({}, DEFAULT_SANDBOX, rt.sandbox || {}),
       config: rt.config || {}, contract: Object.assign(blankContract(), rt.contract || {}),
+      config_schema: rt.config_schema || null,
       version: rt.version,
       pinned: !!o.pinned, runs: o.runs || 0, lastRun: o.lastRun || null
     };
@@ -589,7 +626,11 @@ function setPinned(t, on){
 /* ========================= contracts ========================= */
 // A contract declares what a tool needs: config keys that must be set, and the CA_V3
 // objects it depends on, in the object model key grammar (prefix:id).
-function mergedConfig(t){ return Object.assign({}, state.config, t.config || {}); }
+function mergedConfig(t){
+  const cfg = Object.assign({}, state.config, t.config || {});
+  if (t.config_schema) cfg[t.config_schema.namespace] = effectiveSettings(t);
+  return cfg;
+}
 function contractCheck(t){
   const c = Object.assign(blankContract(), t.contract || {});
   const cfg = mergedConfig(t);
@@ -598,7 +639,146 @@ function contractCheck(t){
     const m = /^([a-z][a-z_]*):(.+)$/.exec(key);
     return { key, kind: m ? m[1] : "", ok: !!(m && KNOWN_KINDS.includes(m[1])) };
   });
-  return { missing, requires, badKeys: requires.filter(r => !r.ok).map(r => r.key) };
+  const fields = t.config_schema ? settingsErrors(t.config_schema, effectiveSettings(t)) : [];
+  return { missing, requires, fields, blocked: missing.length > 0 || fields.length > 0,
+           badKeys: requires.filter(r => !r.ok).map(r => r.key) };
+}
+
+/* =========================================================
+   Tool settings (config_schema). A tool declares its settings in its block or
+   registry entry; the bench owns them: a form in Settings, checks before a run,
+   storage in state.config[namespace], injection as TOOL_CONFIG[namespace], and a
+   save message from the running tool. The bench never knows a setting by name.
+   Secret fields stay on this device: masked in the JSON editors, stripped from
+   every export, block and registry output.
+   ========================================================= */
+const FIELD_TYPES = ["url","string","header","secret","number","boolean","enum"];
+const MASK = "••••";
+const PATH_RE = /^[A-Za-z0-9_-]+(\.[A-Za-z0-9_-]+)*$/;
+const NS_RE = /^[A-Za-z_][A-Za-z0-9_.-]*$/;
+const BAD_SEGMENTS = ["__proto__", "prototype", "constructor"];
+const isObj = v => !!v && typeof v === "object" && !Array.isArray(v);
+const clone = v => v === undefined ? undefined : JSON.parse(JSON.stringify(v));
+const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
+function getPath(o, p){ return p.split(".").reduce((a, k) => isObj(a) && own(a, k) ? a[k] : undefined, o); }
+function setPath(o, p, v){
+  const ks = p.split("."); let a = o;
+  for (let i = 0; i < ks.length - 1; i++){ if (!isObj(a[ks[i]])) a[ks[i]] = {}; a = a[ks[i]]; }
+  a[ks[ks.length - 1]] = v;
+}
+function delPath(o, p){
+  const ks = p.split("."); let a = o;
+  for (let i = 0; i < ks.length - 1; i++){ if (!isObj(a) || !isObj(a[ks[i]])) return; a = a[ks[i]]; }
+  if (isObj(a)) delete a[ks[ks.length - 1]];
+}
+function leafPaths(o, pre = "", out = []){
+  for (const [k, v] of Object.entries(o)){ const p = pre ? pre + "." + k : k; isObj(v) ? leafPaths(v, p, out) : out.push(p); }
+  return out;
+}
+const isSecretField = f => f.type === "secret" || f.secret === true;
+const isEmptyVal = v => v === undefined || v === null || (typeof v === "string" && v.trim() === "");
+function fieldValueError(f, v){
+  if (typeof v === "string" && /^\s*<[^>]*>\s*$/.test(v)) return "is a placeholder";
+  switch (f.type){
+    case "url": return typeof v === "string" && /^https?:\/\/\S+$/i.test(v) ? "" : "must be an http(s) URL";
+    case "number": return typeof v === "number" && isFinite(v) ? "" : "must be a number";
+    case "boolean": return typeof v === "boolean" ? "" : "must be true or false";
+    case "enum": return (f.values || []).includes(v) ? "" : "must be one of " + (f.values || []).join(", ");
+    default: return typeof v === "string" ? "" : "must be text";
+  }
+}
+// A local tool's config_schema, checked like scripts/build.mjs checks repo tools. Invalid -> none.
+function normaliseConfigSchema(raw, configKeys){
+  if (!isObj(raw)) return null;
+  const ns = raw.namespace;
+  if (typeof ns !== "string" || !NS_RE.test(ns) || !(configKeys || []).includes(ns)) return null;
+  if (!Array.isArray(raw.fields) || !raw.fields.length || raw.fields.length > 50) return null;
+  const fields = [], paths = [];
+  for (const f of raw.fields){
+    if (!isObj(f) || typeof f.path !== "string" || !PATH_RE.test(f.path) || !FIELD_TYPES.includes(f.type)) return null;
+    if (f.path.split(".").some(s => BAD_SEGMENTS.includes(s))) return null;
+    if (paths.some(p => p === f.path || p.startsWith(f.path + ".") || f.path.startsWith(p + "."))) return null;
+    paths.push(f.path);
+    const out = { path: f.path, label: String(f.label || f.path).slice(0, 80), type: f.type, required: f.required === true };
+    if (f.type === "enum"){
+      if (!Array.isArray(f.values) || !f.values.length) return null;
+      out.values = f.values.map(String);
+    }
+    if (f.secret === true || f.type === "secret") out.secret = true;
+    if (f.default !== undefined){
+      if (out.secret || fieldValueError(out, f.default)) return null;
+      out.default = f.default;
+    }
+    if (typeof f.help === "string" && f.help) out.help = f.help.slice(0, 300);
+    fields.push(out);
+  }
+  return { namespace: ns, fields };
+}
+// Stored values for the tool's namespace, with defaults where nothing is stored.
+function withDefaults(cs, stored){
+  const out = isObj(stored) ? clone(stored) : {};
+  for (const f of cs.fields) if (f.default !== undefined && isEmptyVal(getPath(out, f.path))) setPath(out, f.path, clone(f.default));
+  return out;
+}
+function effectiveSettings(t){ return withDefaults(t.config_schema, state.config[t.config_schema.namespace]); }
+function settingsErrors(cs, values){
+  const out = [];
+  for (const f of cs.fields){
+    const v = getPath(values, f.path);
+    if (isEmptyVal(v)){ if (f.required) out.push({ path: f.path, label: f.label, reason: "missing" }); continue; }
+    const e = fieldValueError(f, v);
+    if (e) out.push({ path: f.path, label: f.label, reason: e });
+  }
+  return out;
+}
+const describeErrors = list => list.map(e => `${e.label} (${e.path}) ${e.reason}`);
+// Every secret field any tool declares: {ns, path}.
+function secretPaths(){
+  const out = [], seen = new Set();
+  allTools().forEach(t => t.config_schema && t.config_schema.fields.filter(isSecretField).forEach(f => {
+    const k = t.config_schema.namespace + "\u0000" + f.path;
+    if (!seen.has(k)){ seen.add(k); out.push({ ns: t.config_schema.namespace, path: f.path }); }
+  }));
+  return out;
+}
+function maskSecrets(cfg){
+  const c = clone(cfg || {});
+  for (const s of secretPaths()) if (isObj(c[s.ns]) && !isEmptyVal(getPath(c[s.ns], s.path))) setPath(c[s.ns], s.path, MASK);
+  return c;
+}
+function stripSecrets(cfg){
+  const c = clone(cfg || {});
+  for (const s of secretPaths()) if (isObj(c[s.ns])) delPath(c[s.ns], s.path);
+  return c;
+}
+// After an edit of masked or secret-stripped JSON: a secret left masked or absent keeps the stored value.
+function restoreSecrets(next, prev){
+  for (const s of secretPaths()){
+    const v = isObj(next[s.ns]) ? getPath(next[s.ns], s.path) : undefined;
+    if (v !== undefined && v !== MASK) continue;
+    const pv = isObj(prev && prev[s.ns]) ? getPath(prev[s.ns], s.path) : undefined;
+    if (pv !== undefined){ if (!isObj(next[s.ns])) next[s.ns] = {}; setPath(next[s.ns], s.path, pv); }
+    else if (v === MASK) delPath(next[s.ns], s.path);
+  }
+  return next;
+}
+// Values from a form or a tool, checked against the schema and merged over what's stored
+// (keys the schema doesn't name are kept). requireAll: the result must satisfy required fields.
+function applySettings(t, values, requireAll){
+  const cs = t.config_schema, errors = [];
+  const next = isObj(state.config[cs.namespace]) ? clone(state.config[cs.namespace]) : {};
+  const known = new Set(cs.fields.map(f => f.path));
+  for (const f of cs.fields){
+    const v = own(values, f.path) ? values[f.path] : getPath(values, f.path);
+    if (v === undefined) continue;
+    if (isEmptyVal(v)){ delPath(next, f.path); continue; }
+    const e = fieldValueError(f, v);
+    if (e) errors.push(`${f.label} (${f.path}) ${e}`); else setPath(next, f.path, v);
+  }
+  const dropped = leafPaths(values).filter(p => !known.has(p));
+  const missing = settingsErrors(cs, withDefaults(cs, next)).filter(e => e.reason === "missing");
+  if (requireAll) errors.push(...describeErrors(missing));
+  return { errors, next, dropped, missing };
 }
 function normaliseContract(raw){
   const c = Object.assign(blankContract(), raw || {});
@@ -633,6 +813,7 @@ function sanitiseLocalTool(t){
     sandbox: Object.assign({}, DEFAULT_SANDBOX, t.sandbox || {}),
     config: (t.config && typeof t.config === "object" && !Array.isArray(t.config)) ? t.config : {},
     contract: normaliseContract(t.contract),
+    config_schema: normaliseConfigSchema(t.config_schema, normaliseContract(t.contract).config_keys),
     pinned: !!t.pinned, runs: +t.runs || 0, lastRun: t.lastRun || null,
     version, history: hist,
     createdAt: t.createdAt || Date.now(), updatedAt: t.updatedAt || Date.now(),
@@ -723,7 +904,8 @@ function renderGrid(){
     const cat = t.category || "General";
     const runs = t.runs ? `${t.runs} run${t.runs===1?"":"s"}` : "never run";
     const chk = contractCheck(t);
-    const blocked = chk.missing.length > 0;
+    const blocked = chk.blocked;
+    const needs = chk.missing.concat(chk.fields.map(f => f.label));
     const src = t.origin === "repo" ? "repo" : (t.source.kind === "url" ? "link" : t.source.kind === "fetch" ? "fetched" : "local");
     const deps = (t.contract && t.contract.requires) || [];
     const nErr = toolErrorCount(t.id);
@@ -741,7 +923,7 @@ function renderGrid(){
         </div>` : ""}
       </div>
       <div class="acts">
-        <button class="run ${blocked?"blocked":""}" data-act="run" ${blocked?`title="Missing settings: ${esc(chk.missing.join(", "))}"`:""}>${blocked?"Needs settings":"Run"}</button>
+        <button class="run ${blocked?"blocked":""}" data-act="run" ${blocked?`title="Needs settings: ${esc(needs.join(", "))}"`:""}>${blocked?"Needs settings":"Run"}</button>
         <button class="icobtn ${t.pinned?"on":""}" data-act="pin" title="${t.pinned?"Unpin":"Pin to top"}" aria-label="Pin">★</button>
         <button class="icobtn" data-act="menu" title="More" aria-label="More">⋯</button>
       </div>
@@ -843,11 +1025,11 @@ function fetchErrorSheet(t, e){
     <div class="sheetfoot"><div class="spacer"></div><button class="btn primary" data-act="close">Close</button></div></div>`);
 }
 
-function openRunner(id, fresh){
+function openRunner(id, fresh, opts){
   const t = findTool(id); if (!t) return;
   const chk = contractCheck(t);
-  if (chk.missing.length){ blockedSheet(t, chk); return; }   // fail closed (I4)
-  touchRun(t); renderGrid();
+  if (chk.blocked){ closeRunner(); blockedSheet(t, chk); return; }   // fail closed (I4)
+  if (!(opts && opts.reload)){ touchRun(t); renderGrid(); }
 
   const frame = $("#runFrame");
   frame.setAttribute("sandbox", sandboxAttr(t.sandbox || DEFAULT_SANDBOX));
@@ -906,16 +1088,17 @@ function blockedSheet(t, chk){
     <div class="sheethead"><h2>Can't run yet</h2><span class="sub">${esc(t.id)}</span>
       <button class="x" data-act="close" aria-label="Close">×</button></div>
     <div class="sheetbody">
-      <p class="hint"><b>${esc(t.name)}</b> declares settings it needs, and these aren't set in the shared settings or the tool's own settings:</p>
+      <p class="hint"><b>${esc(t.name)}</b> declares settings it needs, and these aren't set, or aren't valid, in the shared settings or the tool's own settings:</p>
       <table class="t"><thead><tr><th>Setting</th><th>Status</th></tr></thead><tbody>
         ${chk.missing.map(k => `<tr><td><code>${esc(k)}</code></td><td class="no">missing</td></tr>`).join("")}
+        ${chk.fields.map(f => `<tr><td>${esc(f.label)}<br><code>${esc(t.config_schema.namespace + "." + f.path)}</code></td><td class="no">${esc(f.reason)}</td></tr>`).join("")}
       </tbody></table>
       <div class="note">Add them in Settings once and every tool that needs them can run. The bench won't start a tool with a missing setting, so it never runs half-configured.</div>
     </div>
     <div class="sheetfoot"><div class="spacer"></div>
       <button class="btn" data-act="close">Cancel</button>
       ${t.origin==="local" ? `<button class="btn" data-act="editTool" data-id="${esc(t.id)}">Edit tool</button>` : ""}
-      <button class="btn primary" data-act="openSettings">Open settings</button></div></div>`);
+      <button class="btn primary" data-act="openSettings" data-id="${esc(t.id)}">Open settings</button></div></div>`);
 }
 
 let sheetBase = null;   // the version the open sheet was opened at
@@ -1034,7 +1217,43 @@ function fillSheetFromHtml(html){
   syncSaveLabel();
 }
 
-function settingsSheet(){
+function settingsField(t, f){
+  const stored = getPath(isObj(state.config[t.config_schema.namespace]) ? state.config[t.config_schema.namespace] : {}, f.path);
+  const v = !isEmptyVal(stored) ? stored : f.default !== undefined ? f.default : "";
+  const attrs = `data-path="${esc(f.path)}" data-type="${esc(f.type)}"`;
+  const label = `${esc(f.label)}${f.required ? " · required" : ""}`;
+  let input;
+  if (f.type === "boolean"){
+    return `<label class="chk"><input type="checkbox" ${attrs} ${v === true ? "checked" : ""}><span>${label}</span></label>
+      ${f.help ? `<p class="hint">${esc(f.help)}</p>` : ""}`;
+  } else if (f.type === "enum"){
+    input = `<select class="in" ${attrs}>${f.required ? "" : `<option value=""${v === "" ? " selected" : ""}>(not set)</option>`}
+      ${f.values.map(x => `<option value="${esc(x)}"${x === v ? " selected" : ""}>${esc(x)}</option>`).join("")}</select>`;
+  } else if (isSecretField(f)){
+    input = `<span style="display:flex;gap:6px;text-transform:none;letter-spacing:0">
+      <input class="in" type="password" autocomplete="off" spellcheck="false" ${attrs} value="${esc(v)}" style="font-family:var(--mono)">
+      <button class="btn" type="button" data-act="toggleSecret">Show</button></span>`;
+  } else {
+    input = `<input class="in" type="${f.type === "number" ? "number" : "text"}" spellcheck="false" ${attrs} value="${esc(v)}"
+      placeholder="${esc(f.type === "url" ? "https://…" : "")}" ${f.type === "url" || f.type === "header" ? 'style="font-family:var(--mono);font-size:12px"' : ""}>`;
+  }
+  return `<label class="f"><span>${label}</span>${input}</label>${f.help ? `<p class="hint" style="margin-top:-8px">${esc(f.help)}</p>` : ""}`;
+}
+function settingsSection(t){
+  const chk = contractCheck(t);
+  return `<section class="cfgsec" data-tool="${esc(t.id)}">
+    <div class="cfghead"><h3>${esc(t.name)}</h3><span class="meta">${esc(t.id)} · ${esc(t.origin)} · <code>${esc(t.config_schema.namespace)}</code></span></div>
+    ${t.config_schema.fields.map(f => settingsField(t, f)).join("")}
+    <div class="cfgfoot">
+      <span class="${chk.fields.length ? "no" : "ok"}" style="font-family:var(--mono);font-size:11px">${chk.fields.length
+        ? "Can't run: " + esc(describeErrors(chk.fields).join("; ")) : "Ready to run"}</span>
+      <div class="spacer" style="flex:1"></div>
+      <button class="btn primary" data-act="saveToolConfig" data-id="${esc(t.id)}">Save</button>
+    </div>
+    <p class="err" data-err></p>
+  </section>`;
+}
+function settingsSheet(focusId){
   const needed = new Map();
   allTools().forEach(t => ((t.contract||{}).config_keys||[]).forEach(k => {
     if (!needed.has(k)) needed.set(k, []); needed.get(k).push(t.name);
@@ -1043,27 +1262,51 @@ function settingsSheet(){
     const set = state.config[k] !== undefined && state.config[k] !== null && state.config[k] !== "";
     return `<tr><td><code>${esc(k)}</code></td><td class="${set?"ok":"no"}">${set?"set":"not set"}</td><td>${esc(who.join(", "))}</td></tr>`;
   }).join("");
-  openSheet(`<div class="sheet">
-    <div class="sheethead"><h2>Shared settings</h2><button class="x" data-act="close" aria-label="Close">×</button></div>
+  const forms = allTools().filter(t => t.config_schema).sort((a,b) => a.name.localeCompare(b.name));
+  openSheet(`<div class="sheet wide">
+    <div class="sheethead"><h2>Settings</h2><button class="x" data-act="close" aria-label="Close">×</button></div>
     <div class="sheetbody">
-      <p class="hint">Every tool gets this object as <code>window.TOOL_CONFIG</code> when it runs, with its own settings merged on top. Change a value here and it reaches every tool on the next run.</p>
+      <p class="hint">Every tool gets the shared settings as <code>window.TOOL_CONFIG</code> when it runs, with its own settings merged on top. Change a value here and it reaches every tool on the next run.</p>
       ${rows ? `<table class="t"><thead><tr><th>Needed setting</th><th>Shared</th><th>Needed by</th></tr></thead><tbody>${rows}</tbody></table>` : ""}
-      <label class="f"><span>Settings JSON</span>
-        <textarea class="in" id="gConfig" style="min-height:220px">${esc(JSON.stringify(state.config, null, 2))}</textarea></label>
-      <div class="warn">Stored as plain text in this browser's local storage. Fine for endpoints, table names and app IDs. Keep secrets in n8n credentials and let a webhook do the signing.</div>
+      ${forms.length ? `<span class="lbl">Tool settings · declared by each tool</span>${forms.map(settingsSection).join("")}` : ""}
+      <label class="f"><span>Global settings JSON · everything else</span>
+        <textarea class="in" id="gConfig" style="min-height:200px">${esc(JSON.stringify(maskSecrets(state.config), null, 2))}</textarea></label>
+      <div class="note">Secrets stay on this device's local store, are never exported or put in the registry. In the JSON they show as <code>${MASK}</code>; leave them masked to keep them.</div>
       <p class="err" id="gErr"></p>
     </div>
     <div class="sheetfoot"><div class="spacer"></div>
       <button class="btn" data-act="close">Cancel</button>
-      <button class="btn primary" data-act="saveConfig">Save settings</button></div></div>`);
+      <button class="btn primary" data-act="saveConfig">Save JSON</button></div></div>`);
+  if (focusId){
+    const sec = document.querySelector(`.cfgsec[data-tool="${CSS.escape(focusId)}"]`);
+    if (sec){ sec.scrollIntoView({ block:"start" }); const first = sec.querySelector("[data-path]"); if (first) first.focus(); }
+  }
+}
+// Read one tool's form, check it against its schema and store it under its namespace.
+function saveToolSettings(id){
+  const t = findTool(id); if (!t || !t.config_schema) return;
+  const sec = document.querySelector(`.cfgsec[data-tool="${CSS.escape(id)}"]`); if (!sec) return;
+  const values = {};
+  sec.querySelectorAll("[data-path]").forEach(el => {
+    const ty = el.dataset.type;
+    let v = ty === "boolean" ? el.checked : el.value.trim();
+    if (ty === "number" && v !== "") v = Number(v);
+    values[el.dataset.path] = v;
+  });
+  const r = applySettings(t, values, false);
+  if (r.errors.length){ sec.querySelector("[data-err]").textContent = "Not saved: " + r.errors.join("; "); return; }
+  state.config[t.config_schema.namespace] = r.next;
+  persist(); render(); settingsSheet(id);
+  toast(`Settings saved for ${t.name}` + (r.missing.length ? ` · still needs ${r.missing.map(m => m.label).join(", ")}` : ""));
 }
 
 function registrySheet(){
-  const editable = { schema: state.schema, seq: state.seq, config: state.config, tools: state.tools, overlay: state.overlay };
+  const editable = { schema: state.schema, seq: state.seq, config: maskSecrets(state.config),
+                     tools: state.tools.map(t => Object.assign({}, t, { config: maskSecrets(t.config) })), overlay: state.overlay };
   openSheet(`<div class="sheet wide">
     <div class="sheethead"><h2>Registry JSON</h2><span class="sub">${esc(KEY)}</span><button class="x" data-act="close" aria-label="Close">×</button></div>
     <div class="sheetbody">
-      <p class="hint">Your local tools, settings and per-tool state, as data. Repo tools aren't in here: they come from the build and change through the repo.</p>
+      <p class="hint">Your local tools, settings and per-tool state, as data. Repo tools aren't in here: they come from the build and change through the repo. Secrets show as <code>${MASK}</code>; leave them masked (or leave them out) to keep the stored value.</p>
       <label class="f"><span>Registry</span>
         <textarea class="in" id="rJson" style="min-height:320px">${esc(JSON.stringify(editable, null, 2))}</textarea></label>
       <p class="err" id="rErr"></p>
@@ -1173,7 +1416,7 @@ function snapshot(t){
   return { version: t.version, savedAt: t.updatedAt || Date.now(), name: t.name, description: t.description,
            category: t.category, tags: (t.tags||[]).slice(), source: JSON.parse(JSON.stringify(t.source)),
            sandbox: Object.assign({}, t.sandbox), config: JSON.parse(JSON.stringify(t.config||{})),
-           contract: normaliseContract(t.contract) };
+           contract: normaliseContract(t.contract), config_schema: clone(t.config_schema || null) };
 }
 // Every change to a local tool is a new version: the old one goes to history and the
 // file's block is rewritten with the new fields and version.
@@ -1215,10 +1458,16 @@ function readSheetIntoTool(){
   const sandbox = {};
   document.querySelectorAll("[data-sb]").forEach(el => sandbox[el.dataset.sb] = el.checked);
 
+  // settings declared in a pasted file's block win; otherwise the tool keeps what it declared
+  const blk = source.kind === "inline" ? readToolBlock(source.html).fields : {};
+  const csRaw = blk.config_schema || (was && was.config_schema) || null;
+  const config_schema = normaliseConfigSchema(csRaw, contract.config_keys);
+  if (csRaw && !config_schema){ err.textContent = "The tool's config_schema isn't valid (its namespace must be in Needs settings; paths unique; enum values; defaults match the type; no secret defaults)."; return null; }
+
   return {
     version,
     data: { name, description: $("#fDesc").value.trim(), category: $("#fCat").value.trim() || "General",
-            tags: split($("#fTags").value), source, sandbox, config: cfg, contract }
+            tags: split($("#fTags").value), source, sandbox, config: cfg, contract, config_schema }
   };
 }
 
@@ -1241,7 +1490,7 @@ function forkTool(t){
   const c = sanitiseLocalTool({
     id: nextId(), name: t.name + " (local)", description: t.description, category: t.category, tags: t.tags,
     source: JSON.parse(JSON.stringify(t.source)), sandbox: t.sandbox, config: t.config, contract: t.contract,
-    version: "1.0.0", history:[], forkedFrom: t.id + "@" + t.version
+    config_schema: t.config_schema, version: "1.0.0", history:[], forkedFrom: t.id + "@" + t.version
   });
   c.source = withBlock(c);
   state.tools.push(c); persist(); render(); toast(`Forked ${t.id} v${t.version} as ${c.id}`);
@@ -1260,7 +1509,8 @@ function addFromFile(file, text){
     tags: Array.isArray(f.tags) ? f.tags.map(String) : [],
     sandbox: Object.assign({}, DEFAULT_SANDBOX, f.sandbox || {}),
     config: (f.config && typeof f.config === "object" && !Array.isArray(f.config)) ? f.config : {},
-    contract: normaliseContract(f.contract), source: { kind:"inline", html: text }
+    contract: normaliseContract(f.contract), source: { kind:"inline", html: text },
+    config_schema: normaliseConfigSchema(f.config_schema, normaliseContract(f.contract).config_keys)
   };
   const version = isSemver(f.version) ? f.version : "1.0.0";
   const existing = f.id && state.tools.find(t => t.id === f.id);
@@ -1283,6 +1533,13 @@ function downloadFile(name, content, type){
   const a = document.createElement("a");
   a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
   setTimeout(()=>URL.revokeObjectURL(url), 4000);
+}
+
+// The local bundle export: secret values stripped from the settings, every tool and its history.
+function exportBundle(){
+  return { schema: state.schema, host_version: MANIFEST.version, config: stripSecrets(state.config),
+           tools: state.tools.map(t => Object.assign({}, t, { config: stripSecrets(t.config), source: withBlock(t),
+             history: (t.history || []).map(h => Object.assign({}, h, { config: stripSecrets(h.config) })) })) };
 }
 
 // Promote a local tool: the file (block rewritten with a repo id) goes to tools/<slug>.html
@@ -1310,8 +1567,7 @@ $("#rail").addEventListener("click", e => {
   if (act === "errors") errorsSheet();
   if (act === "registry") registrySheet();
   if (act === "export") downloadFile(`tool-bench-local-${new Date().toISOString().slice(0,10)}.json`,
-      JSON.stringify({ schema: state.schema, host_version: MANIFEST.version, config: state.config,
-                       tools: state.tools.map(t => Object.assign({}, t, { source: withBlock(t) })) }, null, 2), "application/json");
+      JSON.stringify(exportBundle(), null, 2), "application/json");
   if (act === "import") $("#importer").click();
 });
 
@@ -1383,7 +1639,7 @@ $("#scrim").addEventListener("click", e => {
   const act = b.dataset.act;
   if (act === "close") return closeSheet();
   if (act === "save") return saveTool();
-  if (act === "openSettings"){ closeSheet(); return settingsSheet(); }
+  if (act === "openSettings"){ const id = b.dataset.id; closeSheet(); return settingsSheet(id); }
   if (act === "copyBug"){
     const e = state.errors.find(x => String(x.ts) === b.dataset.ts);
     if (e) copyText(JSON.stringify(bugReport(e), null, 2), "Bug report copied", "tool-bench-bug.json");
@@ -1412,7 +1668,8 @@ $("#scrim").addEventListener("click", e => {
     const h = t && (t.history||[]).find(x => x.version === b.dataset.ver);
     if (!h) return;
     newVersion(t, { name:h.name, description:h.description, category:h.category, tags:h.tags,
-                    source:h.source, sandbox:h.sandbox, config:h.config, contract:h.contract }, bump(t.version));
+                    source:h.source, sandbox:h.sandbox, config:h.config, contract:h.contract,
+                    config_schema: normaliseConfigSchema(h.config_schema, normaliseContract(h.contract).config_keys) }, bump(t.version));
     persist(); render(); closeSheet(); toast(`Restored v${h.version} as v${t.version}`);
     return;
   }
@@ -1423,11 +1680,17 @@ $("#scrim").addEventListener("click", e => {
     }
     return;
   }
+  if (act === "toggleSecret"){
+    const inp = b.parentElement.querySelector("input");
+    const show = inp.type === "password"; inp.type = show ? "text" : "password"; b.textContent = show ? "Hide" : "Show";
+    return;
+  }
+  if (act === "saveToolConfig") return saveToolSettings(b.dataset.id);
   if (act === "saveConfig"){
     try {
       const next = JSON.parse($("#gConfig").value || "{}");
       if (!next || typeof next !== "object" || Array.isArray(next)) throw new Error("settings must be a JSON object");
-      state.config = next; persist(); render(); closeSheet(); toast("Settings saved");
+      state.config = restoreSecrets(next, state.config); persist(); render(); closeSheet(); toast("Settings saved");
     } catch(err){ $("#gErr").textContent = "Not valid: " + err.message; }
     return;
   }
@@ -1442,8 +1705,12 @@ $("#scrim").addEventListener("click", e => {
         if (ids.has(t.id)) throw new Error(`Duplicate id ${t.id}`);
         ids.add(t.id);
       });
+      next.tools.forEach(t => {
+        const prev = state.tools.find(x => x.id === t.id);
+        if (isObj(t.config) || prev) t.config = restoreSecrets(isObj(t.config) ? t.config : {}, prev ? prev.config : {});
+      });
       state = {
-        schema: SCHEMA, seq: next.seq|0, config: (next.config && typeof next.config === "object") ? next.config : {},
+        schema: SCHEMA, seq: next.seq|0, config: restoreSecrets(isObj(next.config) ? next.config : {}, state.config),
         overlay: (next.overlay && typeof next.overlay === "object") ? next.overlay : {},
         errors: state.errors, errorsSeen: state.errorsSeen,   // the error log is not part of the editable registry
         tools: next.tools.map(sanitiseLocalTool)
