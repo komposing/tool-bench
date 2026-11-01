@@ -1,0 +1,19 @@
+{"palette":{"classes":{
+"undefined":{"id":"undefined","name":"undefined","parent":null,"attributes":{},"style":{"fill":"#F5F5F5","stroke":"#9E9E9E","dash":true},"origin":"seed"},
+"goal":{"id":"goal","name":"goal","parent":"undefined","attributes":{"measure":""},"style":{"fill":"#E8F5E9","stroke":"#43A047"},"origin":"seed"},
+"outcome":{"id":"outcome","name":"outcome","parent":"goal","attributes":{"observed":""},"style":{"fill":"#E8F5E9","stroke":"#2E7D32"},"origin":"seed"},
+"principle":{"id":"principle","name":"principle","parent":"undefined","attributes":{"statement":""},"style":{"fill":"#EDE7F6","stroke":"#5E35B1"},"origin":"seed"},
+"constraint":{"id":"constraint","name":"constraint","parent":"principle","attributes":{"source":""},"style":{"fill":"#FBE9E7","stroke":"#F4511E"},"origin":"seed"},
+"actor":{"id":"actor","name":"actor","parent":"undefined","attributes":{"kind":"human|agent|system"},"style":{"fill":"#ECEFF1","stroke":"#546E7A"},"origin":"seed"}},
+"edge_classes":{
+"relates_to":{"id":"relates_to","name":"relates to","parent":null,"directional":false,"attributes":{},"style":{"stroke":"#9E9E9E","dash":true},"origin":"seed"},
+"depends_on":{"id":"depends_on","name":"depends on","parent":"relates_to","directional":true,"attributes":{},"style":{"stroke":"#546E7A"},"origin":"seed"},
+"conditional_on":{"id":"conditional_on","name":"conditional on","parent":"relates_to","directional":true,"attributes":{},"style":{"stroke":"#8E24AA","dash":true},"origin":"seed"}}},
+"ops":[
+{"seq":1,"author":"user","ts":"2026-10-31T23:08:11.025Z","op":"draft.create","payload":{"title":"smoke","attributes":{"agent_ops":"ghost"}},"origin_request":""},
+{"seq":2,"author":"agent:test","ts":"2026-10-31T23:08:21.116Z","op":"class.define","payload":{"id":"c1","name":"goal"},"origin_request":""},
+{"seq":3,"author":"agent:test","ts":"2026-10-31T23:08:21.116Z","op":"node.add","payload":{"class_id":"c1","id":"n1","label":"ship it","pos":{"x":10,"y":20}},"origin_request":""},
+{"seq":4,"author":"agent:test","ts":"2026-10-31T23:08:21.116Z","op":"edge.add","payload":{"edge_class_id":"relates_to","from":{"id":"n1","type":"node"},"id":"e1","to":{"id":"c1","type":"class"}},"origin_request":""},
+{"seq":5,"author":"user","ts":"2026-10-31T23:08:35.702Z","op":"note.set","payload":{"id":"note1","text":"stale writer note"},"origin_request":""},
+{"seq":6,"author":"agent:2m2004","ts":"2026-10-31T23:38:38.048Z","op":"analysis.set","payload":{"id":"a1","label":"smoke analysis","member_refs":[{"type":"node","id":"n1"}],"mode":"impact","status":"open"},"origin_request":""},
+{"seq":7,"author":"agent:2m2004","ts":"2026-10-31T23:38:38.048Z","op":"thread.add","payload":{"id":"t1","owner":{"type":"node","id":"n1"},"kind":"finding","author":"agent:2m2004","text":"Spine round-trip ok via ca_call","status":"open"},"origin_request":""}]}

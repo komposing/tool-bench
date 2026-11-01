@@ -2,6 +2,7 @@
   "note": "One line per repo tool. Each tool file carries its own fields in its toolbench-tool block (format toolbench.tool/1); a link tool has no file, so its fields live here with url.",
   "tools": [
     { "file": "tools/config-probe.html" },
+    { "file": "tools/drafting-table.html" },
     {
       "format": "toolbench.tool/1",
       "id": "TB:ca-v3-viewer",
