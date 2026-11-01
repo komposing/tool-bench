@@ -1,5 +1,37 @@
 # Changelog
 
+## 3.4.0 — C820
+
+- **Drafting Table** (`TB:drafting-table` v1.0.0, C812-s2): a repo tool for the paired concept-modelling surface of
+  ca.draft/1 over the CA_V3 Drafting Engine (`wf:VkS7B5UucVMrNwWm`, webhook `ca-v3-drafting`). Five panes around an
+  infinite board, all resizable and collapsible (overlay sheets below 820 px):
+  - **Palette**: class and edge-class trees, Local and Shared branches, `undefined` first; drag a class onto the board
+    (`node.add`); type a name to create a class under the selected one (`class.define`) or an edge class; right-click
+    to amend, publish (`class.publish`, shown as *publish requested* until the shared palette carries it) or fork.
+  - **Board**: nodes, edges, groups, notes, analysis and class chips, thread badges, ghosted proposals. Drag from a
+    node's handle to any ref (node, edge midpoint, group, note, analysis or class chip, palette item, attribute row)
+    and type the relation: an existing edge class is reused by name, a new name becomes an `edge_class.define`.
+    Multi-select (shift-click or shift-drag) to group, annotate or *reason with session* (`analysis.set` +
+    `reason.request`). *Show reasoning* draws thread bubbles; *Follow agent* moves the camera to the agent's ops.
+    `node.move` is sent once per node on drag end.
+  - **Inspector**: free key/values for the selected ref (amends carry the whole `attributes` object), *promote to
+    class* on instance keys (`attr.promote` plus the `class.amend` that carries the default; a shared class is forked
+    first), node to class (`node.promote`), edges to and about the object, its thread; the draft's attributes
+    including `agent_ops`.
+  - **Analysis**: global analysis pinned first, member chips (drop anything in), mode, per-analysis `agent_ops`
+    override, *raise request*, the request list, proposals with accept/reject (`ops.accept`/`ops.reject`) and the thread.
+  - **Finder**: `find` over docs and drafts; drop a card on the board (`card.drop`, `source_ref` kept) or into an analysis.
+- **Pairing**: the page reads the whole op log on open and reduces it itself (the engine snapshot is a cache); it polls
+  `replay` every 2 s while visible and flushes its ops through `apply` with `expect_seq` on a 300 ms debounce,
+  applying any `missing_ops` first. Its own ops are skipped by seq rather than `exclude_author`, so a second tab of the
+  same user sees the first. Ops from the other party flash with their author tag. In ghost mode an agent op carrying
+  `origin_request` stays a proposal until accepted.
+- **Settings** (`drafting` namespace): endpoint, viewer key (secret; falls back to the CA_V3 Viewer's `cav3` key),
+  poll and debounce, and the draft to open on start; the ⚙ popover saves them through `toolbench:config:set`.
+
+### Fixed
+- none
+
 ## 3.3.0 — C783
 
 - **Tool settings belong to the tool.** `toolbench.tool/1` gains an optional `config_schema`:

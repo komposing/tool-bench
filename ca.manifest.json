@@ -5,7 +5,7 @@
   "key": "repo:komposing/tool-bench",
   "name": "tool-bench",
   "title": "Tool Bench",
-  "version": "3.3.0",
+  "version": "3.4.0",
   "purpose": "Single-file host for small HTML tools that front CA_V3 flows: shared config injection, sandboxed runs, tool contracts naming the CA_V3 objects each tool depends on.",
   "owner": "Nick",
   "lifecycle": "active",
@@ -88,9 +88,19 @@
       {
         "key": "std:source_repo",
         "why": "mutation protocol this repo follows (ca.repo/1)"
+      },
+      {
+        "key": "std:drafting",
+        "why": "Drafting Table tool speaks ca.draft/1 to the Drafting Engine"
       }
     ],
     "tools": [
+      {
+        "key": "std:drafting",
+        "by": [
+          "TB:drafting-table"
+        ]
+      },
       {
         "key": "wf:kg2yQ5MPCCNaWPZw",
         "by": [
@@ -107,6 +117,12 @@
         "key": "wf:MtUvdRCD3VY7OcNu",
         "by": [
           "TB:ca-v3-viewer"
+        ]
+      },
+      {
+        "key": "wf:VkS7B5UucVMrNwWm",
+        "by": [
+          "TB:drafting-table"
         ]
       }
     ]
@@ -177,6 +193,11 @@
       "version": "3.3.0",
       "change": "C783",
       "note": "tool settings declared by the tool (config_schema): Settings form, run checks, tool-side save (toolbench:config:set), secrets kept on the device; CA_V3 Viewer declares its cav3 settings"
+    },
+    {
+      "version": "3.4.0",
+      "change": "C820",
+      "note": "Drafting Table (TB:drafting-table v1.0.0): paired concept-modelling board over the CA_V3 Drafting Engine (ca.draft/1; C812-s2)"
     }
   ]
 }

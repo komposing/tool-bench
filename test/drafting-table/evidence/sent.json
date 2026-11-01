@@ -1,0 +1,478 @@
+[
+ {
+  "op": "apply",
+  "draft_id": "dmvx0i3t3686r",
+  "ops": [
+   {
+    "op": "class.define",
+    "payload": {
+     "id": "k2kkmo06o",
+     "name": "service",
+     "parent": "undefined",
+     "attributes": {},
+     "style": {
+      "fill": "hsl(333,60%,94%)",
+      "stroke": "hsl(333,55%,42%)"
+     },
+     "origin": "board"
+    }
+   }
+  ],
+  "expect_seq": 7,
+  "author": "user"
+ },
+ {
+  "op": "apply",
+  "draft_id": "dmvx0i3t3686r",
+  "ops": [
+   {
+    "op": "node.add",
+    "payload": {
+     "id": "n2kkvk1sn",
+     "class_id": "k2kkmo06o",
+     "label": "service",
+     "attributes": {},
+     "pos": {
+      "x": -11,
+      "y": 231
+     }
+    }
+   }
+  ],
+  "expect_seq": 8,
+  "author": "user"
+ },
+ {
+  "op": "apply",
+  "draft_id": "dmvx0i3t3686r",
+  "ops": [
+   {
+    "op": "edge_class.define",
+    "payload": {
+     "id": "x2kl8q32z",
+     "name": "limits",
+     "parent": "relates_to",
+     "directional": true,
+     "attributes": {},
+     "style": {
+      "stroke": "hsl(88,55%,42%)"
+     }
+    }
+   },
+   {
+    "op": "edge.add",
+    "payload": {
+     "id": "e2kl8q49x",
+     "edge_class_id": "x2kl8q32z",
+     "from": {
+      "type": "node",
+      "id": "n2kkvk1sn"
+     },
+     "to": {
+      "type": "edge",
+      "id": "e1"
+     },
+     "attributes": {}
+    }
+   }
+  ],
+  "expect_seq": 9,
+  "author": "user"
+ },
+ {
+  "op": "apply",
+  "draft_id": "dmvx0i3t3686r",
+  "ops": [
+   {
+    "op": "edge.add",
+    "payload": {
+     "id": "e2klj66qa",
+     "edge_class_id": "depends_on",
+     "from": {
+      "type": "node",
+      "id": "n2kkvk1sn"
+     },
+     "to": {
+      "type": "node",
+      "id": "n1"
+     },
+     "attributes": {}
+    }
+   }
+  ],
+  "expect_seq": 11,
+  "author": "user"
+ },
+ {
+  "op": "apply",
+  "draft_id": "dmvx0i3t3686r",
+  "ops": [
+   {
+    "op": "edge.add",
+    "payload": {
+     "id": "e2klt38g3",
+     "edge_class_id": "relates_to",
+     "from": {
+      "type": "node",
+      "id": "n2kkvk1sn"
+     },
+     "to": {
+      "type": "class",
+      "id": "constraint"
+     },
+     "attributes": {}
+    }
+   },
+   {
+    "op": "node.amend",
+    "payload": {
+     "id": "n2kkvk1sn",
+     "attributes": {
+      "sla": "99.9"
+     }
+    }
+   },
+   {
+    "op": "attr.promote",
+    "payload": {
+     "id": "n2kkvk1sn",
+     "node_id": "n2kkvk1sn",
+     "key": "sla"
+    }
+   },
+   {
+    "op": "class.amend",
+    "payload": {
+     "id": "k2kkmo06o",
+     "attributes": {
+      "sla": "99.9"
+     }
+    }
+   }
+  ],
+  "expect_seq": 12,
+  "author": "user"
+ },
+ {
+  "op": "apply",
+  "draft_id": "dmvx0i3t3686r",
+  "ops": [
+   {
+    "op": "note.set",
+    "payload": {
+     "id": "m2km829eo",
+     "text": "",
+     "pos": {
+      "x": 187,
+      "y": 191
+     },
+     "anchor": {
+      "type": "node",
+      "id": "n2kkvk1sn"
+     }
+    }
+   },
+   {
+    "op": "note.set",
+    "payload": {
+     "id": "m2km829eo",
+     "text": "latency matters here",
+     "pos": {
+      "x": 187,
+      "y": 191
+     },
+     "anchor": {
+      "type": "node",
+      "id": "n2kkvk1sn"
+     }
+    }
+   },
+   {
+    "op": "group.set",
+    "payload": {
+     "id": "g2kme3apz",
+     "label": "group",
+     "member_refs": [
+      {
+       "type": "node",
+       "id": "n1"
+      },
+      {
+       "type": "node",
+       "id": "n2kkvk1sn"
+      }
+     ],
+     "dynamic": false,
+     "style": {}
+    }
+   },
+   {
+    "op": "group.set",
+    "payload": {
+     "id": "g2kme3apz",
+     "label": "pair",
+     "member_refs": [
+      {
+       "type": "node",
+       "id": "n1"
+      },
+      {
+       "type": "node",
+       "id": "n2kkvk1sn"
+      }
+     ],
+     "dynamic": false,
+     "style": {}
+    }
+   }
+  ],
+  "expect_seq": 16,
+  "author": "user"
+ },
+ {
+  "op": "apply",
+  "draft_id": "dmvx0i3t3686r",
+  "ops": [
+   {
+    "op": "analysis.set",
+    "payload": {
+     "id": "a2kmv7b93",
+     "label": "pair",
+     "member_refs": [
+      {
+       "type": "group",
+       "id": "g2kme3apz"
+      }
+     ],
+     "mode": "impact",
+     "status": "open"
+    }
+   },
+   {
+    "op": "reason.request",
+    "payload": {
+     "analysis_id": "a2kmv7b93",
+     "mode": "impact"
+    }
+   }
+  ],
+  "expect_seq": 20,
+  "author": "user"
+ },
+ {
+  "op": "apply",
+  "draft_id": "dmvx0i3t3686r",
+  "ops": [
+   {
+    "op": "node.add",
+    "origin_request": "dmvx0i3t3686r:22",
+    "payload": {
+     "id": "pA",
+     "class_id": "constraint",
+     "label": "latency budget",
+     "attributes": {},
+     "pos": {
+      "x": 420,
+      "y": 260
+     }
+    }
+   },
+   {
+    "op": "edge.add",
+    "origin_request": "dmvx0i3t3686r:22",
+    "payload": {
+     "id": "pE",
+     "edge_class_id": "conditional_on",
+     "from": {
+      "type": "edge",
+      "id": "e2kl8q49x"
+     },
+     "to": {
+      "type": "node",
+      "id": "pA"
+     },
+     "attributes": {}
+    }
+   },
+   {
+    "op": "node.add",
+    "origin_request": "dmvx0i3t3686r:22",
+    "payload": {
+     "id": "pB",
+     "class_id": "actor",
+     "label": "on-call",
+     "attributes": {},
+     "pos": {
+      "x": 420,
+      "y": 360
+     }
+    }
+   }
+  ],
+  "author": "agent:test"
+ },
+ {
+  "op": "apply",
+  "draft_id": "dmvx0i3t3686r",
+  "ops": [
+   {
+    "op": "reason.respond",
+    "payload": {
+     "request_id": "dmvx0i3t3686r:22",
+     "entries": [
+      {
+       "id": "tR",
+       "kind": "finding",
+       "text": "pair latency is bounded by the budget",
+       "status": "open"
+      }
+     ],
+     "proposed_ops": [
+      "dmvx0i3t3686r:23",
+      "dmvx0i3t3686r:24",
+      "dmvx0i3t3686r:25"
+     ]
+    }
+   }
+  ],
+  "author": "agent:test"
+ },
+ {
+  "op": "apply",
+  "draft_id": "dmvx0i3t3686r",
+  "ops": [
+   {
+    "op": "ops.accept",
+    "payload": {
+     "op_ids": [
+      "dmvx0i3t3686r:23"
+     ]
+    }
+   },
+   {
+    "op": "ops.accept",
+    "payload": {
+     "op_ids": [
+      "dmvx0i3t3686r:24"
+     ]
+    }
+   },
+   {
+    "op": "ops.reject",
+    "payload": {
+     "op_ids": [
+      "dmvx0i3t3686r:25"
+     ]
+    }
+   }
+  ],
+  "expect_seq": 26,
+  "author": "user"
+ },
+ {
+  "op": "apply",
+  "draft_id": "dmvx0i3t3686r",
+  "ops": [
+   {
+    "op": "draft.amend",
+    "payload": {
+     "attributes": {
+      "agent_ops": "apply"
+     }
+    }
+   }
+  ],
+  "expect_seq": 29,
+  "author": "user"
+ },
+ {
+  "op": "apply",
+  "draft_id": "dmvx0i3t3686r",
+  "ops": [
+   {
+    "op": "note.set",
+    "origin_request": "dmvx0i3t3686r:22",
+    "payload": {
+     "id": "pN",
+     "text": "drawn directly",
+     "pos": {
+      "x": 600,
+      "y": 100
+     }
+    }
+   }
+  ],
+  "author": "agent:test"
+ },
+ {
+  "op": "apply",
+  "draft_id": "dmvx0i3t3686r",
+  "ops": [
+   {
+    "op": "card.drop",
+    "payload": {
+     "id": "n2kq5acoo",
+     "class_id": "undefined",
+     "label": "drafting_table/design v1",
+     "source_ref": {
+      "type": "doc",
+      "doc_key": "drafting_table",
+      "section": "design",
+      "version": 1
+     },
+     "pos": {
+      "x": -82,
+      "y": 398
+     }
+    }
+   }
+  ],
+  "expect_seq": 31,
+  "author": "user"
+ },
+ {
+  "op": "apply",
+  "draft_id": "dmvx0i3t3686r",
+  "ops": [
+   {
+    "op": "analysis.set",
+    "payload": {
+     "id": "a2kmv7b93",
+     "label": "pair",
+     "member_refs": [
+      {
+       "type": "group",
+       "id": "g2kme3apz"
+      },
+      {
+       "type": "node",
+       "id": "n1"
+      }
+     ],
+     "mode": "impact",
+     "status": "open"
+    }
+   }
+  ],
+  "expect_seq": 32,
+  "author": "user"
+ },
+ {
+  "op": "apply",
+  "draft_id": "dmvx0i3t3686r",
+  "ops": [
+   {
+    "op": "node.move",
+    "payload": {
+     "id": "n2kkvk1sn",
+     "pos": {
+      "x": 231,
+      "y": 121
+     }
+    }
+   }
+  ],
+  "expect_seq": 33,
+  "author": "user"
+ }
+]

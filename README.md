@@ -17,6 +17,7 @@ tools in `tools/`.
 | `ca.manifest.json` | The repo's declaration for CA_V3 (ca.repo/1): version, storage, what it provides and depends on, releases |
 | `schema/ca.manifest.schema.json` | Vendored copy of the manifest schema from CA_standards `source_repo` |
 | `scripts/` | `build.mjs` (build and `--check`), `check-change.mjs` (PR gate), `tag-releases.mjs` (release tags) |
+| `test/drafting-table/` | Acceptance harness for the Drafting Table (Playwright, local engine stand-in) and its evidence |
 
 ## Tools: repo and local
 
@@ -48,6 +49,12 @@ Every tool HTML has a block in its `<head>` with the same fields its card shows:
 
 Importing a file reads the block; saving bumps the version and rewrites it, so a downloaded file is always complete.
 A file whose `id` is one of your local tools updates it only when its `version` is higher.
+
+## Drafting Table
+
+`tools/drafting-table.html` (`TB:drafting-table`) is the paired concept-modelling board of ca.draft/1 (CA_standards
+`drafting`): palette, board, inspector, analysis and finder over the CA_V3 Drafting Engine (webhook `ca-v3-drafting`).
+It needs the CA_V3 viewer key: set it in Settings under Drafting Table, or it uses the one saved for the CA_V3 Viewer.
 
 ## Contracts
 
