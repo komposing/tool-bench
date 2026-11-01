@@ -1,5 +1,21 @@
 # Changelog
 
+## 3.5.0 — C862
+
+- **Pack & Ship** (`TB:pack-ship` v1.0.0, C841-s3): a repo tool to pack and ship a paid Discogs order from one
+  screen over the CA_V3 Pack & Ship Engine (`wf:Pqjdoot0EPzoQxj0`, webhook `ca-v3-pack-ship`, which forwards every
+  call through Spine v3 so each page action is a traced CA_V3 run). The list comes from `discogs.orders.list`
+  (order, date, status, collected/items, parcel none|draft|booked with tracking; no buyer fields). **Print** runs
+  `print.queue.add` (copies 1–3) and composes a two-page 4x6 document for a label printer: page 1 packing slip
+  (location, artist — title, format · label · catno, conditions, tick box), page 2 the Parcel2Go label embedded by
+  URL when it is an image, or opened in its own tab when it is a PDF; nothing is stored. Preview pane with Print and
+  Label buttons; the print dialog opens automatically unless `auto_print` is off.
+- **Settings** (`packship` namespace): endpoint, viewer key (secret; falls back to the CA_V3 Viewer's `cav3` key),
+  label copies, auto print.
+
+### Fixed
+- none
+
 ## 3.4.0 — C820
 
 - **Drafting Table** (`TB:drafting-table` v1.0.0, C812-s2): a repo tool for the paired concept-modelling surface of

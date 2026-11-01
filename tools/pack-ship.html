@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pack & Ship</title>
+<script type="application/json" id="toolbench-tool">
+{
+  "format": "toolbench.tool/1",
+  "id": "TB:pack-ship",
+  "name": "Pack & Ship",
+  "description": "Pack and ship a paid Discogs order from one screen (ca.pack_ship/1, C841): paid orders with item and parcel status from discogs.orders.list; Print runs print.queue.add and prints a two-page 4x6 document (packing slip, Parcel2Go label fetched at print time, never stored).",
+  "category": "CA_V3",
+  "tags": ["discogs", "parcel2go", "shipping", "print", "ca.pack_ship/1"],
+  "version": "1.0.0",
+  "contract": { "config_keys": ["packship"], "requires": ["wf:Pqjdoot0EPzoQxj0", "cap:discogs.orders.list", "cap:print.queue.add", "cap:label.fetch"] },
+  "sandbox": { "scripts": true, "forms": false, "modals": true, "popups": true, "downloads": true, "sameOrigin": false },
+  "config_schema": {
+    "namespace": "packship",
+    "fields": [
+      { "path": "url", "label": "Pack & Ship endpoint", "type": "url", "required": true, "default": "https://komposing.app.n8n.cloud/webhook/ca-v3-pack-ship" },
+      { "path": "headers.X-Api-Key", "label": "Viewer key (X-Api-Key)", "type": "secret", "required": false, "secret": true, "help": "CA_V3 viewer key. Leave empty to use the key saved for the CA_V3 Viewer (cav3)." },
+      { "path": "copies", "label": "Label copies", "type": "number", "default": 1, "help": "1 to 3" },
+      { "path": "auto_print", "label": "Open the print dialog after Print", "type": "boolean", "default": true }
+    ]
+  }
+}
+</script>
+<style>
+:root{--bg:#FBFAF7;--panel:#F3F1EC;--line:#DEDAD1;--ink:#12161A;--ink2:#5B6670;--ink3:#8A939B;--acc:#1E66D0;--warn:#C77700;--bad:#C0392B;--ok:#2E7D32;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;--sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font:13px/1.4 var(--sans)}
+button{font:inherit;cursor:pointer;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:4px;padding:4px 10px}
+button:hover{border-color:var(--ink3)} button.pri{background:var(--acc);color:#fff;border-color:var(--acc)} button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+button:disabled{opacity:.45;cursor:default}
+input,select{font:inherit;border:1px solid var(--line);border-radius:4px;padding:3px 6px;background:#fff;color:var(--ink)}
+code,.mono{font-family:var(--mono);font-size:11.5px}
+h3{font:600 10px/1 var(--mono);letter-spacing:.18em;text-transform:uppercase;color:var(--ink2);margin:0 0 8px}
+#app{display:grid;height:100%;grid-template-rows:42px 1fr;grid-template-columns:1fr 420px;grid-template-areas:"top top" "list prev"}
+#top{grid-area:top;display:flex;align-items:center;gap:8px;padding:0 12px;border-bottom:1px solid var(--line);background:#fff;white-space:nowrap;overflow-x:auto}
+#top .brand{font:600 11px var(--mono);letter-spacing:.2em;text-transform:uppercase}
+#top .sep{flex:1}
+#sync{display:inline-flex;align-items:center;gap:5px;font:11px var(--mono);color:var(--ink2)}
+#sync i{width:8px;height:8px;border-radius:50%;background:var(--ink3);display:inline-block}
+#sync.ok i{background:var(--ok)} #sync.busy i{background:var(--warn)} #sync.err i{background:var(--bad)}
+#list{grid-area:list;overflow:auto;padding:12px}
+#prev{grid-area:prev;border-left:1px solid var(--line);background:var(--panel);display:flex;flex-direction:column;min-height:0}
+#prev .bar{display:flex;gap:6px;align-items:center;padding:8px 10px;border-bottom:1px solid var(--line)}
+#prev iframe{flex:1;border:0;background:#fff;width:100%}
+table{border-collapse:collapse;width:100%;background:#fff}
+th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
+th{font:600 10px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--ink2);background:var(--panel)}
+tr.sel td{background:#EEF4FD}
+.b{display:inline-block;padding:1px 7px;border-radius:10px;font:11px var(--mono);border:1px solid var(--line);background:#fff}
+.b.booked{color:var(--ok);border-color:var(--ok)} .b.draft{color:var(--warn);border-color:var(--warn)} .b.none{color:var(--ink3)}
+.small{font-size:11.5px;color:var(--ink2)}
+#toast{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:7px 12px;border-radius:6px;display:none;max-width:80%;z-index:9}
+#toast.bad{background:var(--bad)}
+#cfg{display:none;position:absolute;top:44px;right:12px;background:#fff;border:1px solid var(--line);border-radius:6px;padding:10px;width:360px;box-shadow:0 6px 24px rgba(0,0,0,.12);z-index:5}
+#cfg .row{display:flex;gap:6px;align-items:center;margin:4px 0} #cfg .lbl{width:70px;color:var(--ink2)} #cfg input{flex:1}
+@media (max-width:860px){#app{grid-template-columns:1fr;grid-template-rows:42px 1fr 45%;grid-template-areas:"top" "list" "prev"} #prev{border-left:0;border-top:1px solid var(--line)}}
+</style></head>
+<body><div id="app">
+<div id="top">
+  <span class="brand">Pack &amp; Ship</span>
+  <select id="status"><option value="paid">paid, unshipped</option><option value="shipped">shipped</option><option value="all">all</option></select>
+  <button id="refresh">Refresh</button>
+  <label class="small">copies <input id="copies" type="number" min="1" max="3" value="1" style="width:48px"></label>
+  <span class="sep"></span>
+  <span id="count" class="small"></span>
+  <span id="sync"><i></i><span id="syncT">idle</span></span>
+  <button id="gear" title="settings">⚙</button>
+</div>
+<div id="cfg">
+  <h3>Connect</h3>
+  <div class="row"><span class="lbl">endpoint</span><input id="cUrl" type="url"></div>
+  <div class="row"><span class="lbl">key</span><input id="cKey" type="password" placeholder="X-Api-Key (kept in memory only)"></div>
+  <div class="row"><span class="lbl"></span><button id="cSave" class="pri">Save</button><button id="cClose">Close</button></div>
+  <p id="cNote" class="small"></p>
+</div>
+<div id="list"><p class="small">Loading orders…</p></div>
+<div id="prev">
+  <div class="bar"><h3 style="margin:0">Print preview</h3><span class="sep" style="flex:1"></span><button id="printBtn" disabled>Print</button><button id="labelBtn" disabled title="open the label on its own (PDF labels)">Label</button></div>
+  <iframe id="doc" title="print document"></iframe>
+</div>
+</div>
+<div id="toast"></div>
+<script>
+/* Pack & Ship (ca.pack_ship/1) — Tool Bench page for C841-s3.
+   Reads orders with discogs.orders.list, prints with print.queue.add. The engine webhook forwards every
+   call through Spine v3, so each page action is a traced CA_V3 run. The label is fetched inside n8n at
+   print time and embedded by URL only; nothing is stored on the page or in CA_V3. */
+const TC = window.TOOL_CONFIG || {}, TM = window.TOOL_META || null;
+const getPath = (o, p) => p.split(".").reduce((a, k) => (a && typeof a === "object") ? a[k] : undefined, o);
+const PC = TC.packship || {};
+const CONF = {
+  url: PC.url || "https://komposing.app.n8n.cloud/webhook/ca-v3-pack-ship",
+  key: getPath(PC, "headers.X-Api-Key") || getPath(TC, "cav3.dashboard.headers.X-Api-Key") || "",
+  keyFrom: getPath(PC, "headers.X-Api-Key") ? "packship" : (getPath(TC, "cav3.dashboard.headers.X-Api-Key") ? "cav3" : ""),
+  copies: Math.min(3, Math.max(1, +PC.copies || 1)),
+  autoPrint: PC.auto_print == null ? true : !!PC.auto_print
+};
+const $ = (s, r = document) => r.querySelector(s);
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const isObj = v => v && typeof v === "object" && !Array.isArray(v);
+const trunc = (s, n) => { s = String(s == null ? "" : s); return s.length > n ? s.slice(0, n - 1) + "…" : s; };
+function toast(msg, bad){ const t = $("#toast"); t.textContent = msg; t.className = bad ? "bad" : ""; t.style.display = "block"; clearTimeout(toast.h); toast.h = setTimeout(() => t.style.display = "none", bad ? 7000 : 2600); }
+function setSync(cls, text){ const s = $("#sync"); s.className = cls; $("#syncT").textContent = text; }
+
+/* ============================== transport ============================== */
+async function call(op, params){
+  if (!CONF.key) throw new Error("No viewer key: set it in Tool Bench Settings (Pack & Ship or CA_V3 Viewer) or in ⚙");
+  let res;
+  try {
+    res = await fetch(CONF.url, { method: "POST", headers: { "Content-Type": "application/json", "X-Api-Key": CONF.key },
+      body: JSON.stringify({ op, params: params || {} }), cache: "no-store" });
+  } catch (e) { throw new Error("Pack & Ship endpoint unreachable (network or CORS): " + (e.message || e)); }
+  const txt = await res.text();
+  let j; try { j = JSON.parse(txt); } catch (e) { throw new Error(`HTTP ${res.status}: ${trunc(txt, 140) || "empty response"}`); }
+  if (Array.isArray(j)) j = j[0] || {};
+  const d = isObj(j.data) ? j.data : j;
+  if (!res.ok || j.status === "error" || (j.outcome && j.outcome !== "ok")) {
+    const why = (d.errors || []).map(e => `${e.param}: ${e.reason}`).join("; ") || d.message || j.message || `HTTP ${res.status}`;
+    const err = new Error(`${op} ${j.outcome || d.outcome || "refused"}: ${why}`); err.body = j; throw err;
+  }
+  return d;
+}
+
+/* ============================== orders ============================== */
+let ORDERS = [], SEL = "", JOB = null;
+async function loadOrders(){
+  setSync("busy", "loading");
+  try {
+    const d = await call("orders_list", { status: $("#status").value, limit: 100 });
+    ORDERS = Array.isArray(d.orders) ? d.orders : [];
+    $("#count").textContent = `${ORDERS.length}${d.truncated ? "+" : ""} orders` + (d.notes && d.notes.length ? " · " + d.notes.join("; ") : "");
+    renderOrders(); setSync("ok", "ok " + new Date().toLocaleTimeString());
+  } catch (e) { setSync("err", "error"); $("#list").innerHTML = `<p class="small">${esc(e.message)}</p>`; toast(e.message, true); }
+}
+function renderOrders(){
+  if (!ORDERS.length) { $("#list").innerHTML = `<p class="small">No orders for this filter.</p>`; return; }
+  $("#list").innerHTML = `<table><thead><tr><th>order</th><th>date</th><th>status</th><th>items</th><th>parcel</th><th></th></tr></thead><tbody>` +
+    ORDERS.map(o => `<tr data-id="${esc(o.order_id)}" class="${o.order_id === SEL ? "sel" : ""}">
+      <td class="mono">${esc(o.order_id)}</td><td>${esc(String(o.order_date).slice(0, 10))}</td><td>${esc(o.status)}</td>
+      <td>${o.collected}/${o.items}</td>
+      <td><span class="b ${esc(o.parcel)}">${esc(o.parcel)}</span>${o.tracking ? ` <span class="small mono">${esc(o.tracking)}</span>` : ""}</td>
+      <td><button class="pri" data-print="${esc(o.order_id)}" ${o.label_ready ? "" : "disabled title='no booked parcel yet'"}>Print</button></td></tr>`).join("") + `</tbody></table>`;
+}
+$("#list").addEventListener("click", async e => {
+  const b = e.target.closest("button[data-print]"); if (!b) return;
+  SEL = b.dataset.print; renderOrders(); await printOrder(SEL);
+});
+$("#refresh").onclick = loadOrders; $("#status").onchange = loadOrders;
+$("#copies").value = CONF.copies;
+
+/* ============================== print ============================== */
+async function printOrder(ref){
+  const copies = Math.min(3, Math.max(1, +$("#copies").value || 1));
+  setSync("busy", "printing " + ref); $("#printBtn").disabled = true; $("#labelBtn").disabled = true;
+  try {
+    const d = await call("print_queue_add", { order_ref: ref, copies });
+    JOB = { ref, copies, rows: d.packing_rows || [], label: d.label_url || "", job: d.job_id || "", run: d.label_run_id || "" };
+    const labelIsImage = await probeImage(JOB.label);
+    $("#doc").srcdoc = buildDoc(JOB, labelIsImage);
+    $("#printBtn").disabled = false; $("#labelBtn").disabled = !JOB.label;
+    setSync("ok", "job " + trunc(JOB.job, 18));
+    toast(`${JOB.rows.length} packing row(s); label ${labelIsImage ? "embedded" : "opens separately (PDF)"}`);
+    if (CONF.autoPrint) { setTimeout(doPrint, 400); if (!labelIsImage && JOB.label) window.open(JOB.label, "_blank", "noopener"); }
+  } catch (e) { setSync("err", "error"); toast(e.message, true); }
+}
+function probeImage(url){ return new Promise(res => { if (!url) return res(false); const im = new Image(); const t = setTimeout(() => res(false), 4000); im.onload = () => { clearTimeout(t); res(true); }; im.onerror = () => { clearTimeout(t); res(false); }; im.src = url; }); }
+function doPrint(){ const w = $("#doc").contentWindow; if (!w) return; try { w.focus(); w.print(); } catch (e) { toast("print blocked: " + e.message, true); } }
+$("#printBtn").onclick = doPrint;
+$("#labelBtn").onclick = () => { if (JOB && JOB.label) window.open(JOB.label, "_blank", "noopener"); };
+
+function buildDoc(j, withLabel){
+  const rows = j.rows.map((r, i) => `<tr><td class="n">${i + 1}</td><td class="loc">${esc(r.location || "—")}</td>
+    <td><b>${esc(r.artist)}</b> — ${esc(r.title)}<br><span class="s">${esc([r.format, r.label, r.catno].filter(Boolean).join(" · "))} · ${esc(r.media_condition)}/${esc(r.sleeve_condition)}</span></td><td class="box">☐</td></tr>`).join("");
+  const slip = `<section class="pg"><header><b>PACKING SLIP</b><span>${esc(j.ref)}</span></header>
+    <div class="meta">${new Date().toLocaleDateString("en-GB")} · ${j.rows.length} item(s) · job ${esc(trunc(j.job, 26))}</div>
+    <table><thead><tr><th>#</th><th>loc</th><th>item</th><th></th></tr></thead><tbody>${rows}</tbody></table>
+    <footer>Discogs ${esc(j.ref)} · packed by ______ · checked ☐</footer></section>`;
+  const label = withLabel ? Array.from({ length: j.copies }, () => `<section class="pg lab"><img src="${esc(j.label)}" alt="label"></section>`).join("")
+    : `<section class="pg lab"><div class="nolab">Label is a PDF: it opens in its own tab for printing.<br><span class="s">${esc(trunc(j.label, 80))}</span></div></section>`;
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(j.ref)}</title><style>
+    @page{size:4in 6in;margin:0.18in} html,body{margin:0;font:10.5pt/1.25 -apple-system,"Segoe UI",Roboto,Arial,sans-serif;color:#000;background:#fff}
+    .pg{width:3.64in;min-height:5.6in;page-break-after:always;padding:0;position:relative} .pg:last-child{page-break-after:auto}
+    header{display:flex;justify-content:space-between;align-items:baseline;border-bottom:2px solid #000;padding-bottom:3pt;font-size:12pt}
+    header span{font-family:ui-monospace,Menlo,monospace;font-size:11pt}
+    .meta{font-size:8.5pt;color:#333;margin:3pt 0 6pt}
+    table{border-collapse:collapse;width:100%} th{font-size:7.5pt;text-transform:uppercase;letter-spacing:.08em;text-align:left;border-bottom:1px solid #000;padding:2pt 3pt}
+    td{padding:4pt 3pt;border-bottom:1px solid #bbb;vertical-align:top;font-size:9.5pt} td.n{width:14pt;color:#555} td.loc{font-family:ui-monospace,Menlo,monospace;font-size:9pt;white-space:nowrap} td.box{width:14pt;font-size:12pt;text-align:center}
+    .s{font-size:8pt;color:#333} footer{position:absolute;bottom:0;left:0;right:0;font-size:8pt;color:#333;border-top:1px solid #000;padding-top:3pt}
+    .lab{display:flex;align-items:center;justify-content:center} .lab img{max-width:3.64in;max-height:5.6in;object-fit:contain}
+    .nolab{text-align:center;font-size:9pt;color:#333;padding:20pt}
+    @media screen{body{background:#888;padding:8px} .pg{background:#fff;margin:0 auto 8px;box-shadow:0 1px 4px rgba(0,0,0,.4);padding:0.18in;min-height:6in;width:4in}}
+  </style></head><body>${slip}${label}</body></html>`;
+}
+
+/* ============================== settings ============================== */
+$("#gear").onclick = () => { const c = $("#cfg"); c.style.display = c.style.display === "block" ? "none" : "block"; $("#cUrl").value = CONF.url; $("#cKey").value = "";
+  $("#cNote").textContent = TM ? `Saved in Tool Bench settings (namespace packship); the tool reloads. Endpoint ${CONF.url}; key ${CONF.key ? "from " + CONF.keyFrom : "missing: set it in Tool Bench Settings"}.` : "Standalone: values are kept in memory for this page only."; };
+$("#cClose").onclick = () => $("#cfg").style.display = "none";
+$("#cSave").onclick = () => {
+  const url = $("#cUrl").value.trim(), key = $("#cKey").value.trim();
+  if (url) CONF.url = url; if (key) CONF.key = key;
+  if (TM && window.parent !== window) { const set = { url: CONF.url }; if (key) set["headers.X-Api-Key"] = key; window.parent.postMessage({ type: "toolbench:config:set", namespace: "packship", values: set }, "*"); }
+  $("#cfg").style.display = "none"; loadOrders();
+};
+if (!CONF.key) { setSync("err", "no key"); $("#list").innerHTML = `<p class="small">No viewer key. ${TM ? "Set <b>Viewer key</b> for Pack &amp; Ship (or the CA_V3 Viewer) in Tool Bench Settings." : "Open ⚙ and enter the endpoint and key."}</p>`; }
+else loadOrders();
+</script></body></html>
