@@ -5,7 +5,7 @@
   "key": "repo:komposing/tool-bench",
   "name": "tool-bench",
   "title": "Tool Bench",
-  "version": "3.4.0",
+  "version": "3.5.0",
   "purpose": "Single-file host for small HTML tools that front CA_V3 flows: shared config injection, sandboxed runs, tool contracts naming the CA_V3 objects each tool depends on.",
   "owner": "Nick",
   "lifecycle": "active",
@@ -96,6 +96,24 @@
     ],
     "tools": [
       {
+        "key": "cap:discogs.orders.list",
+        "by": [
+          "TB:pack-ship"
+        ]
+      },
+      {
+        "key": "cap:label.fetch",
+        "by": [
+          "TB:pack-ship"
+        ]
+      },
+      {
+        "key": "cap:print.queue.add",
+        "by": [
+          "TB:pack-ship"
+        ]
+      },
+      {
         "key": "std:drafting",
         "by": [
           "TB:drafting-table"
@@ -117,6 +135,12 @@
         "key": "wf:MtUvdRCD3VY7OcNu",
         "by": [
           "TB:ca-v3-viewer"
+        ]
+      },
+      {
+        "key": "wf:Pqjdoot0EPzoQxj0",
+        "by": [
+          "TB:pack-ship"
         ]
       },
       {
@@ -198,6 +222,11 @@
       "version": "3.4.0",
       "change": "C820",
       "note": "Drafting Table (TB:drafting-table v1.0.0): paired concept-modelling board over the CA_V3 Drafting Engine (ca.draft/1; C812-s2)"
+    },
+    {
+      "version": "3.5.0",
+      "change": "C862",
+      "note": "Pack & Ship (TB:pack-ship v1.0.0): paid Discogs orders with parcel status, Print -> print.queue.add -> two-page 4x6 document (packing slip, Parcel2Go label at print time) over the CA_V3 Pack & Ship Engine (ca.pack_ship/1; C841-s3)"
     }
   ]
 }
