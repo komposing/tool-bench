@@ -1,5 +1,14 @@
 # Changelog
 
+## 3.5.1 — C867
+
+- **Pack & Ship** (`TB:pack-ship` v1.0.1): the print document carries its own `message` listener and prints itself when the
+  page posts `packship:print`; the page no longer calls `print()` on the preview frame, which is a distinct opaque origin
+  inside the sandboxed bench.
+
+### Fixed
+- U865: Print was blocked with "Blocked a frame with origin null from accessing a cross-origin frame"
+
 ## 3.5.0 — C862
 
 - **Pack & Ship** (`TB:pack-ship` v1.0.0, C841-s3): a repo tool to pack and ship a paid Discogs order from one
