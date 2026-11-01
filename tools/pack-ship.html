@@ -9,8 +9,8 @@
   "description": "Pack and ship a paid Discogs order from one screen (ca.pack_ship/1, C841): paid orders with item and parcel status from discogs.orders.list; Print runs print.queue.add and prints a two-page 4x6 document (packing slip, Parcel2Go label fetched at print time, never stored).",
   "category": "CA_V3",
   "tags": ["discogs", "parcel2go", "shipping", "print", "ca.pack_ship/1"],
-  "version": "1.0.1",
-  "contract": { "config_keys": ["packship"], "requires": ["wf:Pqjdoot0EPzoQxj0", "cap:discogs.orders.list", "cap:print.queue.add", "cap:label.fetch"] },
+  "version": "1.1.0",
+  "contract": { "config_keys": ["packship"], "requires": ["wf:Pqjdoot0EPzoQxj0", "cap:discogs.orders.list", "cap:print.queue.add", "cap:label.fetch", "cap:label.bytes"] },
   "sandbox": { "scripts": true, "forms": false, "modals": true, "popups": true, "downloads": true, "sameOrigin": false },
   "config_schema": {
     "namespace": "packship",
@@ -157,14 +157,37 @@ async function printOrder(ref){
   setSync("busy", "printing " + ref); $("#printBtn").disabled = true; $("#labelBtn").disabled = true;
   try {
     const d = await call("print_queue_add", { order_ref: ref, copies });
-    JOB = { ref, copies, rows: d.packing_rows || [], label: d.label_url || "", job: d.job_id || "", run: d.label_run_id || "" };
-    const labelIsImage = await probeImage(JOB.label);
-    $("#doc").srcdoc = buildDoc(JOB, labelIsImage);
+    JOB = { ref, copies, rows: d.packing_rows || [], label: d.label_url || "", job: d.job_id || "", run: d.label_run_id || "", img: "" };
+    // One print job: fetch the label bytes through the engine (label.bytes, transient) and render the PDF page to an image;
+    // fall back to an <img> of the URL (image labels) or a separate tab (PDF, render failed).
+    setSync("busy", "rendering label");
+    let mode = "tab";
+    try { const b = await call("label_bytes", { order_ref: ref }); JOB.img = await renderLabel(b.label_b64 || "", b.label_content_type || ""); if (JOB.img) mode = "rendered"; }
+    catch (e) { toast("label render: " + e.message + " (printing label separately)", true); }
+    if (mode === "tab" && await probeImage(JOB.label)) { JOB.img = JOB.label; mode = "image"; }
+    $("#doc").srcdoc = buildDoc(JOB, mode !== "tab");
     $("#printBtn").disabled = false; $("#labelBtn").disabled = !JOB.label;
     setSync("ok", "job " + trunc(JOB.job, 18));
-    toast(`${JOB.rows.length} packing row(s); label ${labelIsImage ? "embedded" : "opens separately (PDF)"}`);
-    if (CONF.autoPrint) { setTimeout(doPrint, 400); if (!labelIsImage && JOB.label) window.open(JOB.label, "_blank", "noopener"); }
+    toast(`${JOB.rows.length} packing row(s); label ${mode === "tab" ? "opens separately (PDF)" : "in the same document"}`);
+    if (CONF.autoPrint) { setTimeout(doPrint, 400); if (mode === "tab" && JOB.label) window.open(JOB.label, "_blank", "noopener"); }
   } catch (e) { setSync("err", "error"); toast(e.message, true); }
+}
+const PDFJS = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs", PDFJS_WORKER = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs";
+let pdfjsP = null;
+function pdfjs(){ if (!pdfjsP) pdfjsP = import(PDFJS).then(m => { m.GlobalWorkerOptions.workerSrc = PDFJS_WORKER; return m; }); return pdfjsP; }
+function b64bytes(b64){ const bin = atob(b64); const u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u; }
+// Render the first page of the label PDF at 300 dpi (a 4x6 label is 1200x1800) to a PNG data URL; an image label is passed through.
+async function renderLabel(b64, type){
+  if (!b64) return "";
+  if (/^image\//.test(type)) return `data:${type};base64,${b64}`;
+  const lib = await pdfjs();
+  const pdf = await lib.getDocument({ data: b64bytes(b64) }).promise;
+  const page = await pdf.getPage(1);
+  const v1 = page.getViewport({ scale: 1 }); const scale = Math.min(4, 1200 / Math.min(v1.width, v1.height));
+  const vp = page.getViewport({ scale });
+  const c = document.createElement("canvas"); c.width = Math.ceil(vp.width); c.height = Math.ceil(vp.height);
+  await page.render({ canvasContext: c.getContext("2d"), viewport: vp }).promise;
+  return c.toDataURL("image/png");
 }
 function probeImage(url){ return new Promise(res => { if (!url) return res(false); const im = new Image(); const t = setTimeout(() => res(false), 4000); im.onload = () => { clearTimeout(t); res(true); }; im.onerror = () => { clearTimeout(t); res(false); }; im.src = url; }); }
 // The preview frame is a distinct opaque origin inside the sandboxed bench, so the page never calls into it (U865): it posts and the document prints itself.
@@ -179,7 +202,7 @@ function buildDoc(j, withLabel){
     <div class="meta">${new Date().toLocaleDateString("en-GB")} · ${j.rows.length} item(s) · job ${esc(trunc(j.job, 26))}</div>
     <table><thead><tr><th>#</th><th>loc</th><th>item</th><th></th></tr></thead><tbody>${rows}</tbody></table>
     <footer>Discogs ${esc(j.ref)} · packed by ______ · checked ☐</footer></section>`;
-  const label = withLabel ? Array.from({ length: j.copies }, () => `<section class="pg lab"><img src="${esc(j.label)}" alt="label"></section>`).join("")
+  const label = withLabel ? Array.from({ length: j.copies }, () => `<section class="pg lab"><img src="${j.img}" alt="label"></section>`).join("")
     : `<section class="pg lab"><div class="nolab">Label is a PDF: it opens in its own tab for printing.<br><span class="s">${esc(trunc(j.label, 80))}</span></div></section>`;
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(j.ref)}</title><style>
     @page{size:4in 6in;margin:0.18in} html,body{margin:0;font:10.5pt/1.25 -apple-system,"Segoe UI",Roboto,Arial,sans-serif;color:#000;background:#fff}
