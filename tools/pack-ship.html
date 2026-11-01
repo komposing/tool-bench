@@ -9,7 +9,7 @@
   "description": "Pack and ship a paid Discogs order from one screen (ca.pack_ship/1, C841): paid orders with item and parcel status from discogs.orders.list; Print runs print.queue.add and prints a two-page 4x6 document (packing slip, Parcel2Go label fetched at print time, never stored).",
   "category": "CA_V3",
   "tags": ["discogs", "parcel2go", "shipping", "print", "ca.pack_ship/1"],
-  "version": "1.0.0",
+  "version": "1.0.1",
   "contract": { "config_keys": ["packship"], "requires": ["wf:Pqjdoot0EPzoQxj0", "cap:discogs.orders.list", "cap:print.queue.add", "cap:label.fetch"] },
   "sandbox": { "scripts": true, "forms": false, "modals": true, "popups": true, "downloads": true, "sameOrigin": false },
   "config_schema": {
@@ -167,7 +167,8 @@ async function printOrder(ref){
   } catch (e) { setSync("err", "error"); toast(e.message, true); }
 }
 function probeImage(url){ return new Promise(res => { if (!url) return res(false); const im = new Image(); const t = setTimeout(() => res(false), 4000); im.onload = () => { clearTimeout(t); res(true); }; im.onerror = () => { clearTimeout(t); res(false); }; im.src = url; }); }
-function doPrint(){ const w = $("#doc").contentWindow; if (!w) return; try { w.focus(); w.print(); } catch (e) { toast("print blocked: " + e.message, true); } }
+// The preview frame is a distinct opaque origin inside the sandboxed bench, so the page never calls into it (U865): it posts and the document prints itself.
+function doPrint(){ const w = $("#doc").contentWindow; if (!w) return; try { w.postMessage({ type: "packship:print" }, "*"); } catch (e) { toast("print blocked: " + e.message, true); } }
 $("#printBtn").onclick = doPrint;
 $("#labelBtn").onclick = () => { if (JOB && JOB.label) window.open(JOB.label, "_blank", "noopener"); };
 
@@ -192,7 +193,7 @@ function buildDoc(j, withLabel){
     .lab{display:flex;align-items:center;justify-content:center} .lab img{max-width:3.64in;max-height:5.6in;object-fit:contain}
     .nolab{text-align:center;font-size:9pt;color:#333;padding:20pt}
     @media screen{body{background:#888;padding:8px} .pg{background:#fff;margin:0 auto 8px;box-shadow:0 1px 4px rgba(0,0,0,.4);padding:0.18in;min-height:6in;width:4in}}
-  </style></head><body>${slip}${label}</body></html>`;
+  </style></head><body>${slip}${label}<script>addEventListener("message", e => { if (e.data && e.data.type === "packship:print") { focus(); print(); } });<\/script></body></html>`;
 }
 
 /* ============================== settings ============================== */
