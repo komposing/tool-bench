@@ -1,5 +1,24 @@
 # Changelog
 
+## 3.8.0 — C980
+
+- **Drafting Table** (`TB:drafting-table` v1.2.0, T560): **layers**. A segmented control in the toolbar switches the board
+  between three views of the same op log; the chosen layer rides in the page's `view.set` (author-scoped) and is restored
+  on reopen. **global**: everything, as before. **data model**: only data-storing nodes (class `core_object` with
+  `kind` in tbl|sheet|std, or any class carrying `stores_data: true`) and the edges between them; each node has an expand
+  toggle that calls the engine op `schema {key}` once per key for the page session and draws the columns as rows
+  (name | type | format/enum | key); a column dragged onto a column of another expanded node makes an edge of class
+  `field_map` (`edge_class.define` first when the palette lacks it) with `{from_field, to_field, relation: maps|fk|eq}`;
+  the inspector shows field maps with their fields and lets the relation be changed. **process flow**: a sidebar lists
+  the engine's workflows (op `flows`, filter box, tick boxes); a ticked workflow is fetched with op `flow` and drawn as a
+  left-to-right layered diagram (steps as rounded boxes with a kind badge, links as arrows with branch labels; cycles
+  fall back to a grid) under its `wf:<id>` node when the draft has one; every other draft object is hidden and no board
+  op leaves this layer. An engine without the ops (400 / unknown op) answers with a toast and an empty node or list.
+  Harness `test/drafting-table/layers.js` (31 checks); `mock.js` gains the three ops behind `{layers: true}`.
+
+### Fixed
+- none
+
 ## 3.7.0 — C944
 
 - **Drafting Table** (`TB:drafting-table` v1.1.0, T536 page half): replay follows a **poll budget** held as data in

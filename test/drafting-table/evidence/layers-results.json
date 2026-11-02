@@ -1,0 +1,154 @@
+[
+  {
+    "name": "global shows every node and edge",
+    "ok": true,
+    "detail": "11 refs"
+  },
+  {
+    "name": "data model shows only data-storing nodes",
+    "ok": true,
+    "detail": "edge:e_oc,node:t_cust,node:t_ledger,node:t_orders"
+  },
+  {
+    "name": "edges only between visible nodes",
+    "ok": true,
+    "detail": "edge:e_oc"
+  },
+  {
+    "name": "layer switch writes view.set with layer",
+    "ok": true,
+    "detail": "[\"data\"]"
+  },
+  {
+    "name": "expand calls schema once per key and renders the columns",
+    "ok": true,
+    "detail": "1 schema calls"
+  },
+  {
+    "name": "column rows show name | type | format/enum | key",
+    "ok": true,
+    "detail": "id|string||pk ; customer_id|string||fk:tbl… ; status|string|paid|shipped| ; total|number|gbp|"
+  },
+  {
+    "name": "row tooltip carries the full key",
+    "ok": true,
+    "detail": "customer_id · string · fk:tbl:customers"
+  },
+  {
+    "name": "expansion is view-only",
+    "ok": true,
+    "detail": "no board op"
+  },
+  {
+    "name": "click selects a column",
+    "ok": true,
+    "detail": "t_orders.status"
+  },
+  {
+    "name": "column drag emits edge.add field_map with from_field/to_field/relation",
+    "ok": true,
+    "detail": "{\"from_field\":\"customer_id\",\"to_field\":\"id\",\"relation\":\"fk\"}"
+  },
+  {
+    "name": "field_map edge class defined first, as contracted",
+    "ok": true,
+    "detail": "{\"id\":\"field_map\",\"name\":\"field map\",\"parent\":\"relates_to\",\"directional\":true,\"attributes\":{\"from_field\":\"\",\"to_field\":\"\",\"relation\":\"\"}}"
+  },
+  {
+    "name": "define precedes the edge.add in the same apply",
+    "ok": true,
+    "detail": "view.set,edge_class.define,edge.add"
+  },
+  {
+    "name": "second field map reuses the class",
+    "ok": true
+  },
+  {
+    "name": "inspector shows field_map edge with its fields",
+    "ok": true,
+    "detail": "Field map ev8so5197classconditional on (shared)depends on (shared)field maprelates to (shared) label fromorders .id tocustomers .email relationmaps (copied / de"
+  },
+  {
+    "name": "node inspector lists field maps with fields",
+    "ok": true,
+    "detail": "Node t_orderslabel classactor (shared)constraint (shared)core objectgoal (shared)goalledgeroutcome (shared)principle (shared)undefined (shared) Attributes grey = from core object ⠿ kind × ⠿ key ×Add P"
+  },
+  {
+    "name": "field map edge is labelled by its fields on the board",
+    "ok": true,
+    "detail": "customer_id ⇢ id ; id → email"
+  },
+  {
+    "name": "process layer hides the draft and lists workflows from flows",
+    "ok": true,
+    "detail": " · 1 flows calls"
+  },
+  {
+    "name": "filter box narrows the list",
+    "ok": true
+  },
+  {
+    "name": "tick fetches flow by workflow_id",
+    "ok": true,
+    "detail": "[{\"op\":\"flow\",\"workflow_id\":\"Pqjdoot0EPzoQxj0\"}]"
+  },
+  {
+    "name": "steps drawn left to right by links, with kind badges",
+    "ok": true,
+    "detail": "{\"s1\":16,\"s2\":236,\"s3\":456,\"s4\":676,\"s5\":896}"
+  },
+  {
+    "name": "links carry branch labels",
+    "ok": true,
+    "detail": "true,false"
+  },
+  {
+    "name": "wf:<id> node is drawn as the flow's head; other nodes stay hidden",
+    "ok": true,
+    "detail": "node:w_pack"
+  },
+  {
+    "name": "flow region sits under its head node",
+    "ok": true,
+    "detail": "{\"ny\":520,\"nx\":0,\"ry\":586,\"rx\":0}"
+  },
+  {
+    "name": "no board ops from the process layer",
+    "ok": true,
+    "detail": "3 -> 3"
+  },
+  {
+    "name": "layer restored from the author's last view.set on reopen",
+    "ok": true
+  },
+  {
+    "name": "back to global shows everything again",
+    "ok": true,
+    "detail": "13 refs"
+  },
+  {
+    "name": "no page errors",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "schema 400 degrades to a toast with the reason and an empty node",
+    "ok": true,
+    "detail": "schema tbl:orders: unknown"
+  },
+  {
+    "name": "flows 400 degrades to a toast and an empty list",
+    "ok": true,
+    "detail": "flows: unknown"
+  },
+  {
+    "name": "no page errors without the engine ops",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "cyclic links fall back to a grid",
+    "ok": true,
+    "detail": "[[\"a\",\"b\"],[\"c\"]]"
+  }
+]
