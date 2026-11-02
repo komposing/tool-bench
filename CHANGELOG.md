@@ -1,5 +1,15 @@
 # Changelog
 
+## 3.6.0 — C870
+
+- **Pack & Ship** (`TB:pack-ship` v1.1.0): packing slip and label print as **one job**. After `print.queue.add` the page
+  calls `label.bytes` (the Parcel2Go label file, base64, transient) and renders its first page with pdf.js (cdnjs,
+  4.10.38) at 300 dpi into page 2 of the same 4x6 document, repeated per copy. Image labels pass through; if the render
+  fails the label still opens in its own tab as before. Contract adds `cap:label.bytes`.
+
+### Fixed
+- none
+
 ## 3.5.1 — C867
 
 - **Pack & Ship** (`TB:pack-ship` v1.0.1): the print document carries its own `message` listener and prints itself when the

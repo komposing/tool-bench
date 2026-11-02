@@ -5,7 +5,7 @@
   "key": "repo:komposing/tool-bench",
   "name": "tool-bench",
   "title": "Tool Bench",
-  "version": "3.5.1",
+  "version": "3.6.0",
   "purpose": "Single-file host for small HTML tools that front CA_V3 flows: shared config injection, sandboxed runs, tool contracts naming the CA_V3 objects each tool depends on.",
   "owner": "Nick",
   "lifecycle": "active",
@@ -97,6 +97,12 @@
     "tools": [
       {
         "key": "cap:discogs.orders.list",
+        "by": [
+          "TB:pack-ship"
+        ]
+      },
+      {
+        "key": "cap:label.bytes",
         "by": [
           "TB:pack-ship"
         ]
@@ -232,6 +238,11 @@
       "version": "3.5.1",
       "change": "C867",
       "note": "Pack & Ship (TB:pack-ship v1.0.1): Print posts into the self-printing preview document instead of calling print() across the sandbox origin (U865)"
+    },
+    {
+      "version": "3.6.0",
+      "change": "C870",
+      "note": "Pack & Ship (TB:pack-ship v1.1.0): one print job; the label PDF comes back as bytes (label.bytes) and is rendered with pdf.js into page 2 of the same 4x6 document"
     }
   ]
 }
