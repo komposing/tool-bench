@@ -5,7 +5,7 @@
   "key": "repo:komposing/tool-bench",
   "name": "tool-bench",
   "title": "Tool Bench",
-  "version": "3.6.0",
+  "version": "3.7.0",
   "purpose": "Single-file host for small HTML tools that front CA_V3 flows: shared config injection, sandboxed runs, tool contracts naming the CA_V3 objects each tool depends on.",
   "owner": "Nick",
   "lifecycle": "active",
@@ -243,6 +243,11 @@
       "version": "3.6.0",
       "change": "C870",
       "note": "Pack & Ship (TB:pack-ship v1.1.0): one print job; the label PDF comes back as bytes (label.bytes) and is rendered with pdf.js into page 2 of the same 4x6 document"
+    },
+    {
+      "version": "3.7.0",
+      "change": "C944",
+      "note": "Drafting Table (TB:drafting-table v1.1.0): poll budget from std drafting reach.page.poll: paused while hidden, 2 s for 30 s after a change, idle backoff 10/30/60 s, one replay in flight (T536)"
     }
   ]
 }

@@ -6,10 +6,10 @@
   "format": "toolbench.tool/1",
   "id": "TB:drafting-table",
   "name": "Drafting Table",
-  "description": "Paired concept-modelling board (ca.draft/1): palette, board, inspector, analysis and finder over the CA_V3 Drafting Engine. The op log is the draft; the page replays it every 2 s so the agent's ops and proposals appear live.",
+  "description": "Paired concept-modelling board (ca.draft/1): palette, board, inspector, analysis and finder over the CA_V3 Drafting Engine. The op log is the draft; the page replays it on the poll budget in std drafting reach.page.poll (2 s after a change, backing off while idle, paused while hidden) so the agent's ops and proposals appear live.",
   "category": "CA_V3",
   "tags": ["drafting", "design", "paired", "ca.draft/1"],
-  "version": "1.0.0",
+  "version": "1.1.0",
   "contract": { "config_keys": ["drafting"], "requires": ["wf:VkS7B5UucVMrNwWm", "std:drafting"] },
   "sandbox": { "scripts": true, "forms": false, "modals": false, "popups": false, "downloads": false, "sameOrigin": false },
   "config_schema": {
@@ -17,7 +17,7 @@
     "fields": [
       { "path": "url", "label": "Drafting endpoint", "type": "url", "required": true, "default": "https://komposing.app.n8n.cloud/webhook/ca-v3-drafting" },
       { "path": "headers.X-Api-Key", "label": "Viewer key (X-Api-Key)", "type": "secret", "required": false, "secret": true, "help": "CA_V3 viewer key. Leave empty to use the key saved for the CA_V3 Viewer (cav3)." },
-      { "path": "poll_ms", "label": "Replay poll (ms)", "type": "number", "default": 2000, "help": "How often the page asks for the other party's ops while visible" },
+      { "path": "poll_ms", "label": "Active poll override (ms)", "type": "number", "help": "Blank: the active interval from std drafting reach.page.poll (2 s). Set it to replace only the active interval; idle backoff and the hidden pause still follow the standard" },
       { "path": "debounce_ms", "label": "Apply debounce (ms)", "type": "number", "default": 300 },
       { "path": "draft_id", "label": "Open draft", "type": "string", "help": "Draft opened on start; blank shows the draft list" }
     ]
@@ -224,7 +224,7 @@ h3{font:600 10px/1 var(--mono);letter-spacing:.18em;text-transform:uppercase;col
 </div></div>
 <div class="sheet" id="shSet"><div class="box">
   <h3>Settings</h3>
-  <div class="row"><span class="lbl">poll ms</span><input id="cPoll" type="number" min="500" step="100"></div>
+  <div class="row"><span class="lbl">active ms</span><input id="cPoll" type="number" min="500" step="100" placeholder="std (2000)"></div>
   <div class="row"><span class="lbl">debounce</span><input id="cDeb" type="number" min="0" step="50"></div>
   <div id="cConn">
     <div class="row"><span class="lbl">endpoint</span><input id="cUrl"></div>
@@ -250,10 +250,28 @@ const CONF = {
   url: DC.url || "https://komposing.app.n8n.cloud/webhook/ca-v3-drafting",
   key: getPath(DC, "headers.X-Api-Key") || getPath(TC, "cav3.dashboard.headers.X-Api-Key") || "",
   keyFrom: getPath(DC, "headers.X-Api-Key") ? "drafting" : (getPath(TC, "cav3.dashboard.headers.X-Api-Key") ? "cav3" : ""),
-  poll: Math.max(500, +DC.poll_ms || 2000),
+  pollOverride: DC.poll_ms == null || DC.poll_ms === "" ? null : Math.max(500, +DC.poll_ms || 2000),
   debounce: Math.max(0, DC.debounce_ms == null ? 300 : +DC.debounce_ms),
   draft: DC.draft_id || ""
 };
+/* Poll budget: std drafting reach.page.poll (C944, T536). Built-in defaults equal std drafting v2; the engine's open
+   reply relays the live row as reach_page_poll once C903-s3 lands, and that wins. poll_ms overrides active_ms only. */
+const POLL_DEFAULT = { active_ms: 2000, active_window_ms: 30000, idle_ms: [10000, 30000, 60000], hidden: "pause", in_flight: 1, request_timeout_ms: 40000 };
+let POLL = clone0(POLL_DEFAULT), POLL_FROM = "default";
+function clone0(v){ return JSON.parse(JSON.stringify(v)); }
+function setPollBudget(src, from){
+  const p = clone0(POLL_DEFAULT);
+  if (src && typeof src === "object" && !Array.isArray(src)) {
+    for (const k of ["active_ms", "active_window_ms", "request_timeout_ms"]) if (+src[k] > 0) p[k] = +src[k];
+    if (Array.isArray(src.idle_ms) && src.idle_ms.length && src.idle_ms.every(x => +x > 0)) p.idle_ms = src.idle_ms.map(Number);
+    if (typeof src.hidden === "string") p.hidden = src.hidden;
+    for (const k of Object.keys(src)) if (!(k in p)) p[k] = src[k];   // unknown keys kept for later readers
+    POLL_FROM = from;
+  } else POLL_FROM = "default";
+  p.active_ms = Math.max(500, p.active_ms); p.idle_ms = p.idle_ms.map(x => Math.max(p.active_ms, x));
+  if (CONF.pollOverride != null) { p.active_ms = CONF.pollOverride; POLL_FROM += "+override"; }
+  POLL = p;
+}
 const AUTHOR = "user";
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
@@ -269,13 +287,13 @@ const parseRk = s => { const m = /^([a-z_]+):(.+?)(?:#(.+))?$/.exec(s || ""); re
 function toast(msg, bad){ const t = $("#toast"); t.textContent = msg; t.className = bad ? "bad" : ""; t.style.display = "block"; clearTimeout(toast.h); toast.h = setTimeout(() => t.style.display = "none", bad ? 6000 : 2600); }
 
 /* ============================== transport ============================== */
-async function call(op, params){
+async function call(op, params, signal){
   if (!CONF.key) throw new Error("No viewer key: set it in Tool Bench Settings (Drafting Table or CA_V3 Viewer) or in ⚙");
   let res;
   try {
     res = await fetch(CONF.url, { method: "POST", headers: { "Content-Type": "application/json", "X-Api-Key": CONF.key },
-      body: JSON.stringify(Object.assign({ op }, params || {})), cache: "no-store" });
-  } catch (e) { throw new Error("Drafting endpoint unreachable (network or CORS): " + (e.message || e)); }
+      body: JSON.stringify(Object.assign({ op }, params || {})), cache: "no-store", signal: signal || undefined });
+  } catch (e) { if (e && e.name === "AbortError") throw e; throw new Error("Drafting endpoint unreachable (network or CORS): " + (e.message || e)); }
   const txt = await res.text();
   let j; try { j = JSON.parse(txt); } catch (e) { throw new Error(`HTTP ${res.status}: ${trunc(txt, 140) || "empty response"}`); }
   if (Array.isArray(j)) j = j[0] || {};
@@ -304,6 +322,7 @@ let CAM = { x: 80, y: 60, k: 1 };
 let FLAGS = { reasoning: false, follow: false };
 let RECENT = new Map();    // rk -> {author, at}
 let lastPoll = 0, lastOk = 0, syncErr = "", busy = false, lastEdit = 0;
+let lastChange = 0, idleStep = 0, replayBusy = false, HELD = [];   // poll budget state (C944)
 
 function blankState(){
   return { draft: { id: DRAFT, title: "", attributes: { agent_ops: "ghost" } }, classes: {}, edge_classes: {}, nodes: {}, edges: {},
@@ -443,7 +462,7 @@ function emit(ops){
   if (!DRAFT) { toast("Open a draft first", true); return; }
   ops = Array.isArray(ops) ? ops : [ops];
   for (const o of ops) OUTBOX.push({ op: o.op, payload: o.payload, origin_request: o.origin_request || undefined });
-  lastEdit = Date.now();
+  lastEdit = Date.now(); if (ops.some(isChange)) markActive();
   rebuild(); renderAll();
   clearTimeout(flushTimer); flushTimer = setTimeout(pump, CONF.debounce);
 }
@@ -454,14 +473,16 @@ async function flush(){
   try {
     const r = await call("apply", { draft_id: DRAFT, ops: INFLIGHT.map(o => o.origin_request ? o : { op: o.op, payload: o.payload }), expect_seq: SEQ, author: AUTHOR });
     // ops the engine had before ours (another tab, the agent) go in first: they predate ours
+    if ((r.missing_ops || []).some(isChange)) markActive();
     for (const m of r.missing_ops || []) addLog(m, true);
     (r.applied || []).forEach((a, i) => { const o = INFLIGHT[i]; if (o) addLog({ seq: a.seq, author: AUTHOR, ts: new Date().toISOString(), op: o.op, payload: o.payload, origin_request: o.origin_request || "" }, false); });
     SEQ = Math.max(SEQ, r.seq_head || 0);
     INFLIGHT = []; lastOk = Date.now(); syncErr = "";
+    takeHeld();
     rebuild(); renderAll();
     if (OUTBOX.length) setTimeout(pump, 0);
   } catch (e) {
-    const sent = INFLIGHT; INFLIGHT = [];
+    const sent = INFLIGHT; INFLIGHT = []; takeHeld();
     syncErr = e.message; toast(e.message, true); console.error("drafting apply refused", e.message);
     if (e.body && e.body.outcome === "param_rejected") { await reload(); }   // the refused ops never landed: drop them, re-read the log
     else { OUTBOX = sent.concat(OUTBOX); }                                   // transport failure: keep them and retry on the next tick
@@ -488,36 +509,55 @@ function noteIncoming(e){
   if (ref && ref.id) RECENT.set(rk(ref), { author: tag, at: Date.now() });
   if (FLAGS.follow && /^agent:/.test(e.author || "") && ref) followTo(ref);
 }
+const QUIET_OPS = new Set(["view.set"]);   // camera housekeeping: never re-arms the active window
+const isChange = e => !QUIET_OPS.has(e && e.op);
+function markActive(){ lastChange = Date.now(); idleStep = 0; }
+// a replay that came back while our own apply was in flight may carry our ops before apply names their seq; hold it
+function takeHeld(){ const h = HELD; HELD = []; let n = 0; for (const e of h) if (!SEEN.has(e.seq)) { addLog(e, true); n++; } return n; }
+function pollDue(now){
+  if (now - lastChange < POLL.active_window_ms) return POLL.active_ms;
+  return POLL.idle_ms[Math.min(idleStep, POLL.idle_ms.length - 1)];
+}
+function pollPaused(){ return POLL.hidden === "pause" && document.visibilityState === "hidden"; }
 async function poll(){
-  if (!DRAFT) return;
-  lastPoll = Date.now();
+  if (!DRAFT || replayBusy) return;            // one replay in flight: the next goes only after this reply (long-poll ready)
+  replayBusy = true; lastPoll = Date.now();
+  const idle = Date.now() - lastChange >= POLL.active_window_ms;
+  const ctl = typeof AbortController === "function" ? new AbortController() : null;
+  const to = ctl ? setTimeout(() => ctl.abort(), POLL.request_timeout_ms) : 0;
   try {
     // exclude_author is not used: a second tab of the same user must see this tab's ops; own ops are skipped by seq instead
-    const r = await call("replay", { draft_id: DRAFT, since_seq: SEQ });
-    let n = 0;
-    for (const e of r.ops || []) { if (!SEEN.has(e.seq)) { addLog(e, true); n++; } }
-    SEQ = Math.max(SEQ, r.seq_head || 0);
+    const r = await call("replay", { draft_id: DRAFT, since_seq: SEQ }, ctl && ctl.signal);
+    let n = 0, changed = false;
+    for (const e of r.ops || []) { if (SEEN.has(e.seq)) continue; n++; if (isChange(e)) changed = true; if (INFLIGHT.length) HELD.push(e); else addLog(e, true); }
+    if (!INFLIGHT.length) SEQ = Math.max(SEQ, r.seq_head || 0);
     lastOk = Date.now(); syncErr = "";
-    if (n) { rebuild(); renderAll(); }
+    if (changed) markActive(); else if (idle) idleStep++;
+    if (n && !INFLIGHT.length) { rebuild(); renderAll(); }
     else setSync();
-  } catch (e) { syncErr = e.message; setSync(); }
+  } catch (e) { syncErr = e.name === "AbortError" ? "replay timed out after " + POLL.request_timeout_ms + " ms" : e.message; if (idle) idleStep++; setSync(); }
+  finally { clearTimeout(to); replayBusy = false; lastPoll = Date.now(); }   // the interval runs from the reply, not the request
 }
 async function pump(){
-  if (busy || !DRAFT) return;
+  if (!DRAFT) return;
+  const now = Date.now();
+  // replay runs beside apply (never awaited here) so a long-poll never holds local edits back
+  if (!OUTBOX.length && !replayBusy && !pollPaused() && now - lastPoll >= pollDue(now)) poll();
+  if (busy) return;
   busy = true;
-  try {
-    if (OUTBOX.length && Date.now() - lastEdit >= CONF.debounce) await flush();
-    else if (!OUTBOX.length && document.visibilityState === "visible" && Date.now() - lastPoll >= CONF.poll) await poll();
-  } finally { busy = false; setSync(); }
+  try { if (OUTBOX.length && now - lastEdit >= CONF.debounce) await flush(); }
+  finally { busy = false; setSync(); }
 }
 setInterval(pump, 250);
+document.addEventListener("visibilitychange", () => { if (!pollPaused() && DRAFT) { lastPoll = 0; pump(); } else setSync(); });   // back in view: catch up at once
 function setSync(state, txt){
   const el = $("#sync");
   if (!state) state = syncErr ? "err" : (OUTBOX.length || INFLIGHT.length ? "busy" : (DRAFT ? "ok" : ""));
   el.className = state;
   const ago = lastOk ? Math.round((Date.now() - lastOk) / 1000) + "s" : "—";
   $("#syncTxt").textContent = txt || (DRAFT ? `seq ${SEQ} · ${syncErr ? "error" : (OUTBOX.length + INFLIGHT.length ? (OUTBOX.length + INFLIGHT.length) + " pending" : "synced " + ago)}` : "no draft");
-  el.title = syncErr || "replay every " + CONF.poll + " ms, apply after " + CONF.debounce + " ms";
+  const due = DRAFT ? pollDue(Date.now()) : POLL.active_ms;
+  el.title = syncErr || (pollPaused() ? "replay paused while hidden" : "replay every " + Math.round(due / 100) / 10 + " s now (" + (Date.now() - lastChange < POLL.active_window_ms ? "active" : "idle") + "); active " + POLL.active_ms + " ms for " + POLL.active_window_ms / 1000 + " s after a change, idle " + POLL.idle_ms.map(x => x / 1000 + " s").join(" → ") + "; budget from " + POLL_FROM + "; apply after " + CONF.debounce + " ms");
 }
 
 /* ============================== drafts ============================== */
@@ -525,8 +565,9 @@ async function openDraft(id, title){
   setSync("busy", id ? "opening…" : "creating…");
   const r = await call("open", id ? { draft_id: id, author: AUTHOR } : { title: title || "untitled", author: AUTHOR });
   DRAFT = r.draft_id; PALETTE = r.palette || { classes: {}, edge_classes: {} };
+  setPollBudget(r.reach_page_poll || (r.reach && r.reach.page && r.reach.page.poll), "std drafting (open reply)");
   PALETTE.classes = PALETTE.classes || {}; PALETTE.edge_classes = PALETTE.edge_classes || {};
-  LOG = []; SEEN = new Set(); OUTBOX = []; INFLIGHT = []; SEQ = 0; SEL = []; INSP = null; ACTIVE_AN = ""; RECENT.clear();
+  LOG = []; SEEN = new Set(); OUTBOX = []; INFLIGHT = []; HELD = []; SEQ = 0; markActive(); SEL = []; INSP = null; ACTIVE_AN = ""; RECENT.clear();
   const rp = await call("replay", { draft_id: DRAFT, since_seq: 0 });
   for (const e of rp.ops || []) addLog(e, false);
   SEQ = Math.max(rp.seq_head || 0, r.seq_head || 0);
@@ -1429,7 +1470,7 @@ function saveSettings(values){
 }
 addEventListener("message", ev => { const d = ev.data; if (d && d.type === "toolbench:config:result") { if (!d.ok) toast("Settings refused: " + (d.errors || []).join("; "), true); } });
 $("#bSet").onclick = () => {
-  $("#cPoll").value = CONF.poll; $("#cDeb").value = CONF.debounce; $("#cUrl").value = CONF.url; $("#cKey").value = "";
+  $("#cPoll").value = CONF.pollOverride == null ? "" : CONF.pollOverride; $("#cDeb").value = CONF.debounce; $("#cUrl").value = CONF.url; $("#cKey").value = "";
   $("#cConn").style.display = TM ? "none" : "";
   $("#cNote").textContent = TM ? `Saved in Tool Bench settings (namespace drafting); the tool reloads. Endpoint ${CONF.url}; key ${CONF.key ? "from " + CONF.keyFrom : "missing: set it in Tool Bench Settings"}.`
                                : "Standalone: kept in memory for this page only.";
@@ -1437,10 +1478,10 @@ $("#bSet").onclick = () => {
 };
 $("#cClose").onclick = () => $("#shSet").classList.remove("open");
 $("#cSave").onclick = () => {
-  const poll = Math.max(500, +$("#cPoll").value || 2000), deb = Math.max(0, +$("#cDeb").value || 0);
+  const pv = $("#cPoll").value.trim(), poll = pv === "" ? null : Math.max(500, +pv || 2000), deb = Math.max(0, +$("#cDeb").value || 0);
   $("#shSet").classList.remove("open");
-  if (TM) { saveSettings({ poll_ms: poll, debounce_ms: deb, draft_id: DRAFT || CONF.draft }); return; }
-  CONF.poll = poll; CONF.debounce = deb;
+  if (TM) { saveSettings({ poll_ms: poll == null ? "" : poll, debounce_ms: deb, draft_id: DRAFT || CONF.draft }); return; }
+  CONF.pollOverride = poll; CONF.debounce = deb; setPollBudget(POLL_FROM.startsWith("std") ? POLL : null, POLL_FROM.replace("+override", ""));
   if ($("#cUrl").value.trim()) CONF.url = $("#cUrl").value.trim();
   if ($("#cKey").value) { CONF.key = $("#cKey").value; CONF.keyFrom = "this page"; }
   toast("Settings applied"); if (!DRAFT) start();
@@ -1461,7 +1502,7 @@ async function start(){
   try { if (CONF.draft) await openDraft(CONF.draft); else showDrafts(); }
   catch (e) { syncErr = e.message; toast(e.message, true); setSync(); showDrafts(); }
 }
-window.DT = { get S(){ return S; }, get R(){ return R; }, get SEQ(){ return SEQ; }, get LOG(){ return LOG; }, get OUTBOX(){ return OUTBOX; }, emit, openDraft, step, rebuild };
+window.DT = { get S(){ return S; }, get R(){ return R; }, get SEQ(){ return SEQ; }, get LOG(){ return LOG; }, get OUTBOX(){ return OUTBOX; }, get POLL(){ return POLL; }, get POLL_FROM(){ return POLL_FROM; }, pollDue, emit, openDraft, step, rebuild };
 start();
 </script>
 </body></html>

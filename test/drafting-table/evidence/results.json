@@ -1,0 +1,132 @@
+[
+ {
+  "name": "open smoke draft in two tabs",
+  "ok": true,
+  "detail": "seq 7 in both"
+ },
+ {
+  "name": "type-to-create class (class.define)",
+  "ok": true,
+  "detail": "kk4ykr0fn"
+ },
+ {
+  "name": "drag class onto board (node.add)",
+  "ok": true,
+  "detail": "nk4yve1uh"
+ },
+ {
+  "name": "drag-to-relate onto an edge midpoint (edge.add edge→edge)",
+  "ok": true,
+  "detail": "{\"from\":{\"type\":\"node\",\"id\":\"nk4yve1uh\"},\"to\":{\"type\":\"edge\",\"id\":\"e1\"}}"
+ },
+ {
+  "name": "typed edge name creates an edge class (edge_class.define)",
+  "ok": true,
+  "detail": "xk4z9m3jp"
+ },
+ {
+  "name": "typed existing edge name reuses the class",
+  "ok": true,
+  "detail": "depends_on"
+ },
+ {
+  "name": "drag-to-relate onto a palette class (blank name = relates_to)",
+  "ok": true
+ },
+ {
+  "name": "add attribute on instance (node.amend)",
+  "ok": true
+ },
+ {
+  "name": "promote attribute to class (attr.promote + class.amend)",
+  "ok": true,
+  "detail": "{\"sla\":\"99.9\"}"
+ },
+ {
+  "name": "annotate (note.set, anchored)",
+  "ok": true
+ },
+ {
+  "name": "group two nodes (group.set)",
+  "ok": true
+ },
+ {
+  "name": "analysis on the group (analysis.set)",
+  "ok": true,
+  "detail": "ak5162bp1"
+ },
+ {
+  "name": "impact request raised (reason.request)",
+  "ok": true
+ },
+ {
+  "name": "second tab replays every action within 2 s (+250 ms tick)",
+  "ok": true,
+  "detail": "989 ms after A's last apply landed"
+ },
+ {
+  "name": "agent proposals appear ghosted (not applied)",
+  "ok": true
+ },
+ {
+  "name": "reason.respond answers the request and lands in the analysis thread",
+  "ok": true
+ },
+ {
+  "name": "ghost renders translucent on the board",
+  "ok": true
+ },
+ {
+  "name": "accept from the panel (ops.accept) applies the op",
+  "ok": true
+ },
+ {
+  "name": "reject from the panel (ops.reject) drops it",
+  "ok": true
+ },
+ {
+  "name": "second tab sees accept/reject",
+  "ok": true
+ },
+ {
+  "name": "agent_ops apply: agent ops render normally",
+  "ok": true
+ },
+ {
+  "name": "finder returns doc cards for 'drafting'",
+  "ok": true,
+  "detail": "1 card(s)"
+ },
+ {
+  "name": "dropped doc card becomes a node with source_ref kept (card.drop)",
+  "ok": true,
+  "detail": "{\"type\":\"doc\",\"doc_key\":\"drafting_table\",\"section\":\"design\",\"version\":1}"
+ },
+ {
+  "name": "finder returns draft cards for 'ship'",
+  "ok": true
+ },
+ {
+  "name": "card dropped into the analysis becomes a member",
+  "ok": true,
+  "detail": "[{\"type\":\"group\",\"id\":\"gk50mqa0p\"},{\"type\":\"node\",\"id\":\"n1\"}]"
+ },
+ {
+  "name": "board node dragged into the analysis becomes a member",
+  "ok": true
+ },
+ {
+  "name": "node.move sent once per node on drag end",
+  "ok": true,
+  "detail": "1 op(s)"
+ },
+ {
+  "name": "phone width: panes collapse to sheets, no horizontal scroll",
+  "ok": true
+ },
+ {
+  "name": "no page errors",
+  "ok": true,
+  "detail": ""
+ }
+]
