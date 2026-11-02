@@ -1,0 +1,77 @@
+[
+ {
+  "name": "built-in defaults equal std drafting v2",
+  "ok": true,
+  "detail": "[{\"active_ms\":2000,\"active_window_ms\":30000,\"idle_ms\":[10000,30000,60000],\"hidden\":\"pause\",\"in_flight\":1,\"request_timeout_ms\":40000},\"default\"]"
+ },
+ {
+  "name": "2 s polling for ~30 s after open",
+  "ok": true,
+  "detail": "11 replays, gaps 2.5,2.8,2.6,2.7,2.3,2.8,2.3,2.5,2.5,2.5"
+ },
+ {
+  "name": "idle backoff 10 s → 30 s → 60 s → 60 s",
+  "ok": true,
+  "detail": "gaps 10.7,30.8,60.5,60.8"
+ },
+ {
+  "name": "remote change returns the page to 2 s",
+  "ok": true,
+  "detail": "seen true, gaps 2.5,2.5,2.5,2.5,2.5"
+ },
+ {
+  "name": "local change returns the page to 2 s",
+  "ok": true,
+  "detail": "4 replays in 9 s, gaps 2.8,2.8,2.5"
+ },
+ {
+  "name": "no replay while hidden (3 min)",
+  "ok": true,
+  "detail": "0 replays"
+ },
+ {
+  "name": "replay at once on return to view",
+  "ok": true,
+  "detail": "1 replay(s) within 0.5 s"
+ },
+ {
+  "name": "no page errors (defaults rig)",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "one replay in flight while the reply is held 25 s",
+  "ok": true,
+  "detail": "in flight 1, max 1, sent 1"
+ },
+ {
+  "name": "local edit applied while replay is held",
+  "ok": true,
+  "detail": "1 apply call(s)"
+ },
+ {
+  "name": "next replay only after the reply, one active interval later",
+  "ok": true,
+  "detail": "2001"
+ },
+ {
+  "name": "own op not doubled when replay and apply overlap",
+  "ok": true,
+  "detail": "1 log entries"
+ },
+ {
+  "name": "no page errors (long-poll rig)",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "open reply reach_page_poll drives the schedule",
+  "ok": true,
+  "detail": "std drafting (open reply); gaps 4,5.8,20.3,20.8"
+ },
+ {
+  "name": "poll_ms overrides active_ms only",
+  "ok": true,
+  "detail": "{\"active_ms\":4000,\"active_window_ms\":30000,\"idle_ms\":[10000,30000,60000],\"hidden\":\"pause\",\"in_flight\":1,\"request_timeout_ms\":40000}"
+ }
+]

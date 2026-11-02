@@ -1,5 +1,19 @@
 # Changelog
 
+## 3.7.0 — C944
+
+- **Drafting Table** (`TB:drafting-table` v1.1.0, T536 page half): replay follows a **poll budget** held as data in
+  std drafting `reach.page.poll` (v2): paused while the tab is hidden (one replay at once on return); every 2 s for 30 s
+  after a local or remote change (opening the draft counts; the camera's `view.set` does not); then 10 s, 30 s and
+  60 s while idle. One replay is in flight at a time and the next is sent only after its reply (40 s timeout), so the
+  page is ready for the long-poll replay of C903-s3; replay no longer holds local edits back, and ops a replay returns
+  while an apply is in flight are held until the apply names its seqs. The open reply's `reach_page_poll` (relayed by
+  the engine from the std row, C903-s3) wins over the built-in defaults, which equal std drafting v2. `poll_ms` now
+  overrides the active interval only and is blank by default. Harness `test/drafting-table/poll.js` (fake clock, 15 checks).
+
+### Fixed
+- none
+
 ## 3.6.0 — C870
 
 - **Pack & Ship** (`TB:pack-ship` v1.1.0): packing slip and label print as **one job**. After `print.queue.add` the page

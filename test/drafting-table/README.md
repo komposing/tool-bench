@@ -11,6 +11,7 @@ Needs Playwright with Chromium (not a repo dependency):
 ```bash
 NODE_PATH=$(npm root -g) node test/drafting-table/run.js
 NODE_PATH=$(npm root -g) node test/drafting-table/bench.js   # after node scripts/build.mjs
+NODE_PATH=$(npm root -g) node test/drafting-table/poll.js    # poll budget (C944): fake clock, hidden pause, backoff, one replay in flight
 ```
 
 `run.js` drives two tabs at 1280 px and one at 390 px through the acceptance list; `bench.js` runs the tool inside
