@@ -1,8 +1,9 @@
 // Local stand-in for the ca-v3-drafting webhook (UI mechanics only): append-only log, engine-minted seq,
 // missing_ops when expect_seq is behind, replay since_seq, list, find. Every request body is recorded.
 const fs = require("fs");
-module.exports = function mock(seed){
-  const S = JSON.parse(fs.readFileSync(seed, "utf8"));
+module.exports = function mock(seed, opts){
+  opts = opts || {};
+  const S = Object.assign(JSON.parse(fs.readFileSync(seed, "utf8")), opts.extra || {});   // extra: {schemas, flows} for the layer ops
   const drafts = { dmvx0i3t3686r: { title: "smoke", ops: S.ops.slice() } };
   const sent = [];
   function handle(body, key){
@@ -30,8 +31,23 @@ module.exports = function mock(seed){
         if (body.scope.includes("drafts") && /ship/i.test(body.q)) cards.push({ kind: "draft_object", id: "dmvx0i3t3686r:node:n1", title: "ship it (node, smoke)", excerpt: "ship it", source_ref: { type: "draft", draft_id: "dmvx0i3t3686r", ref: { type: "node", id: "n1" } } });
         return { json: { outcome: "ok", status: "ok", protocol: "ca.draft/1", cards, counts: { docs: cards.filter(c => c.kind === "doc_section").length, drafts: cards.filter(c => c.kind === "draft_object").length } } };
       }
+      // C980 layer ops (engine contract as given to the page); absent when the mock is built without `layers`
+      case "schema": {
+        if (!opts.layers) break;
+        const t = S.schemas && (S.schemas[body.key] || Object.values(S.schemas).find(x => x.name === body.key));
+        if (!t) return { json: { status: "error", outcome: "error", op: "schema", key: body.key, errors: [{ param: "key", value: body.key, reason: "unknown table" }] } };
+        return { json: Object.assign({ outcome: "ok", op: "schema", key: body.key }, t) };
+      }
+      case "flows": if (!opts.layers) break; return { json: { outcome: "ok", op: "flows", flows: (S.flows || []).map(f => ({ key: "wf:" + f.workflow.id, label: f.workflow.name, workflow_id: f.workflow.id, platform: "n8n", enabled: !!f.workflow.active })) } };
+      case "flow": {
+        if (!opts.layers) break;
+        const id = body.workflow_id || String(body.key || "").replace(/^wf:/, "");
+        const f = (S.flows || []).find(x => x.workflow.id === id);
+        if (!f) return { json: { status: "error", outcome: "error", op: "flow", errors: [{ param: "workflow_id", value: id, reason: "unknown workflow" }] } };
+        return { json: Object.assign({ outcome: "ok", op: "flow" }, f) };
+      }
     }
-    return { json: { status: "error", outcome: "param_rejected", errors: [{ param: "op", reason: "unknown" }] } };
+    return { status: 400, json: { status: "error", outcome: "param_rejected", errors: [{ param: "op", reason: "unknown" }] } };
   }
   // agent side, as ca_call drafting.apply would do it
   function agentApply(draft_id, ops){ return handle({ op: "apply", draft_id, ops, author: "agent:test" }, "test-key").json; }
