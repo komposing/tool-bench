@@ -2,17 +2,25 @@
 
 This repo also hosts the **CA_V4 UI lab** (`tools/drafting-table.html` and any `ca_v4*` page).
 A V4 session is NOT a V3 session: no C###, no S####, no `dev.*` broker calls, no CA_V3 Agent MCP.
+This block is a pointer; the procedure is the bootstrap (doc `ca_v4/bootstrap#code`), which wins where they disagree.
 
-**Start every V4 session:** call `mcp__ca-v4-docs__v4_bootstrap` with `surface "code"`, `tool "claude-code"`,
-`tool_session_id` = this session's id, and follow what it returns. The bootstrap (doc `ca_v4/bootstrap#code`)
-is the procedure; this file is only the pointer. On every `ca-v4-docs` call pass surface, tool and
-tool_session_id; `session_ref` = tool_session_id. The MCP is declared in `.mcp.json` (n8n OAuth today:
-run `/mcp` and sign in; bearer token later via `CA_V4_TOKEN`).
+**Two Code surfaces** — say which you are in your first line:
+- *Cloud session* (claude.ai/code; also every session the hub's scheduled task "CA_V4 build session (hub thread)" starts): the Doc MCP
+  is the project connector `CA_V4_Docs` (tools `mcp__CA_V4_Docs__v4_*`); `tool_session_id` = the `session_01…` id from `get_session`
+  or the session URL, never the CLI uuid. No `.mcp.json` applies; if you have no checkout, `add_repo komposing/tool-bench` and clone first.
+- *Local CLI* (a checkout on the operator's machine): the Doc MCP is `.mcp.json` server `ca-v4-docs` (tools `mcp__ca-v4-docs__v4_*`;
+  n8n OAuth today via `/mcp`, bearer token later via `CA_V4_TOKEN`); `tool_session_id` = the id the CLI reports.
 
-**Record:** design draft `dmw02q076r5fc`; UI lab transcript `dmw0tjl1kc1sx` (lab_entry kinds: finding, fix,
-evidence, decision, question, note; edges resolves, evidences) written with `v4_draft_apply`, author `agent:uilab`
-or `agent:<tool_session_id>`, every op payload carrying an id. Docs: `CA_V4_docs` via `v4_doc_*`
-(master `ca_v4/*`, drafting `ca_v4/drafting*`, increment `ca_v4/inc/<id>`).
+**Start every V4 session:** call `v4_bootstrap` with `surface "code"`, `tool "claude-code"`, `tool_session_id`, and follow what it returns.
+On every Doc MCP call pass surface, tool and tool_session_id; `session_ref` = tool_session_id (a V3 `S####` is refused).
+With a hub thread in your first message: `v4_hub_thread {thread_id}` for the brief, then post `ack`; post, then wait, as one move.
+
+**Record:** design draft `dmw02q076r5fc`; UI lab transcript `dmw0tjl1kc1sx` (lab_entry kinds: finding, fix, evidence, decision,
+question, note; edges resolves, evidences); Approvals UI design `dmw1122kroij7`. Which drafts are writable or ghost is
+`std ca_v4 drafting.*`. Write with `v4_draft_apply` using NEW ids — reusing an id overwrites the object in replayed state
+(`f-code-probe-01-F8`); change an existing node with `v4_draft_patch` (merge), never a raw `node.amend` (replace).
+Docs: `CA_V4_docs` via `v4_doc_*` (master `ca_v4/*`, drafting `ca_v4/drafting*`, increment `ca_v4/inc/<id>`); read
+`v4_doc_history` before rewriting a section another session may have moved.
 
 **Branch and commits (V4 lane of `scripts/check-change.mjs`, `ca.manifest.json` governance.v4):**
 branch `v4/<slug>` or `lab/<slug>`; every commit ends with exactly these two trailers and nothing from V3:
@@ -23,8 +31,12 @@ Session: <tool_session_id>
 Version, CHANGELOG, tool-block and history checks apply as in V3. If the gate still refuses a V4 branch,
 record a lab_finding (class leak, affects D17) and continue; do not rewrite commits to satisfy a V3 rule.
 
-**Close:** write `ca_v4/inc/<id>` with real ids (files, page version, commit/PR, lab entries, execs); append one line to
-`ca_v4/drafting#handoff`; run `v4_draft_pending` and list this session's pending op_ids.
+**Editing a V4 n8n flow** (Doc Store, Doc MCP, Hub, Core Writer): re-read the node from the workflow's current version
+right before the change and diff against your base; whole-node rewrites from a cached read have clobbered other sessions twice.
+
+**Close:** write `ca_v4/inc/<id>` with real ids (files, page version, commit/PR, lab entries, execs); run
+`v4_draft_pending {author_filter: "agent:<tool_session_id>", compact: true}` and list your pending op_ids; with a hub thread post
+`finding` then `ack "build done"`, otherwise append one line to `ca_v4/drafting#handoff`.
 
 Everything below applies to **V3 change branches** (`c<NNN>/…`) only.
 
