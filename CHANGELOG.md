@@ -1,5 +1,18 @@
 # Changelog
 
+## 3.8.1 — ca_v4/inc/code-setup-20261103
+
+- **Governance**: `scripts/check-change.mjs` gains a second lane. Branches `v4/<slug>` and `lab/<slug>` are CA_V4
+  increments: every commit carries `Increment: ca_v4/inc/<id>` and `Session: <tool_session_id>` and must not carry
+  `CA-Change`/`CA-Session` (D17: a V4 session is its principal). V3 change branches (`c<NNN>/…`) are unchanged.
+  Declared in `ca.manifest.json` `governance.v4` (schema extended). No version bump: no src/ or tools/ change.
+- **CA_V4 pointer**: `CLAUDE.md` gets a V4 block at the top (bootstrap first, record, trailers, close); `.mcp.json`
+  declares the CA_V4 Doc MCP (`ca-v4-docs`, n8n OAuth; bearer via `CA_V4_TOKEN` when issued).
+- **Release records**: `releases[].change` in the manifest accepts a V4 increment id (`ca_v4/inc/<id>`) as well as a `C###`.
+
+### Fixed
+- none
+
 ## 3.8.0 — C980
 
 - **Drafting Table** (`TB:drafting-table` v1.2.0, T560): **layers**. A segmented control in the toolbar switches the board

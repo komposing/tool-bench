@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "ca-v4-docs": {
+      "type": "http",
+      "url": "https://komposing.app.n8n.cloud/mcp/ca-v4-docs"
+    }
+  }
+}

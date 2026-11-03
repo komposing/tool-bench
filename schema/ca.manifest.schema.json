@@ -328,6 +328,39 @@
               "CA-Session"
             ]
           }
+        },
+        "v4": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "standard",
+            "branch_pattern",
+            "trailers"
+          ],
+          "properties": {
+            "standard": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "branch_pattern": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "trailers": {
+              "type": "array",
+              "minItems": 2,
+              "items": {
+                "enum": [
+                  "Increment",
+                  "Session"
+                ]
+              }
+            },
+            "note": {
+              "type": "string",
+              "maxLength": 300
+            }
+          }
         }
       }
     },
@@ -353,7 +386,7 @@
           },
           "change": {
             "type": "string",
-            "pattern": "^C[0-9]{3,}$"
+            "pattern": "^(C[0-9]{3,}|ca_v4/inc/[A-Za-z0-9][A-Za-z0-9._-]*)$"
           },
           "note": {
             "type": "string",
