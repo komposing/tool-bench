@@ -5,7 +5,7 @@
   "key": "repo:komposing/tool-bench",
   "name": "tool-bench",
   "title": "Tool Bench",
-  "version": "3.8.0",
+  "version": "3.9.0",
   "purpose": "Single-file host for small HTML tools that front CA_V3 flows: shared config injection, sandboxed runs, tool contracts naming the CA_V3 objects each tool depends on.",
   "owner": "Nick",
   "lifecycle": "active",
@@ -253,6 +253,11 @@
       "version": "3.8.0",
       "change": "C980",
       "note": "Drafting Table (TB:drafting-table v1.2.0, 2026-11-02): layers: global, data model (data-storing nodes expand into columns via engine op schema; column drags make field_map edges) and process flow (engine ops flows and flow drawn as step diagrams, draft read-only); layer kept in view.set (T560)"
+    },
+    {
+      "version": "3.9.0",
+      "change": "C000",
+      "note": "Drafting Table (TB:drafting-table v1.3.0, 2026-11-03): drill-down: scope nesting (scope key; breadcrumbs; portal chips; view.set carries scope), ports from attribute keys (from.key/to.key edges), semantic zoom, group collapse, history scrub, keyboard walk"
     }
   ]
 }

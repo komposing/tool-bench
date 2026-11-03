@@ -1,5 +1,29 @@
 # Changelog
 
+## 3.9.0 — C___
+
+- **Drafting Table** (`TB:drafting-table` v1.3.0): **drill-down**, so the board reads as a node graph. Six mechanisms, each one
+  evolution of the root principle (one ref per object, relate to anything, constraints as lenses) and no new op.
+  **Scope**: one key `scope: {type:"node", id}` on nodes, notes and groups says which node's board they sit on; a node with
+  anything scoped to it shows a `▣ n` badge and a 2.5px stroke; a double press, Enter, the badge or *Open as board* drills
+  in; a breadcrumb in the toolbar shows the trail and climbs back; Escape climbs out; new objects take the current scope;
+  alt-drop moves a selection onto a node's board (`node.amend` / `note.set` / `group.set` with `scope`); *Move out* lifts
+  it. An edge whose far end is outside the board resolves to the nearest ancestor on it, else to a **portal chip** (`⇱`) in
+  a column left of the content; clicking a portal goes to the board that holds its object. `view.set` carries the scope.
+  **Ports**: a *Ports* toggle (view state) draws a node's attribute keys (own and inherited) as rows with handles; dragging
+  from one makes an edge carrying `from.key`, dropping on another node's row sets `to.key`; at detail zoom the rows open
+  without the toggle. **Semantic zoom**: below 0.55 nodes draw as chips (label only, no edge labels or handles), above 1.6
+  attributes open inline. **Collapse**: `collapsed: true` on `group.set` folds a group to one node-sized box with a member
+  count that moves as a unit; edges to members re-route to it and edges inside it hide; a double press expands.
+  **History**: a toolbar toggle replays the log to any seq on a slider (op · author · time shown); the board is read-only
+  while scrubbing; *mark* remembers a seq and later changes are highlighted. **Keyboard**: arrows walk along edges from the
+  selected node, Enter drills in, Escape clears, climbs, then closes history. Double press is detected in the pointer
+  handler because the board re-renders between clicks and the browser's dblclick does not fire across them.
+  Harness `test/drafting-table/lab.js` (25 checks) against the same stand-in engine; run.js, layers.js and poll.js unchanged.
+
+### Fixed
+- none
+
 ## 3.8.0 — C980
 
 - **Drafting Table** (`TB:drafting-table` v1.2.0, T560): **layers**. A segmented control in the toolbar switches the board
