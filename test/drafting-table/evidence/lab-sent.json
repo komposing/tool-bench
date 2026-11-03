@@ -1,0 +1,395 @@
+[
+ {
+  "op": "apply",
+  "draft_id": "dmvx0i3t3686r",
+  "ops": [
+   {
+    "op": "node.add",
+    "payload": {
+     "id": "n2",
+     "class_id": "undefined",
+     "label": "despatch",
+     "attributes": {},
+     "pos": {
+      "x": 420,
+      "y": 60
+     }
+    }
+   },
+   {
+    "op": "node.add",
+    "payload": {
+     "id": "n3",
+     "class_id": "undefined",
+     "label": "invoice",
+     "attributes": {},
+     "pos": {
+      "x": 420,
+      "y": 220
+     }
+    }
+   },
+   {
+    "op": "edge.add",
+    "payload": {
+     "id": "e12",
+     "edge_class_id": "relates_to",
+     "from": {
+      "type": "node",
+      "id": "n1"
+     },
+     "to": {
+      "type": "node",
+      "id": "n2"
+     },
+     "attributes": {}
+    }
+   },
+   {
+    "op": "node.amend",
+    "payload": {
+     "id": "n1",
+     "attributes": {
+      "owner": "ops",
+      "sla": "24h",
+      "channel": ""
+     }
+    }
+   },
+   {
+    "op": "node.add",
+    "payload": {
+     "id": "k1",
+     "class_id": "undefined",
+     "label": "pick",
+     "attributes": {
+      "bin": "A3"
+     },
+     "pos": {
+      "x": 40,
+      "y": 40
+     },
+     "scope": {
+      "type": "node",
+      "id": "n1"
+     }
+    }
+   },
+   {
+    "op": "node.add",
+    "payload": {
+     "id": "k2",
+     "class_id": "undefined",
+     "label": "pack",
+     "attributes": {},
+     "pos": {
+      "x": 300,
+      "y": 40
+     },
+     "scope": {
+      "type": "node",
+      "id": "n1"
+     }
+    }
+   },
+   {
+    "op": "edge.add",
+    "payload": {
+     "id": "ke1",
+     "edge_class_id": "relates_to",
+     "from": {
+      "type": "node",
+      "id": "k1"
+     },
+     "to": {
+      "type": "node",
+      "id": "k2"
+     },
+     "attributes": {}
+    }
+   },
+   {
+    "op": "edge.add",
+    "payload": {
+     "id": "ke2",
+     "edge_class_id": "relates_to",
+     "from": {
+      "type": "node",
+      "id": "k2"
+     },
+     "to": {
+      "type": "node",
+      "id": "n2"
+     },
+     "attributes": {}
+    }
+   }
+  ],
+  "author": "agent:test"
+ },
+ {
+  "op": "apply",
+  "draft_id": "dmvx0i3t3686r",
+  "ops": [
+   {
+    "op": "view.set",
+    "payload": {
+     "camera": {
+      "x": 234,
+      "y": 237,
+      "k": 0.97
+     },
+     "selection": [],
+     "layer": "global",
+     "scope": {
+      "type": "node",
+      "id": "n1"
+     }
+    }
+   }
+  ],
+  "expect_seq": 15,
+  "author": "user"
+ },
+ {
+  "op": "apply",
+  "draft_id": "dmvx0i3t3686r",
+  "ops": [
+   {
+    "op": "node.add",
+    "payload": {
+     "id": "nxfmd70b0",
+     "class_id": "undefined",
+     "label": "undefined",
+     "attributes": {},
+     "pos": {
+      "x": 396,
+      "y": 347
+     },
+     "scope": {
+      "type": "node",
+      "id": "n1"
+     }
+    }
+   },
+   {
+    "op": "node.amend",
+    "payload": {
+     "id": "nxfmd70b0",
+     "label": "label"
+    }
+   }
+  ],
+  "expect_seq": 16,
+  "author": "user"
+ },
+ {
+  "op": "apply",
+  "draft_id": "dmvx0i3t3686r",
+  "ops": [
+   {
+    "op": "view.set",
+    "payload": {
+     "camera": {
+      "x": 239,
+      "y": 148,
+      "k": 0.76
+     },
+     "selection": [],
+     "layer": "global",
+     "scope": null
+    }
+   }
+  ],
+  "expect_seq": 18,
+  "author": "user"
+ },
+ {
+  "op": "apply",
+  "draft_id": "dmvx0i3t3686r",
+  "ops": [
+   {
+    "op": "edge_class.define",
+    "payload": {
+     "id": "xxfn2p2vr",
+     "name": "bounds",
+     "parent": "relates_to",
+     "directional": true,
+     "attributes": {},
+     "style": {
+      "stroke": "hsl(21,55%,42%)"
+     }
+    }
+   },
+   {
+    "op": "edge.add",
+    "payload": {
+     "id": "exfn2p3wy",
+     "edge_class_id": "xxfn2p2vr",
+     "from": {
+      "type": "node",
+      "id": "n1",
+      "key": "sla"
+     },
+     "to": {
+      "type": "node",
+      "id": "n2"
+     },
+     "attributes": {}
+    }
+   }
+  ],
+  "expect_seq": 19,
+  "author": "user"
+ },
+ {
+  "op": "apply",
+  "draft_id": "dmvx0i3t3686r",
+  "ops": [
+   {
+    "op": "group.set",
+    "payload": {
+     "id": "gxfp3n48s",
+     "label": "group",
+     "member_refs": [
+      {
+       "type": "node",
+       "id": "n1"
+      },
+      {
+       "type": "node",
+       "id": "n2"
+      }
+     ],
+     "dynamic": false,
+     "style": {}
+    }
+   }
+  ],
+  "expect_seq": 21,
+  "author": "user"
+ },
+ {
+  "op": "apply",
+  "draft_id": "dmvx0i3t3686r",
+  "ops": [
+   {
+    "op": "group.set",
+    "payload": {
+     "id": "gxfp3n48s",
+     "label": "group",
+     "member_refs": [
+      {
+       "type": "node",
+       "id": "n1"
+      },
+      {
+       "type": "node",
+       "id": "n2"
+      }
+     ],
+     "dynamic": false,
+     "style": {},
+     "collapsed": true,
+     "pos": {
+      "x": -8,
+      "y": -10,
+      "w": 614,
+      "h": 142
+     }
+    }
+   }
+  ],
+  "expect_seq": 22,
+  "author": "user"
+ },
+ {
+  "op": "apply",
+  "draft_id": "dmvx0i3t3686r",
+  "ops": [
+   {
+    "op": "group.set",
+    "payload": {
+     "id": "gxfp3n48s",
+     "label": "group",
+     "member_refs": [
+      {
+       "type": "node",
+       "id": "n1"
+      },
+      {
+       "type": "node",
+       "id": "n2"
+      }
+     ],
+     "dynamic": false,
+     "style": {},
+     "collapsed": false,
+     "pos": {
+      "x": -8,
+      "y": -10,
+      "w": 614,
+      "h": 142
+     }
+    }
+   }
+  ],
+  "expect_seq": 23,
+  "author": "user"
+ },
+ {
+  "op": "apply",
+  "draft_id": "dmvx0i3t3686r",
+  "ops": [
+   {
+    "op": "view.set",
+    "payload": {
+     "camera": {
+      "x": 234,
+      "y": 237,
+      "k": 0.97
+     },
+     "selection": [],
+     "layer": "global",
+     "scope": {
+      "type": "node",
+      "id": "n1"
+     }
+    }
+   },
+   {
+    "op": "view.set",
+    "payload": {
+     "camera": {
+      "x": -21,
+      "y": 236,
+      "k": 0.76
+     },
+     "selection": [],
+     "layer": "global",
+     "scope": null
+    }
+   }
+  ],
+  "expect_seq": 24,
+  "author": "user"
+ },
+ {
+  "op": "apply",
+  "draft_id": "dmvx0i3t3686r",
+  "ops": [
+   {
+    "op": "node.amend",
+    "payload": {
+     "id": "n3",
+     "scope": {
+      "type": "node",
+      "id": "n1"
+     }
+    }
+   }
+  ],
+  "expect_seq": 26,
+  "author": "user"
+ }
+]
