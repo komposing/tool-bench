@@ -1,37 +1,55 @@
 #!/usr/bin/env node
 // ca.repo/1 mutation checks for a change branch against main.
 //   node scripts/check-change.mjs <base-ref> <branch-name>
-// Fails closed (I4) when: the branch isn't named for a change; a commit lacks the
-// CA-Change or CA-Session trailer, or names a different change than the branch; source
-// changed without a version bump; the version went backwards; the CHANGELOG has no entry
-// for the version; a released version's commit or a storage migration was rewritten.
+// Two governed lanes, chosen by the branch name (ca.manifest.json governance):
+//   V3 change branch  c<NNN>/<slug>  - every commit carries CA-Change: C### and CA-Session: S####
+//   V4 lane           v4/<slug> or lab/<slug> - every commit carries Increment: ca_v4/inc/<id> and
+//                     Session: <tool_session_id>; never a C### or S#### (D17: a V4 session is its principal)
+// Fails closed (I4) when: the branch matches neither lane; a commit lacks its lane's trailers or
+// names a different change/increment than its siblings; source changed without a version bump;
+// the version went backwards; the CHANGELOG has no entry for the version; a released version's
+// commit or a storage migration was rewritten.
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
-import { readJson, semverCmp, TRAILER_RE, readToolBlock, BUG_TRAILER_RE, parseFixed } from "./lib.mjs";
+import { readJson, semverCmp, TRAILER_RE, V4_TRAILER_RE, readToolBlock, BUG_TRAILER_RE, parseFixed } from "./lib.mjs";
 
 const [base = "origin/main", branch = process.env.GITHUB_HEAD_REF || ""] = process.argv.slice(2);
 const git = (...a) => execFileSync("git", a, { encoding: "utf8" }).trim();
 const errors = [];
 
 const manifest = readJson("ca.manifest.json");
-const branchRe = new RegExp(manifest.governance.branch_pattern);
-if (!branchRe.test(branch)) errors.push(`branch ${branch || "(unknown)"} does not match ${manifest.governance.branch_pattern}`);
+const gov = manifest.governance;
+const v3Re = new RegExp(gov.branch_pattern);
+const v4Re = new RegExp((gov.v4 && gov.v4.branch_pattern) || "^(v4|lab)/[a-z0-9][a-z0-9-]*$");
+const lane = v3Re.test(branch) ? "v3" : (v4Re.test(branch) ? "v4" : "");
+if (!lane) errors.push(`branch ${branch || "(unknown)"} matches neither ${gov.branch_pattern} (V3 change) nor ${v4Re.source} (V4 lane)`);
 const branchChange = (/^c([0-9]{3,})\//.exec(branch) || [])[1];
 
 const shas = git("rev-list", "--no-merges", `${base}..HEAD`).split("\n").filter(Boolean);
 if (!shas.length) errors.push("no commits on the branch");
 const changes = new Set();
+const increments = new Set();
 const bugTrailers = new Set();
 for (const sha of shas) {
   const msg = git("log", "-1", "--format=%B", sha);
   for (const m of msg.matchAll(BUG_TRAILER_RE)) bugTrailers.add(m[1]);
-  for (const [name, re] of Object.entries(TRAILER_RE)) {
-    const m = re.exec(msg);
-    if (!m) errors.push(`${sha.slice(0, 7)}: missing ${name} trailer`);
-    else if (name === "CA-Change") changes.add(m[1]);
+  if (lane === "v4") {
+    for (const [name, re] of Object.entries(V4_TRAILER_RE)) {
+      const m = re.exec(msg);
+      if (!m) errors.push(`${sha.slice(0, 7)}: missing ${name} trailer (V4 lane: Increment: ca_v4/inc/<id>, Session: <tool_session_id>)`);
+      else if (name === "Increment") increments.add(m[1]);
+    }
+    for (const [name, re] of Object.entries(TRAILER_RE)) if (re.test(msg)) errors.push(`${sha.slice(0, 7)}: ${name} is a V3 id; a V4 commit carries Increment and Session only (D17)`);
+  } else {
+    for (const [name, re] of Object.entries(TRAILER_RE)) {
+      const m = re.exec(msg);
+      if (!m) errors.push(`${sha.slice(0, 7)}: missing ${name} trailer`);
+      else if (name === "CA-Change") changes.add(m[1]);
+    }
   }
 }
 if (changes.size > 1) errors.push(`commits name more than one change: ${[...changes].join(", ")}`);
+if (increments.size > 1) errors.push(`commits name more than one increment: ${[...increments].join(", ")}`);
 if (branchChange && changes.size === 1 && ![...changes][0].endsWith(branchChange)) errors.push(`branch is for C${branchChange}, commits name ${[...changes][0]}`);
 
 let baseManifest = null;
@@ -79,4 +97,4 @@ if (!baseManifest || semverCmp(manifest.version, baseManifest.version) > 0) {
 if (!new RegExp(`^## ${manifest.version.replace(/\./g, "\\.")}\\b`, "m").test(changelog)) errors.push(`CHANGELOG.md has no "## ${manifest.version}" entry`);
 
 if (errors.length) { console.error("ca.repo/1 change checks failed:\n" + errors.map(e => "  - " + e).join("\n")); process.exit(1); }
-console.log(`ca.repo/1 change checks ok: ${shas.length} commit(s) for ${[...changes][0]}, version ${baseManifest ? baseManifest.version + " -> " : ""}${manifest.version}`);
+console.log(`ca.repo/1 change checks ok (${lane} lane): ${shas.length} commit(s) for ${lane === "v4" ? [...increments][0] : [...changes][0]}, version ${baseManifest ? baseManifest.version + " -> " : ""}${manifest.version}`);

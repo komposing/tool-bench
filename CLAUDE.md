@@ -1,3 +1,35 @@
+# CA_V4 — read this first
+
+This repo also hosts the **CA_V4 UI lab** (`tools/drafting-table.html` and any `ca_v4*` page).
+A V4 session is NOT a V3 session: no C###, no S####, no `dev.*` broker calls, no CA_V3 Agent MCP.
+
+**Start every V4 session:** call `mcp__ca-v4-docs__v4_bootstrap` with `surface "code"`, `tool "claude-code"`,
+`tool_session_id` = this session's id, and follow what it returns. The bootstrap (doc `ca_v4/bootstrap#code`)
+is the procedure; this file is only the pointer. On every `ca-v4-docs` call pass surface, tool and
+tool_session_id; `session_ref` = tool_session_id. The MCP is declared in `.mcp.json` (n8n OAuth today:
+run `/mcp` and sign in; bearer token later via `CA_V4_TOKEN`).
+
+**Record:** design draft `dmw02q076r5fc`; UI lab transcript `dmw0tjl1kc1sx` (lab_entry kinds: finding, fix,
+evidence, decision, question, note; edges resolves, evidences) written with `v4_draft_apply`, author `agent:uilab`
+or `agent:<tool_session_id>`, every op payload carrying an id. Docs: `CA_V4_docs` via `v4_doc_*`
+(master `ca_v4/*`, drafting `ca_v4/drafting*`, increment `ca_v4/inc/<id>`).
+
+**Branch and commits (V4 lane of `scripts/check-change.mjs`, `ca.manifest.json` governance.v4):**
+branch `v4/<slug>` or `lab/<slug>`; every commit ends with exactly these two trailers and nothing from V3:
+```
+Increment: ca_v4/inc/<id>
+Session: <tool_session_id>
+```
+Version, CHANGELOG, tool-block and history checks apply as in V3. If the gate still refuses a V4 branch,
+record a lab_finding (class leak, affects D17) and continue; do not rewrite commits to satisfy a V3 rule.
+
+**Close:** write `ca_v4/inc/<id>` with real ids (files, page version, commit/PR, lab entries, execs); append one line to
+`ca_v4/drafting#handoff`; run `v4_draft_pending` and list this session's pending op_ids.
+
+Everything below applies to **V3 change branches** (`c<NNN>/…`) only.
+
+---
+
 # Tool Bench — working rules for Claude sessions
 
 This repo is a CA_V3 dependency governed by **ca.repo/1** (CA_standards row `source_repo`).

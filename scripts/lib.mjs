@@ -58,6 +58,9 @@ export function semverCmp(a, b) {
 
 export const KEY_RE = /^([a-z][a-z_]*):(.+)$/;
 export const TRAILER_RE = { "CA-Change": /^CA-Change:\s*(C[0-9]{3,})\s*$/m, "CA-Session": /^CA-Session:\s*(S[0-9]{4,})\s*$/m };
+// CA_V4 branches (D17: a V4 session is its principal, never a C### or S####) carry the
+// increment doc and the tool session id instead: "Increment: ca_v4/inc/<id>" and "Session: <tool_session_id>".
+export const V4_TRAILER_RE = { "Increment": /^Increment:\s*(ca_v4\/inc\/[A-Za-z0-9][A-Za-z0-9._-]*)\s*$/m, "Session": /^Session:\s*(\S.{0,118})\s*$/m };
 
 // The tool file block (toolbench.tool/1): the same pattern the bench uses.
 export const BLOCK_RE = /<script\b[^>]*\bid=["']toolbench-tool["'][^>]*>([\s\S]*?)<\/script>/i;

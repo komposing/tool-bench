@@ -5,7 +5,7 @@
   "key": "repo:komposing/tool-bench",
   "name": "tool-bench",
   "title": "Tool Bench",
-  "version": "3.8.0",
+  "version": "3.8.1",
   "purpose": "Single-file host for small HTML tools that front CA_V3 flows: shared config injection, sandboxed runs, tool contracts naming the CA_V3 objects each tool depends on.",
   "owner": "Nick",
   "lifecycle": "active",
@@ -185,7 +185,16 @@
     "trailers": [
       "CA-Change",
       "CA-Session"
-    ]
+    ],
+    "v4": {
+      "standard": "doc:ca_v4/bootstrap#code",
+      "branch_pattern": "^(v4|lab)/[a-z0-9][a-z0-9-]*$",
+      "trailers": [
+        "Increment",
+        "Session"
+      ],
+      "note": "D17: a V4 session is its principal; V4 commits name the increment doc (ca_v4/inc/<id>) and the tool session id, never C### or S####"
+    }
   },
   "releases": [
     {
@@ -253,6 +262,11 @@
       "version": "3.8.0",
       "change": "C980",
       "note": "Drafting Table (TB:drafting-table v1.2.0, 2026-11-02): layers: global, data model (data-storing nodes expand into columns via engine op schema; column drags make field_map edges) and process flow (engine ops flows and flow drawn as step diagrams, draft read-only); layer kept in view.set (T560)"
+    },
+    {
+      "version": "3.8.1",
+      "change": "ca_v4/inc/code-setup-20261103",
+      "note": "V4 lane in the commit gate (Increment/Session trailers on v4|lab branches; governance.v4), CA_V4 pointer block in CLAUDE.md, .mcp.json for the CA_V4 Doc MCP. No page change."
     }
   ]
 }
