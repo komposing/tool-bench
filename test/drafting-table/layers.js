@@ -15,12 +15,12 @@ const results = [];
 const check = (name, ok, detail) => { results.push({ name, ok: !!ok, detail }); console.log((ok ? "PASS " : "FAIL ") + name + (detail ? " — " + detail : "")); };
 const EXTRA = {
   schemas: {
-    "tbl:orders": { table_id: "orders", name: "CA_orders", columns: [
+    "tbl:Pq0rdersTbl00001": { table_id: "Pq0rdersTbl00001", name: "CA_orders", columns: [
       { name: "id", type: "string", format: "", enum: null, key: "pk", observed: true, declared: true },
       { name: "customer_id", type: "string", format: "", enum: null, key: "fk:tbl:customers", observed: true, declared: true },
       { name: "status", type: "string", format: "", enum: ["paid", "shipped"], key: "", observed: true, declared: true },
       { name: "total", type: "number", format: "gbp", enum: null, key: "", observed: true, declared: false }], sample_rows: 20, declared_from: "std:tables" },
-    "tbl:customers": { table_id: "customers", name: "CA_customers", columns: [
+    "CA_customers": { table_id: "Cu5tomersTbl0001", name: "CA_customers", columns: [
       { name: "id", type: "string", format: "", enum: null, key: "pk", observed: true, declared: true },
       { name: "email", type: "string", format: "email", enum: null, key: "", observed: true, declared: true }], sample_rows: 5, declared_from: "std:tables" }
   },
@@ -33,8 +33,8 @@ const EXTRA = {
 // draft objects for the layers: a core_object class, two tables, a workflow node, a plain goal node
 const SEED_OPS = [
   { op: "class.define", payload: { id: "core_object", name: "core object", parent: "undefined", attributes: { kind: "", key: "" }, style: { fill: "#E3F2FD", stroke: "#1E66D0" } } },
-  { op: "node.add", payload: { id: "t_orders", class_id: "core_object", label: "orders", attributes: { kind: "tbl", key: "tbl:orders" }, pos: { x: 0, y: 200 } } },
-  { op: "node.add", payload: { id: "t_cust", class_id: "core_object", label: "customers", attributes: { kind: "tbl", key: "tbl:customers" }, pos: { x: 420, y: 200 } } },
+  { op: "node.add", payload: { id: "t_orders", class_id: "core_object", label: "orders", attributes: { kind: "tbl", key: "tbl:Pq0rdersTbl00001" }, pos: { x: 0, y: 200 } } },
+  { op: "node.add", payload: { id: "t_cust", class_id: "core_object", label: "customers", attributes: { kind: "tbl", key: "tbl:CA_customers" }, pos: { x: 420, y: 200 } } },
   { op: "node.add", payload: { id: "w_pack", class_id: "core_object", label: "Pack & Ship", attributes: { kind: "wf", key: "wf:Pqjdoot0EPzoQxj0" }, pos: { x: 0, y: 520 } } },
   { op: "class.define", payload: { id: "ledger", name: "ledger", parent: "undefined", attributes: { stores_data: true }, style: {} } },
   { op: "node.add", payload: { id: "t_ledger", class_id: "ledger", label: "ledger", attributes: {}, pos: { x: 0, y: 420 } } },
@@ -88,14 +88,35 @@ async function rig(browser, { layers = true } = {}){
     await page.click('[data-expand="t_orders"]'); await page.click('[data-expand="t_orders"]');
     await page.waitForFunction(() => document.querySelectorAll('[data-col="t_orders"]').length === 4);
     const sch = R.sent("schema");
-    check("expand calls schema once per key and renders the columns", sch.length === 1 && sch[0].key === "tbl:orders" && sch[0].draft_id === "dmvx0i3t3686r", sch.length + " schema calls");
+    check("expand calls schema once per key and renders the columns", sch.length === 1 && sch[0].key === "tbl:Pq0rdersTbl00001" && sch[0].draft_id === "dmvx0i3t3686r", sch.length + " schema calls");
     const rowTxt = await page.evaluate(() => Array.from(document.querySelectorAll('[data-col="t_orders"]')).map(g => Array.from(g.querySelectorAll("text")).map(t => t.textContent).join("|")));
     check("column rows show name | type | format/enum | key", rowTxt[1] === "customer_id|string||fk:tbl…" && rowTxt[2] === "status|string|paid|shipped|" && rowTxt[0].endsWith("|pk") && rowTxt[3] === "total|number|gbp|", rowTxt.join(" ; "));
     const ttl = await page.getAttribute('[data-col="t_orders"][data-field="customer_id"] title', "textContent").catch(() => null) || await page.evaluate(() => document.querySelector('[data-col="t_orders"][data-field="customer_id"] title').textContent);
     check("row tooltip carries the full key", /fk:tbl:customers/.test(ttl), ttl);
     check("expansion is view-only", R.sent("apply").every(b => b.ops.every(o => o.op === "view.set")), "no board op");
+    // C998: a name-keyed table (tbl:CA_customers) is asked for by its bare name, which the engine resolves through std data_model
     await page.click('[data-expand="t_cust"]');
     await page.waitForFunction(() => document.querySelectorAll('[data-col="t_cust"]').length === 2);
+    const schc = R.sent("schema").filter(b => b.key !== "tbl:Pq0rdersTbl00001");
+    check("tbl:<name> key is sent as the bare name (C998)", schc.length === 1 && schc[0].key === "CA_customers", JSON.stringify(schc.map(b => b.key)));
+    const st = await page.evaluate(() => [
+      DT.schemaTarget({ key: "tbl:pwlC29yKZxbj8jgV" }, "x", "n1"), DT.schemaTarget({ key: "tbl:CA_standards" }, "x", "n1"),
+      DT.schemaTarget({ table: "tbl:FrdIprb6uGEtLLoe CA_V4_docs {doc_key, section}" }, "x", "n1"), DT.schemaTarget({ store: "DataTable CA_V4_index (to create)" }, "x", "n1"),
+      DT.schemaTarget({ key: "tbl:(to create)" }, "x", "n1"), DT.schemaTarget({}, "CA_drafts", "n9"), DT.schemaTarget({}, "", "n9")]);
+    check("schemaTarget: id kept, name stripped, token picked out of prose, otherwise first candidate (C998)",
+      JSON.stringify(st) === JSON.stringify(["tbl:pwlC29yKZxbj8jgV", "CA_standards", "tbl:FrdIprb6uGEtLLoe", "DataTable CA_V4_index (to create)", "tbl:(to create)", "CA_drafts", "n9"]), JSON.stringify(st));
+    // C998: a plain click on the node's title band toggles the columns; a drag still moves
+    await page.click('[data-ref="node:t_cust"] rect.b', { position: { x: 30, y: 12 } });
+    await page.waitForFunction(() => document.querySelectorAll('[data-col="t_cust"]').length === 0);
+    check("click on a data node's title band collapses it (C998)", await page.evaluate(() => !DT.DM.expanded.has("t_cust") && document.querySelector('[data-ref="node:t_cust"]').classList.contains("sel")), "collapsed and selected");
+    await page.click('[data-ref="node:t_cust"] rect.b', { position: { x: 30, y: 12 } });
+    await page.waitForFunction(() => document.querySelectorAll('[data-col="t_cust"]').length === 2);
+    check("click again expands it; schema not refetched (C998)", R.sent("schema").length === 2, R.sent("schema").length + " schema calls");
+
+    const c0 = await R.centreOf('[data-ref="node:t_cust"] rect.b');
+    await R.drag({ x: c0.x, y: c0.y - 60 }, { x: c0.x + 40, y: c0.y - 60 });   // from the title band, 40 px right
+    await R.settle();
+    check("drag on a data node moves it, no toggle (C998)", await page.evaluate(() => DT.DM.expanded.has("t_cust")) && R.sent("node.move").length === 1, R.sent("node.move").length + " node.move");
     await page.screenshot({ path: path.join(OUT, "40-data-model.png") });
     // click selects a column
     await page.click('[data-col="t_orders"][data-field="status"]');
@@ -122,6 +143,9 @@ async function rig(browser, { layers = true } = {}){
     const insp = await page.textContent("#insp");
     check("inspector shows field_map edge with its fields", /Field map/.test(insp) && /\.id/.test(insp) && /\.email/.test(insp) && /maps/.test(insp), insp.replace(/\s+/g, " ").slice(0, 160));
     await page.click('[data-ref="node:t_orders"] rect.b', { position: { x: 20, y: 10 } });
+    check("title-band click on an expanded node collapses it (C998)", await page.evaluate(() => !DT.DM.expanded.has("t_orders")));
+    await page.click('[data-expand="t_orders"]');
+    await page.waitForFunction(() => document.querySelectorAll('[data-col="t_orders"]').length === 4);
     const insp2 = await page.textContent("#insp");
     check("node inspector lists field maps with fields", /customer_id/.test(insp2) && /fk/.test(insp2) && /customers/.test(insp2), insp2.replace(/\s+/g, " ").slice(0, 200));
     const lbl = await page.evaluate(() => Array.from(document.querySelectorAll('#world .e text')).map(t => t.textContent).filter(t => /⇢|→/.test(t)));
@@ -174,7 +198,7 @@ async function rig(browser, { layers = true } = {}){
     await page.waitForFunction(() => document.querySelector("#toast").style.display === "block");
     const t1 = await page.textContent("#toast");
     await page.waitForFunction(() => DT.DM.schema.size === 1);
-    check("schema 400 degrades to a toast with the reason and an empty node", /schema tbl:orders/.test(t1) && /unknown/.test(t1) && (await page.evaluate(() => DT.DM.schema.get("tbl:orders").columns.length)) === 0 && (await page.textContent('[data-ref="node:t_orders"]')).includes("schema unavailable"), t1);
+    check("schema 400 degrades to a toast with the reason and an empty node", /schema tbl:Pq0rdersTbl00001/.test(t1) && /unknown/.test(t1) && (await page.evaluate(() => DT.DM.schema.get("tbl:Pq0rdersTbl00001").columns.length)) === 0 && (await page.textContent('[data-ref="node:t_orders"]')).includes("schema unavailable"), t1);
     await page.click('#layers [data-layer="process"]');
     await page.waitForFunction(() => DT.PF.loaded);
     const t2 = await page.textContent("#toast");
