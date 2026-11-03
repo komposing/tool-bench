@@ -6,10 +6,10 @@
   "format": "toolbench.tool/1",
   "id": "TB:drafting-table",
   "name": "Drafting Table",
-  "description": "Paired concept-modelling board (ca.draft/1): palette, board, inspector, analysis and finder over the CA_V3 Drafting Engine. The op log is the draft; the page replays it on the std drafting poll budget so the agent's ops appear live. Layers: global, data model (data nodes expand into columns; column drags make field_map edges), process flow (engine workflows as step diagrams).",
+  "description": "Paired concept-modelling board (ca.draft/1): palette, board, inspector, analysis and finder over the CA_V3 Drafting Engine. The op log is the draft; the page replays it on the std drafting poll budget so the agent's ops appear live. Layers: global, data model (data nodes expand into columns; column drags make field_map edges), process flow (engine workflows as step diagrams). Lab transcript: a second draft of lab_entry nodes (finding, fix, evidence, decision, question, note) linked by resolves/evidences edges, shown as a table in the bottom pane and loaded on demand, so an agent working on this page leaves a traceable record of what it found and changed.",
   "category": "CA_V3",
   "tags": ["drafting", "design", "paired", "ca.draft/1"],
-  "version": "1.2.0",
+  "version": "1.3.0",
   "contract": { "config_keys": ["drafting"], "requires": ["wf:VkS7B5UucVMrNwWm", "std:drafting"] },
   "sandbox": { "scripts": true, "forms": false, "modals": false, "popups": false, "downloads": false, "sameOrigin": false },
   "config_schema": {
@@ -19,7 +19,12 @@
       { "path": "headers.X-Api-Key", "label": "Viewer key (X-Api-Key)", "type": "secret", "required": false, "secret": true, "help": "CA_V3 viewer key. Leave empty to use the key saved for the CA_V3 Viewer (cav3)." },
       { "path": "poll_ms", "label": "Active poll override (ms)", "type": "number", "help": "Blank: the active interval from std drafting reach.page.poll (2 s). Set it to replace only the active interval; idle backoff and the hidden pause still follow the standard" },
       { "path": "debounce_ms", "label": "Apply debounce (ms)", "type": "number", "default": 300 },
-      { "path": "draft_id", "label": "Open draft", "type": "string", "help": "Draft opened on start; blank shows the draft list" }
+      { "path": "draft_id", "label": "Open draft", "type": "string", "help": "Draft opened on start; blank shows the draft list" },
+      { "path": "author", "label": "Author", "type": "string", "default": "user", "help": "Who this page writes as: user, or agent:<tag> for an agent driving the page (its ops are then attributed to it, not to you)" },
+      { "path": "auth_mode", "label": "Auth mode", "type": "string", "default": "key", "help": "key: send the viewer key as X-Api-Key (default). ambient: send no key; the environment the page runs in attaches one (e.g. a cloud-session network secret)" },
+      { "path": "transcript_draft_id", "label": "Lab transcript draft", "type": "string", "default": "dmw0tjl1kc1sx", "help": "Draft that holds the lab transcript (lab_entry nodes); the default is the CA_V4 UI lab transcript. Blank: the transcript tab offers to create one" },
+      { "path": "transcript_refresh_s", "label": "Transcript auto-refresh (s)", "type": "number", "default": 0, "help": "0: refresh by hand only. Otherwise the transcript replays every N seconds while its tab is visible; each refresh is one engine execution" },
+      { "path": "lab_tag", "label": "Lab tag", "type": "string", "help": "Written into the env field of transcript entries made from this page, e.g. CA_V4 UI lab" }
     ]
   }
 }
@@ -127,6 +132,22 @@ h3{font:600 10px/1 var(--mono);letter-spacing:.18em;text-transform:uppercase;col
 #toast{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:7px 12px;border-radius:6px;font-size:12px;z-index:80;display:none;max-width:90vw}
 #toast.bad{background:var(--bad)}
 .muted{color:var(--ink3)} .small{font-size:11px}
+/* bottom pane tabs and the lab transcript (C-lab) */
+#findTabs{display:flex;gap:4px;align-items:center;margin:0} #findTabs .ftab{border:none;background:none;padding:2px 6px;font:600 10px/1 var(--mono);letter-spacing:.18em;text-transform:uppercase;color:var(--ink3);border-radius:0;border-bottom:2px solid transparent}
+#findTabs .ftab.on{color:var(--ink);border-bottom-color:var(--ink)} #findTabs .ftab:hover{color:var(--ink)}
+#finder,#trans{display:flex;flex-direction:column;gap:6px;flex:1;min-height:0} #finder[hidden],#trans[hidden]{display:none}
+#trBody{overflow:auto;flex:1;min-height:0;background:#fff;border:1px solid var(--line);border-radius:5px}
+#trTable{margin:0} #trTable th{position:sticky;top:0;background:var(--panel);z-index:1;font:600 10px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--ink2)}
+#trTable td{vertical-align:top;font-size:12px} #trTable tr.tre{cursor:pointer} #trTable tr.tre:hover td{background:#FBFAF7} #trTable tr.tre.open td{background:#F3F1EC}
+#trTable tr.trd td{background:#FBFAF7;border-left:3px solid var(--line);padding:6px 10px 8px}
+#trTable .pre{white-space:pre-wrap;font-size:12px;margin:2px 0 6px} #trTable .lk{font:11px var(--mono)}
+.kpill{font:10px var(--mono);padding:0 6px;border-radius:8px;border:1px solid;white-space:nowrap}
+#trKinds button{font-size:11px;padding:1px 7px} #trKinds button.off{opacity:.4}
+#trForm{display:grid;grid-template-columns:repeat(4,minmax(120px,1fr));gap:4px 8px;align-items:start} #trForm[hidden]{display:none}
+#trForm label{display:flex;flex-direction:column;gap:2px;font:10px var(--mono);color:var(--ink3);text-transform:uppercase;letter-spacing:.1em}
+#trForm label input,#trForm label select,#trForm label textarea{font:12px var(--sans);text-transform:none;letter-spacing:0;color:var(--ink)}
+#trForm .wide{grid-column:span 2} #trForm .acts{grid-column:1/-1;display:flex;gap:6px;justify-content:flex-end;align-items:center}
+#shExp textarea{width:100%;height:50vh;font:11.5px var(--mono)}
 /* layers (C980): segmented control, data-model columns, process-flow sidebar and diagram */
 #layers{display:inline-flex;border:1px solid var(--line);border-radius:5px;overflow:hidden;flex:none}
 #layers button{border:none;border-radius:0;padding:3px 9px;background:#fff;font-size:12px} #layers button+button{border-left:1px solid var(--line)}
@@ -175,6 +196,7 @@ h3{font:600 10px/1 var(--mono);letter-spacing:.18em;text-transform:uppercase;col
     <button class="mobtoggle" data-m="find">Find</button>
     <button id="tReason" title="Inline thread bubbles">Show reasoning</button>
     <button id="tFollow" title="Move the camera to the agent's latest op">Follow agent</button>
+    <button id="tTrans" title="Lab transcript: what an agent found and changed on this page, as a table">Transcript</button>
     <button id="bFit" title="Fit the board">Fit</button>
     <button class="deskonly" data-c="nopal" title="Collapse palette">◧</button>
     <button class="deskonly" data-c="noright" title="Collapse inspector and analysis">◨</button>
@@ -227,15 +249,48 @@ h3{font:600 10px/1 var(--mono);letter-spacing:.18em;text-transform:uppercase;col
 
   <div id="hb"></div>
   <div id="find" class="pane">
-    <div class="row" style="margin:0">
-      <h3 style="margin-right:6px">Finder</h3>
-      <input id="fq" placeholder="search docs and drafts" style="max-width:340px">
-      <label class="small"><input type="checkbox" id="fDocs" checked> docs</label>
-      <label class="small"><input type="checkbox" id="fDrafts" checked> drafts</label>
-      <button id="fGo">Find</button>
-      <span class="small muted" id="fCount"></span>
+    <div id="findTabs"><button class="ftab on" data-ft="finder">Finder</button><button class="ftab" data-ft="trans">Lab transcript <span class="pill" id="trN" style="display:none"></span></button></div>
+    <div id="finder">
+      <div class="row" style="margin:0">
+        <input id="fq" placeholder="search docs and drafts" style="max-width:340px">
+        <label class="small"><input type="checkbox" id="fDocs" checked> docs</label>
+        <label class="small"><input type="checkbox" id="fDrafts" checked> drafts</label>
+        <button id="fGo">Find</button>
+        <span class="small muted" id="fCount"></span>
+      </div>
+      <div id="cards"><span class="small muted">Cards appear here. Drag one onto the board to make a node, or into the analysis to add it.</span></div>
     </div>
-    <div id="cards"><span class="small muted">Cards appear here. Drag one onto the board to make a node, or into the analysis to add it.</span></div>
+    <div id="trans" hidden>
+      <div class="row" style="margin:0">
+        <code id="trDraft" class="small muted" title="the draft that holds the transcript">—</code>
+        <span class="small muted" id="trAs"></span>
+        <span class="sep"></span>
+        <span class="small muted" id="trCount"></span>
+        <button id="trRefresh" title="Replay the transcript draft since the last seq: one engine execution">Refresh</button>
+        <button id="trAuto" title="Refresh on a timer while this tab is visible (one execution per refresh)">Auto</button>
+        <button id="trExport" title="Markdown of the rows shown, to paste into a chat">Export</button>
+        <button id="trAdd" class="pri" title="Add an entry as the page's author">+ Entry</button>
+      </div>
+      <div class="row" style="margin:0">
+        <select id="trAuthor" title="author" style="flex:none;min-width:120px"><option value="">all authors</option></select>
+        <select id="trStatus" title="status" style="flex:none;min-width:100px"><option value="">any status</option><option>open</option><option>fixed</option><option>verified</option><option>wontfix</option></select>
+        <span id="trKinds" class="tabs" style="margin:0"></span>
+        <input id="trQ" placeholder="filter text" style="flex:none;width:170px">
+      </div>
+      <div id="trForm" class="ent" hidden>
+        <label>kind<select id="teKind"></select></label>
+        <label>round<input id="teRound" placeholder="e.g. 3"></label>
+        <label>subject<input id="teSubject" placeholder="F2, node:k_pointer, inspector…"></label>
+        <label>status<select id="teStatus"><option>open</option><option>fixed</option><option>verified</option><option>wontfix</option><option>n/a</option></select></label>
+        <label class="wide">summary<input id="teSummary" placeholder="one line: what was found, changed or proved"></label>
+        <label>resolves / evidences<input id="teLinks" placeholder="entry ids, comma-separated"></label>
+        <label>page version<input id="tePage" placeholder="e.g. 1.3.1"></label>
+        <label class="wide">detail<textarea id="teDetail" rows="3" placeholder="how to reproduce, what was wrong, what the change does"></textarea></label>
+        <label class="wide">evidence<textarea id="teEvidence" rows="3" placeholder="one per line: screenshot:name.png sha256:… · diff:file · exec:count"></textarea></label>
+        <div class="acts"><span class="small muted" id="teNote"></span><button id="teCancel">Cancel</button><button class="pri" id="teSave">Save entry</button></div>
+      </div>
+      <div id="trBody"><table class="dl" id="trTable"><tr><td class="muted">—</td></tr></table></div>
+    </div>
   </div>
 </div>
 
@@ -247,6 +302,11 @@ h3{font:600 10px/1 var(--mono);letter-spacing:.18em;text-transform:uppercase;col
   <div class="row"><input id="ndTitle" placeholder="new draft title"><button class="pri" id="ndGo">Create</button></div>
   <label class="small row"><input type="checkbox" id="ndRemember"> open the chosen draft next time (saved in Tool Bench settings)</label>
   <div class="row" style="justify-content:flex-end"><button id="dlClose">Close</button></div>
+</div></div>
+<div class="sheet" id="shExp"><div class="box">
+  <h3>Transcript export <span class="small muted" style="text-transform:none;letter-spacing:0" id="expNote"></span></h3>
+  <textarea id="expText" readonly></textarea>
+  <div class="row" style="justify-content:flex-end"><button id="expCopy">Copy</button><button id="expClose">Close</button></div>
 </div></div>
 <div class="sheet" id="shSet"><div class="box">
   <h3>Settings</h3>
@@ -278,8 +338,14 @@ const CONF = {
   keyFrom: getPath(DC, "headers.X-Api-Key") ? "drafting" : (getPath(TC, "cav3.dashboard.headers.X-Api-Key") ? "cav3" : ""),
   pollOverride: DC.poll_ms == null || DC.poll_ms === "" ? null : Math.max(500, +DC.poll_ms || 2000),
   debounce: Math.max(0, DC.debounce_ms == null ? 300 : +DC.debounce_ms),
-  draft: DC.draft_id || ""
+  draft: DC.draft_id || "",
+  auth: DC.auth_mode === "ambient" ? "ambient" : "key",                    // ambient: no key sent; the page's environment attaches one
+  transcript: DC.transcript_draft_id === undefined ? "dmw0tjl1kc1sx" : String(DC.transcript_draft_id || "").trim(),   // the draft that holds the lab transcript; unset = the CA_V4 UI lab one, "" = none yet
+  transcriptRefresh: Math.max(0, +DC.transcript_refresh_s || 0),           // 0 = refresh by hand only
+  labTag: String(DC.lab_tag || "").trim()
 };
+// Who this page writes as. The engine takes user or agent:<tag>; anything else falls back to user so a typo cannot refuse every apply.
+const AUTHOR = (a => a === "user" || /^agent:[A-Za-z0-9_.-]+$/.test(a) ? a : "user")(String(DC.author || "user").trim());
 /* Poll budget: std drafting reach.page.poll (C944, T536). Built-in defaults equal std drafting v2; the engine's open
    reply relays the live row as reach_page_poll once C903-s3 lands, and that wins. poll_ms overrides active_ms only. */
 const POLL_DEFAULT = { active_ms: 2000, active_window_ms: 30000, idle_ms: [10000, 30000, 60000], hidden: "pause", in_flight: 1, request_timeout_ms: 40000 };
@@ -298,7 +364,6 @@ function setPollBudget(src, from){
   if (CONF.pollOverride != null) { p.active_ms = CONF.pollOverride; POLL_FROM += "+override"; }
   POLL = p;
 }
-const AUTHOR = "user";
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
 const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -313,11 +378,14 @@ const parseRk = s => { const m = /^([a-z_]+):(.+?)(?:#(.+))?$/.exec(s || ""); re
 function toast(msg, bad){ const t = $("#toast"); t.textContent = msg; t.className = bad ? "bad" : ""; t.style.display = "block"; clearTimeout(toast.h); toast.h = setTimeout(() => t.style.display = "none", bad ? 6000 : 2600); }
 
 /* ============================== transport ============================== */
+function hasAuth(){ return !!CONF.key || CONF.auth === "ambient"; }
 async function call(op, params, signal){
-  if (!CONF.key) throw new Error("No viewer key: set it in Tool Bench Settings (Drafting Table or CA_V3 Viewer) or in ⚙");
+  if (!hasAuth()) throw new Error("No viewer key: set it in Tool Bench Settings (Drafting Table or CA_V3 Viewer) or in ⚙");
   let res;
   try {
-    res = await fetch(CONF.url, { method: "POST", headers: { "Content-Type": "application/json", "X-Api-Key": CONF.key },
+    const headers = { "Content-Type": "application/json" };
+    if (CONF.key) headers["X-Api-Key"] = CONF.key;   // ambient mode sends none: the page's environment attaches the credential
+    res = await fetch(CONF.url, { method: "POST", headers,
       body: JSON.stringify(Object.assign({ op }, params || {})), cache: "no-store", signal: signal || undefined });
   } catch (e) { if (e && e.name === "AbortError") throw e; throw new Error("Drafting endpoint unreachable (network or CORS): " + (e.message || e)); }
   const txt = await res.text();
@@ -535,7 +603,7 @@ function touchedRef(e){
 }
 function noteIncoming(e){
   const ref = touchedRef(e);
-  const tag = e.author === AUTHOR ? "user (other tab)" : e.author;
+  const tag = e.author === AUTHOR ? AUTHOR + " (other tab)" : e.author;
   if (ref && ref.id) RECENT.set(rk(ref), { author: tag, at: Date.now() });
   if (FLAGS.follow && /^agent:/.test(e.author || "") && ref) followTo(ref);
 }
@@ -1538,8 +1606,8 @@ addEventListener("message", ev => { const d = ev.data; if (d && d.type === "tool
 $("#bSet").onclick = () => {
   $("#cPoll").value = CONF.pollOverride == null ? "" : CONF.pollOverride; $("#cDeb").value = CONF.debounce; $("#cUrl").value = CONF.url; $("#cKey").value = "";
   $("#cConn").style.display = TM ? "none" : "";
-  $("#cNote").textContent = TM ? `Saved in Tool Bench settings (namespace drafting); the tool reloads. Endpoint ${CONF.url}; key ${CONF.key ? "from " + CONF.keyFrom : "missing: set it in Tool Bench Settings"}.`
-                               : "Standalone: kept in memory for this page only.";
+  $("#cNote").textContent = (TM ? `Saved in Tool Bench settings (namespace drafting); the tool reloads. Endpoint ${CONF.url}; key ${CONF.key ? "from " + CONF.keyFrom : (CONF.auth === "ambient" ? "ambient (attached by the environment)" : "missing: set it in Tool Bench Settings")}.`
+                               : "Standalone: kept in memory for this page only.") + ` Writing as ${AUTHOR}.`;
   $("#shSet").classList.add("open");
 };
 $("#cClose").onclick = () => $("#shSet").classList.remove("open");
@@ -1777,16 +1845,214 @@ function renderFlows(){
 $("#flFilter").addEventListener("input", e => { PF.filter = e.target.value.trim(); renderFlowList(); });
 $("#flRefresh").onclick = () => loadFlows(true);
 
+/* ============================== lab transcript (C-lab) ============================== */
+/* A transcript is a draft, not a side table: entries are nodes of class lab_entry (one subclass per kind: finding, fix,
+   evidence, decision, question, note) and links are edges (resolves: fix → finding; evidences: evidence → fix or
+   finding). The page folds that draft with the same step() as the board and shows it as a table in the bottom pane,
+   so the human sees what an agent driving this page found and changed, and anything that reads CA_drafts can trace a
+   finding to its fix and its evidence. It is loaded on demand (one replay per refresh), never polled with the board;
+   entries are written through apply as AUTHOR, with no origin_request, so they are never ghosted. */
+const LAB_KINDS = ["finding", "fix", "evidence", "decision", "question", "note"];
+const LAB_STYLE = { finding: { fill: "#FFF1D6", stroke: "#C77700" }, fix: { fill: "#D7EED9", stroke: "#2E7D32" }, evidence: { fill: "#E3F2FD", stroke: "#1E66D0" },
+  decision: { fill: "#EDE7F6", stroke: "#7E57C2" }, question: { fill: "#FFF6C9", stroke: "#B8860B" }, note: { fill: "#F3F1EC", stroke: "#8A939B" } };
+const LAB_FIELDS = { round: "", subject: "", summary: "", detail: "", evidence: "", page_version: "", status: "open", env: "", session: "", resolves: "" };
+const LAB_STATUS = ["open", "fixed", "verified", "wontfix", "n/a"];
+const TR = { id: CONF.transcript, st: null, seq: 0, log: [], seen: new Set(), ts: new Map(), loaded: false, loading: false, err: "", at: 0,
+  open: new Set(), kinds: new Set(LAB_KINDS), auto: null, tab: "finder", linkFor: "" };
+function trBlank(){ const st = blankState(); st.draft.id = TR.id; return st; }
+function labBootstrapOps(st){
+  st = st || { classes: {}, edge_classes: {} };
+  const ops = [];
+  if (!st.classes.lab_entry) ops.push({ op: "class.define", payload: { id: "lab_entry", name: "lab entry", parent: "undefined", attributes: clone(LAB_FIELDS), style: { fill: "#FFFFFF", stroke: "#5B6670" } } });
+  for (const k of LAB_KINDS) if (!st.classes["lab_" + k]) ops.push({ op: "class.define", payload: { id: "lab_" + k, name: k, parent: "lab_entry", attributes: {}, style: LAB_STYLE[k] } });
+  if (!st.edge_classes.resolves) ops.push({ op: "edge_class.define", payload: { id: "resolves", name: "resolves", parent: "relates_to", directional: true, attributes: {}, style: { stroke: "#2E7D32" } } });
+  if (!st.edge_classes.evidences) ops.push({ op: "edge_class.define", payload: { id: "evidences", name: "evidences", parent: "relates_to", directional: true, attributes: {}, style: { stroke: "#1E66D0" } } });
+  return ops;
+}
+function trKind(cid){ if (!cid) return ""; if (cid === "lab_entry") return "entry"; if (/^lab_/.test(cid)) return cid.slice(4); const c = TR.st && TR.st.classes[cid]; return c && c.parent ? trKind(c.parent) : ""; }
+function trAttrs(n){ const a = {}; const seen = new Set(); let c = TR.st.classes[n.class_id]; const chainC = []; while (c && !seen.has(c.id)) { seen.add(c.id); chainC.push(c); c = c.parent ? TR.st.classes[c.parent] : null; } for (const k of chainC.reverse()) Object.assign(a, k.attributes || {}); return Object.assign(a, n.attributes || {}); }
+function trEntries(){
+  if (!TR.st) return [];
+  return Object.values(TR.st.nodes).map(n => { const kind = trKind(n.class_id); return kind ? { id: n.id, kind, label: n.label || "", a: trAttrs(n), by: n._by || "", seq: n._seq, ts: TR.ts.get(n._seq) || "", node: n } : null; })
+    .filter(Boolean).sort((x, y) => (x.seq || 0) - (y.seq || 0));
+}
+function trLinks(id){
+  const es = TR.st ? Object.values(TR.st.edges) : [];
+  const f = (cls, dir) => es.filter(e => (e.edge_class_id || e.class_id) === cls && e[dir] && e[dir].id === id).map(e => dir === "from" ? e.to.id : e.from.id);
+  return { resolves: f("resolves", "from"), resolvedBy: f("resolves", "to"), evidences: f("evidences", "from"), evidencedBy: f("evidences", "to") };
+}
+async function trLoad(full){
+  if (!TR.id) { trRender(); return; }
+  if (TR.loading) return;
+  TR.loading = true; TR.err = ""; trRender();
+  try {
+    if (full || !TR.st) { TR.st = trBlank(); TR.seq = 0; TR.log = []; TR.seen = new Set(); TR.ts = new Map(); }
+    const r = await call("replay", { draft_id: TR.id, since_seq: TR.seq });
+    for (const e of r.ops || []) { if (TR.seen.has(e.seq)) continue; TR.seen.add(e.seq); TR.log.push(e); TR.ts.set(e.seq, e.ts || ""); step(TR.st, e); }
+    TR.seq = Math.max(TR.seq, r.seq_head || 0); TR.loaded = true; TR.at = Date.now();
+  } catch (e) { TR.err = e.message; }
+  finally { TR.loading = false; trRender(); }
+}
+async function trApply(ops){
+  if (!TR.id) throw new Error("No transcript draft");
+  ops = Array.isArray(ops) ? ops : [ops];
+  const r = await call("apply", { draft_id: TR.id, ops: ops.map(o => ({ op: o.op, payload: o.payload })), author: AUTHOR });   // append-only: no expect_seq
+  await trLoad();
+  return r;
+}
+async function trCreate(){
+  const r = await call("open", { title: "UI lab transcript", author: AUTHOR });
+  TR.id = r.draft_id; TR.st = null; TR.loaded = false;
+  const ops = [{ op: "draft.amend", payload: { attributes: { agent_ops: "apply", transcript: "lab", lab: CONF.labTag || "" } } }].concat(labBootstrapOps());
+  await trApply(ops);
+  if (TM) saveSettings({ transcript_draft_id: TR.id });
+  toast(`Transcript draft ${TR.id} created${TM ? " and saved in settings" : ": set transcript_draft_id to keep it"}`);
+}
+function trPos(){ const n = TR.st ? Object.keys(TR.st.nodes).length : 0; return { x: (n % 6) * 220, y: Math.floor(n / 6) * 110 }; }
+// entry {kind, round, subject, summary, detail, evidence, page_version, status, links[]} -> ops (bootstrap first if the draft lacks the classes)
+function trEntryOps(en){
+  const kind = LAB_KINDS.includes(en.kind) ? en.kind : "note";
+  const id = en.id || uid("le");
+  const attrs = {};
+  for (const k of Object.keys(LAB_FIELDS)) { const v = en[k]; if (v != null && String(v).trim() !== "" && !(k === "status" && v === "open")) attrs[k] = String(v).trim(); }
+  if (!attrs.env && CONF.labTag) attrs.env = CONF.labTag;
+  const links = (en.links || []).map(x => String(x).trim()).filter(Boolean);
+  const cls = kind === "evidence" ? "evidences" : "resolves";
+  if (links.length) attrs.resolves = links.join(",");
+  const ops = labBootstrapOps(TR.st).concat([{ op: "node.add", payload: { id, class_id: "lab_" + kind, label: trunc(en.summary || en.subject || kind, 80), attributes: attrs, pos: trPos() } }]);
+  for (const t of links) ops.push({ op: "edge.add", payload: { id: uid("e"), edge_class_id: cls, from: { type: "node", id }, to: { type: "node", id: t }, attributes: {} } });
+  return ops;
+}
+async function trAddEntry(en){
+  if (!TR.loaded) await trLoad();   // the classes and link targets are judged against the folded draft
+  const unknown = (en.links || []).filter(t => !(TR.st && TR.st.nodes[t]));
+  if (unknown.length) throw new Error("Unknown entry id(s): " + unknown.join(", "));
+  return trApply(trEntryOps(en));
+}
+async function trSetStatus(id, status){
+  const n = TR.st && TR.st.nodes[id]; if (!n) return;
+  const own = Object.assign({}, n.attributes || {}, { status });   // the engine replaces the whole set: send every own key
+  await trApply({ op: "node.amend", payload: { id, attributes: own } });
+}
+function trFilter(list){
+  const au = $("#trAuthor").value, stt = $("#trStatus").value, q = $("#trQ").value.trim().toLowerCase();
+  return list.filter(e => TR.kinds.has(e.kind) && (!au || e.by === au) && (!stt || (e.a.status || "open") === stt) &&
+    (!q || [e.id, e.label, e.a.subject, e.a.detail, e.a.evidence, e.a.round, e.by].join(" ").toLowerCase().includes(q)));
+}
+function kpill(kind){ const s = LAB_STYLE[kind] || { fill: "#fff", stroke: "#9E9E9E" }; return `<span class="kpill" style="background:${s.fill};border-color:${s.stroke};color:${s.stroke}">${esc(kind)}</span>`; }
+function spill(st){ st = st || "open"; return `<span class="pill${st === "open" ? " warn" : st === "fixed" || st === "verified" ? " ok" : ""}">${esc(st)}</span>`; }
+function trLinkBtn(id){ const e = TR.st && TR.st.nodes[id]; return `<button class="link lk" data-trgo="${esc(id)}" title="${esc(e ? e.label : "")}">#${esc(id)}</button>`; }
+function trRender(){
+  if ($("#trAs")) $("#trAs").textContent = `writing as ${AUTHOR}`;
+  $("#trDraft").textContent = TR.id ? (TR.st && TR.st.draft.title ? `${TR.st.draft.title} · ` : "") + TR.id : "no transcript draft";
+  const kb = $("#trKinds");
+  if (!kb.children.length) kb.innerHTML = LAB_KINDS.map(k => `<button data-kind="${k}" class="${TR.kinds.has(k) ? "" : "off"}" title="show or hide ${k} entries">${kpill(k)}</button>`).join("");
+  else kb.querySelectorAll("[data-kind]").forEach(b => b.classList.toggle("off", !TR.kinds.has(b.dataset.kind)));
+  const t = $("#trTable");
+  if (!TR.id) { t.innerHTML = `<tr><td class="small">No transcript draft is configured. <button class="link" id="trCreate">Create one</button> (a draft titled “UI lab transcript”, with the lab_entry classes) or set <code>transcript_draft_id</code> in Tool Bench settings.</td></tr>`; $("#trCount").textContent = ""; $("#trN").style.display = "none"; bindTr(); return; }
+  if (!TR.loaded) { t.innerHTML = `<tr><td class="small muted">${TR.loading ? "loading…" : (TR.err ? `<span style="color:var(--bad)">${esc(TR.err)}</span>` : "not loaded")}</td></tr>`; $("#trCount").textContent = ""; bindTr(); return; }
+  const all = trEntries(), rows = trFilter(all);
+  const authors = Array.from(new Set(all.map(e => e.by))).sort();
+  const sel = $("#trAuthor"), cur = sel.value;
+  sel.innerHTML = `<option value="">all authors</option>` + authors.map(a => `<option${a === cur ? " selected" : ""}>${esc(a)}</option>`).join("");
+  const openN = all.filter(e => (e.a.status || "open") === "open" && (e.kind === "finding" || e.kind === "question")).length;
+  $("#trN").style.display = all.length ? "" : "none"; $("#trN").textContent = openN ? `${openN} open` : String(all.length);
+  $("#trCount").textContent = `${rows.length} of ${all.length} · seq ${TR.seq}${TR.err ? " · " + TR.err : ""}${TR.loading ? " · loading…" : ""}`;
+  const hdr = `<tr><th>#</th><th>when</th><th>author</th><th>rd</th><th>kind</th><th>subject</th><th>summary</th><th>status</th><th>links</th></tr>`;
+  t.innerHTML = hdr + (rows.map(e => {
+    const L = trLinks(e.id), nl = L.resolves.length + L.resolvedBy.length + L.evidences.length + L.evidencedBy.length;
+    const open = TR.open.has(e.id);
+    let h = `<tr class="tre${open ? " open" : ""}" data-tr="${esc(e.id)}"><td class="lk muted">${esc(e.seq)}</td><td class="small muted" title="${esc(e.ts)}">${esc((e.ts || "").replace("T", " ").slice(5, 16))}</td><td class="small">${esc(e.by)}</td><td class="small">${esc(e.a.round || "")}</td><td>${kpill(e.kind)}</td><td class="small">${esc(e.a.subject || "")}</td><td>${esc(e.label)}</td><td>${spill(e.a.status)}</td><td class="small">${nl ? `${L.resolvedBy.length ? "⇐" + L.resolvedBy.length + " fix " : ""}${L.resolves.length ? "⇒" + L.resolves.length + " " : ""}${L.evidencedBy.length ? "ev " + L.evidencedBy.length : ""}`.trim() : ""}</td></tr>`;
+    if (open) h += `<tr class="trd" data-trd="${esc(e.id)}"><td colspan="9">
+      <div class="small muted">id <code>${esc(e.id)}</code> · ${esc(e.by)} · ${esc(e.ts)} · page ${esc(e.a.page_version || "—")} · env ${esc(e.a.env || "—")} · session ${esc(e.a.session || "—")}</div>
+      ${e.a.detail ? `<div class="pre">${esc(e.a.detail)}</div>` : `<div class="small muted">no detail</div>`}
+      ${e.a.evidence ? `<div class="small"><b>evidence</b></div><div class="pre">${esc(e.a.evidence)}</div>` : ""}
+      <div class="small">${L.resolves.length ? `resolves → ${L.resolves.map(trLinkBtn).join(" ")} · ` : ""}${L.resolvedBy.length ? `fixed by ← ${L.resolvedBy.map(trLinkBtn).join(" ")} · ` : ""}${L.evidences.length ? `evidence for → ${L.evidences.map(trLinkBtn).join(" ")} · ` : ""}${L.evidencedBy.length ? `evidenced by ← ${L.evidencedBy.map(trLinkBtn).join(" ")}` : ""}</div>
+      <div class="row" style="margin:6px 0 0"><span class="lbl">status</span>${LAB_STATUS.map(s => `<button data-trst="${esc(e.id)}|${s}" class="${(e.a.status || "open") === s ? "on" : ""}">${s}</button>`).join("")}
+        <span class="sep"></span><button data-trfix="${esc(e.id)}" title="add a fix entry linked to this one">+ fix for this</button><button data-trev="${esc(e.id)}" title="add an evidence entry linked to this one">+ evidence</button></div></td></tr>`;
+    return h;
+  }).join("") || `<tr><td colspan="9" class="small muted">No entries${all.length ? " match the filters" : " yet"}.</td></tr>`);
+  bindTr();
+}
+function bindTr(){
+  const t = $("#trTable");
+  const c = $("#trCreate"); if (c) c.onclick = async () => { try { await trCreate(); } catch (e) { toast(e.message, true); } };
+  t.querySelectorAll("tr.tre").forEach(r => r.onclick = () => { const id = r.dataset.tr; if (TR.open.has(id)) TR.open.delete(id); else TR.open.add(id); trRender(); });
+  t.querySelectorAll("[data-trgo]").forEach(b => b.onclick = ev => { ev.stopPropagation(); const id = b.dataset.trgo; TR.open.add(id); trRender(); const row = t.querySelector(`tr[data-tr="${CSS.escape(id)}"]`); if (row) row.scrollIntoView({ block: "center" }); });
+  t.querySelectorAll("[data-trst]").forEach(b => b.onclick = async ev => { ev.stopPropagation(); const [id, s] = b.dataset.trst.split("|"); try { await trSetStatus(id, s); } catch (e) { toast(e.message, true); } });
+  t.querySelectorAll("[data-trfix]").forEach(b => b.onclick = ev => { ev.stopPropagation(); trOpenForm({ kind: "fix", links: b.dataset.trfix }); });
+  t.querySelectorAll("[data-trev]").forEach(b => b.onclick = ev => { ev.stopPropagation(); trOpenForm({ kind: "evidence", links: b.dataset.trev }); });
+}
+function trOpenForm(pre){
+  pre = pre || {};
+  const f = $("#trForm"); f.hidden = false;
+  if (!$("#teKind").children.length) $("#teKind").innerHTML = LAB_KINDS.map(k => `<option>${k}</option>`).join("");
+  $("#teKind").value = pre.kind || "finding"; $("#teLinks").value = pre.links || ""; $("#teStatus").value = pre.status || (pre.kind === "fix" ? "fixed" : "open");
+  if (pre.subject != null) $("#teSubject").value = pre.subject;
+  $("#teNote").textContent = `as ${AUTHOR}${CONF.labTag ? " · env " + CONF.labTag : ""} · one apply (1 execution)`;
+  $("#teSummary").focus();
+}
+function trCloseForm(){ $("#trForm").hidden = true; for (const id of ["teRound", "teSubject", "teSummary", "teLinks", "tePage", "teDetail", "teEvidence"]) $("#" + id).value = ""; }
+async function trSaveForm(){
+  const en = { kind: $("#teKind").value, round: $("#teRound").value, subject: $("#teSubject").value, summary: $("#teSummary").value, status: $("#teStatus").value,
+    page_version: $("#tePage").value, detail: $("#teDetail").value, evidence: $("#teEvidence").value, links: $("#teLinks").value.split(",").map(s => s.trim()).filter(Boolean) };
+  if (!en.summary.trim()) { toast("Summary is required", true); return; }
+  try { await trAddEntry(en); trCloseForm(); toast("Entry saved"); } catch (e) { toast(e.message, true); }
+}
+function trExport(){
+  const rows = trFilter(trEntries());
+  const md = [`| # | when | author | round | kind | subject | summary | status | links |`, `|---|---|---|---|---|---|---|---|---|`]
+    .concat(rows.map(e => { const L = trLinks(e.id); const links = [].concat(L.resolves.map(x => "resolves #" + x), L.resolvedBy.map(x => "fixed by #" + x), L.evidences.map(x => "evidence for #" + x), L.evidencedBy.map(x => "evidenced by #" + x)).join(", ");
+      const cell = s => String(s == null ? "" : s).replace(/\|/g, "\\|").replace(/\s+/g, " ");
+      return `| ${e.seq} | ${cell((e.ts || "").slice(0, 16))} | ${cell(e.by)} | ${cell(e.a.round)} | ${e.kind} | ${cell(e.a.subject)} | ${cell(e.label)} | ${cell(e.a.status || "open")} | ${cell(links)} |`; }))
+    .concat([""], rows.filter(e => e.a.detail || e.a.evidence).map(e => `### #${e.id} · ${e.kind} · ${e.label}\n${e.a.detail ? e.a.detail + "\n" : ""}${e.a.evidence ? "\nevidence:\n" + e.a.evidence + "\n" : ""}`)).join("\n");
+  $("#expText").value = md; $("#expNote").textContent = `${rows.length} entries · draft ${TR.id} · seq ${TR.seq}`;
+  $("#shExp").classList.add("open"); $("#expText").select();
+}
+function trVisible(){ return TR.tab === "trans" && !$("#app").classList.contains("nofind") && document.visibilityState === "visible"; }
+function trAutoToggle(on){
+  if (TR.auto) { clearInterval(TR.auto); TR.auto = null; }
+  const s = Math.max(15, CONF.transcriptRefresh || 60);
+  if (on) TR.auto = setInterval(() => { if (trVisible() && !TR.loading) trLoad(); }, s * 1000);
+  $("#trAuto").classList.toggle("on", !!TR.auto); $("#trAuto").textContent = TR.auto ? `Auto ${s}s` : "Auto";
+}
+function setFindTab(tab){
+  TR.tab = tab;
+  $$("#findTabs .ftab").forEach(b => b.classList.toggle("on", b.dataset.ft === tab));
+  $("#finder").hidden = tab !== "finder"; $("#trans").hidden = tab !== "trans";
+  if (tab === "trans" && innerWidth > 820) {   // a table needs height: open the pane to a third of the window the first time, the splitter still rules after
+    const cur = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--bh")) || 0, want = Math.min(420, Math.round(innerHeight / 3));
+    if (cur < want) { document.documentElement.style.setProperty("--bh", want + "px"); setTimeout(renderBoard, 0); }
+  }
+  if (tab === "trans" && TR.id && !TR.loaded && !TR.loading) trLoad(); else if (tab === "trans") trRender();
+}
+$$("#findTabs .ftab").forEach(b => b.onclick = () => setFindTab(b.dataset.ft));
+$("#tTrans").onclick = () => { const app = $("#app"); if (app.classList.contains("nofind")) { app.classList.remove("nofind"); const c = $('[data-c="nofind"]'); if (c) c.classList.remove("on"); } setFindTab("trans"); openMobile("find"); setTimeout(renderBoard, 0); };
+$("#trRefresh").onclick = () => trLoad();
+$("#trAuto").onclick = () => trAutoToggle(!TR.auto);
+$("#trExport").onclick = trExport;
+$("#trAdd").onclick = () => trOpenForm();
+$("#teCancel").onclick = trCloseForm;
+$("#teSave").onclick = trSaveForm;
+$("#trAuthor").onchange = $("#trStatus").onchange = () => trRender();
+$("#trQ").addEventListener("input", () => trRender());
+$("#trKinds").addEventListener("click", ev => { const b = ev.target.closest("[data-kind]"); if (!b) return; const k = b.dataset.kind; if (TR.kinds.has(k)) TR.kinds.delete(k); else TR.kinds.add(k); trRender(); });
+$("#expClose").onclick = () => $("#shExp").classList.remove("open");
+$("#expCopy").onclick = async () => { try { await navigator.clipboard.writeText($("#expText").value); toast("Copied"); } catch (e) { $("#expText").select(); toast("Select-all and copy: clipboard blocked here"); } };
+if (CONF.transcriptRefresh > 0) trAutoToggle(true);
+
 /* ============================== boot ============================== */
 function renderAll(){ renderPalette(); renderBoard(); renderInspector(); renderAnalysis(); $("#bDraft").textContent = S.draft.title || DRAFT || "—"; setSync(); }
 async function start(){
-  renderAll();
-  if (!CONF.key) { setSync("err", "no key"); $("#insp").innerHTML = `<h3>Connect</h3><p class="small">No viewer key. ${TM ? "Set <b>Viewer key</b> for Drafting Table (or the CA_V3 Viewer) in Tool Bench Settings." : "Open ⚙ and enter the endpoint and key."}</p>`; return; }
+  renderAll(); trRender();
+  if (!hasAuth()) { setSync("err", "no key"); $("#insp").innerHTML = `<h3>Connect</h3><p class="small">No viewer key. ${TM ? "Set <b>Viewer key</b> for Drafting Table (or the CA_V3 Viewer) in Tool Bench Settings." : "Open ⚙ and enter the endpoint and key."}</p>`; return; }
   try { if (CONF.draft) await openDraft(CONF.draft); else showDrafts(); }
   catch (e) { syncErr = e.message; toast(e.message, true); setSync(); showDrafts(); }
 }
 window.DT = { get S(){ return S; }, get R(){ return R; }, get SEQ(){ return SEQ; }, get LOG(){ return LOG; }, get OUTBOX(){ return OUTBOX; }, get POLL(){ return POLL; }, get POLL_FROM(){ return POLL_FROM; },
-  get LAYER(){ return LAYER; }, get DM(){ return DM; }, get PF(){ return PF; }, pollDue, emit, openDraft, step, rebuild, setLayer, isDataNode, layoutFlow, fieldMapOps, toggleExpand, tickFlow };
+  get LAYER(){ return LAYER; }, get DM(){ return DM; }, get PF(){ return PF; }, get TR(){ return TR; }, get AUTHOR(){ return AUTHOR; },
+  pollDue, emit, openDraft, step, rebuild, setLayer, isDataNode, layoutFlow, fieldMapOps, toggleExpand, tickFlow,
+  trLoad, trApply, trAddEntry, trSetStatus, trEntries, trLinks, trEntryOps, labBootstrapOps, setFindTab };
 start();
 </script>
 </body></html>

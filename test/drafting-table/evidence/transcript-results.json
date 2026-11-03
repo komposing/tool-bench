@@ -1,0 +1,124 @@
+[
+ {
+  "name": "author comes from config",
+  "ok": true
+ },
+ {
+  "name": "transcript tab hidden until asked; no transcript replay on load",
+  "ok": true,
+  "detail": "replays 0"
+ },
+ {
+  "name": "board apply carries the configured author",
+  "ok": true,
+  "detail": "agent:uilab"
+ },
+ {
+  "name": "Transcript button opens the tab and loads it with one replay",
+  "ok": true,
+  "detail": "replays 1"
+ },
+ {
+  "name": "one row per lab entry, chronological",
+  "ok": true,
+  "detail": "5 rows"
+ },
+ {
+  "name": "links column shows the fix chain on the finding",
+  "ok": true,
+  "detail": "⇐1 fix"
+ },
+ {
+  "name": "open-count badge on the tab",
+  "ok": true,
+  "detail": "3 OPEN"
+ },
+ {
+  "name": "expanded row shows detail, evidence, page, env, session and 'fixed by' link",
+  "ok": true,
+  "detail": "id f1 · agent:uilab · 2026-11-03T15:11:00.000Z · page 1.2.0 · env CA_V4 UI lab · session s-test\nk_pointer > attributes >"
+ },
+ {
+  "name": "clicking a link opens the linked entry",
+  "ok": true
+ },
+ {
+  "name": "kind chip hides findings",
+  "ok": true
+ },
+ {
+  "name": "author filter",
+  "ok": true
+ },
+ {
+  "name": "text filter",
+  "ok": true
+ },
+ {
+  "name": "status filter",
+  "ok": true
+ },
+ {
+  "name": "'+ fix for this' opens the form prefilled",
+  "ok": true
+ },
+ {
+  "name": "form apply: node.add lab_fix with the fields, env from lab_tag, author from config, no bootstrap re-sent",
+  "ok": true,
+  "detail": "[\"node.add\",\"edge.add\"]"
+ },
+ {
+  "name": "form apply: resolves edge from the fix to f2",
+  "ok": true
+ },
+ {
+  "name": "after apply the transcript reloads once (replay since seq)",
+  "ok": true
+ },
+ {
+  "name": "new row appears, f2 now shows its fix",
+  "ok": true
+ },
+ {
+  "name": "status button: node.amend carries every own key plus status",
+  "ok": true,
+  "detail": "{\"round\":\"2\",\"subject\":\"F8\",\"page_version\":\"1.3.1\",\"status\":\"verified\"}"
+ },
+ {
+  "name": "transcript is not polled while the board is",
+  "ok": true,
+  "detail": "transcript 0 board +2"
+ },
+ {
+  "name": "export is a markdown table of the shown rows with detail sections",
+  "ok": true,
+  "detail": "| 11 | 2026-11-03T15:11 | agent:uilab | 1 | finding | F2 | fields_json renders as a JSON string in the inspector | open | fixed by #x1 |"
+ },
+ {
+  "name": "phone width: Transcript opens the bottom sheet with the table",
+  "ok": true
+ },
+ {
+  "name": "ambient auth: requests go out without X-Api-Key and the page opens",
+  "ok": true,
+  "detail": "2 requests"
+ },
+ {
+  "name": "no transcript configured: the tab offers to create one",
+  "ok": true
+ },
+ {
+  "name": "create: a draft titled 'UI lab transcript' with lab_entry, the six kinds and both edge classes",
+  "ok": true,
+  "detail": "dmock2 lab_entry,lab_finding,lab_fix,lab_evidence,lab_decision,lab_question,lab_note"
+ },
+ {
+  "name": "DT.trAddEntry writes to the new draft as the configured author",
+  "ok": true
+ },
+ {
+  "name": "no page errors",
+  "ok": true,
+  "detail": ""
+ }
+]
