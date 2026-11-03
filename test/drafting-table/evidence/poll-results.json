@@ -7,12 +7,12 @@
  {
   "name": "2 s polling for ~30 s after open",
   "ok": true,
-  "detail": "11 replays, gaps 2.5,2.8,2.6,2.7,2.3,2.8,2.3,2.5,2.5,2.5"
+  "detail": "11 replays, gaps 2.5,2.5,2.5,2.6,2.7,2.5,3,2.5,2.8,2.8"
  },
  {
   "name": "idle backoff 10 s → 30 s → 60 s → 60 s",
   "ok": true,
-  "detail": "gaps 10.7,30.8,60.5,60.8"
+  "detail": "gaps 10.8,30.5,60.8,60.6"
  },
  {
   "name": "remote change returns the page to 2 s",
@@ -22,7 +22,7 @@
  {
   "name": "local change returns the page to 2 s",
   "ok": true,
-  "detail": "4 replays in 9 s, gaps 2.8,2.8,2.5"
+  "detail": "4 replays in 9 s, gaps 2.5,2.5,2.8"
  },
  {
   "name": "no replay while hidden (3 min)",
@@ -52,7 +52,7 @@
  {
   "name": "next replay only after the reply, one active interval later",
   "ok": true,
-  "detail": "2001"
+  "detail": "2009"
  },
  {
   "name": "own op not doubled when replay and apply overlap",
@@ -67,7 +67,7 @@
  {
   "name": "open reply reach_page_poll drives the schedule",
   "ok": true,
-  "detail": "std drafting (open reply); gaps 4,5.8,20.3,20.8"
+  "detail": "std drafting (open reply); gaps 3.5,5.5,20.5,20.6"
  },
  {
   "name": "poll_ms overrides active_ms only",

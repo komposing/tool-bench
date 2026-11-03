@@ -6,7 +6,7 @@
    {
     "op": "class.define",
     "payload": {
-     "id": "kk4ykr0fn",
+     "id": "kxfyyi015",
      "name": "service",
      "parent": "undefined",
      "attributes": {},
@@ -28,8 +28,8 @@
    {
     "op": "node.add",
     "payload": {
-     "id": "nk4yve1uh",
-     "class_id": "kk4ykr0fn",
+     "id": "nxfz9v15j",
+     "class_id": "kxfyyi015",
      "label": "service",
      "attributes": {},
      "pos": {
@@ -49,7 +49,7 @@
    {
     "op": "edge_class.define",
     "payload": {
-     "id": "xk4z9m3jp",
+     "id": "xxfznx3f7",
      "name": "limits",
      "parent": "relates_to",
      "directional": true,
@@ -62,11 +62,11 @@
    {
     "op": "edge.add",
     "payload": {
-     "id": "ek4z9m4zl",
-     "edge_class_id": "xk4z9m3jp",
+     "id": "exfzny46h",
+     "edge_class_id": "xxfznx3f7",
      "from": {
       "type": "node",
-      "id": "nk4yve1uh"
+      "id": "nxfz9v15j"
      },
      "to": {
       "type": "edge",
@@ -86,11 +86,11 @@
    {
     "op": "edge.add",
     "payload": {
-     "id": "ek4zl4660",
+     "id": "exfzzc67n",
      "edge_class_id": "depends_on",
      "from": {
       "type": "node",
-      "id": "nk4yve1uh"
+      "id": "nxfz9v15j"
      },
      "to": {
       "type": "node",
@@ -110,11 +110,11 @@
    {
     "op": "edge.add",
     "payload": {
-     "id": "ek4zvw8nm",
+     "id": "exg0as8sy",
      "edge_class_id": "relates_to",
      "from": {
       "type": "node",
-      "id": "nk4yve1uh"
+      "id": "nxfz9v15j"
      },
      "to": {
       "type": "class",
@@ -126,7 +126,7 @@
    {
     "op": "node.amend",
     "payload": {
-     "id": "nk4yve1uh",
+     "id": "nxfz9v15j",
      "attributes": {
       "sla": "99.9"
      }
@@ -135,15 +135,15 @@
    {
     "op": "attr.promote",
     "payload": {
-     "id": "nk4yve1uh",
-     "node_id": "nk4yve1uh",
+     "id": "nxfz9v15j",
+     "node_id": "nxfz9v15j",
      "key": "sla"
     }
    },
    {
     "op": "class.amend",
     "payload": {
-     "id": "kk4ykr0fn",
+     "id": "kxfyyi015",
      "attributes": {
       "sla": "99.9"
      }
@@ -160,7 +160,7 @@
    {
     "op": "note.set",
     "payload": {
-     "id": "mk50dt9gf",
+     "id": "mxg0s99o8",
      "text": "",
      "pos": {
       "x": 187,
@@ -168,14 +168,14 @@
      },
      "anchor": {
       "type": "node",
-      "id": "nk4yve1uh"
+      "id": "nxfz9v15j"
      }
     }
    },
    {
     "op": "note.set",
     "payload": {
-     "id": "mk50dt9gf",
+     "id": "mxg0s99o8",
      "text": "latency matters here",
      "pos": {
       "x": 187,
@@ -183,14 +183,14 @@
      },
      "anchor": {
       "type": "node",
-      "id": "nk4yve1uh"
+      "id": "nxfz9v15j"
      }
     }
    },
    {
     "op": "group.set",
     "payload": {
-     "id": "gk50mqa0p",
+     "id": "gxg108abi",
      "label": "group",
      "member_refs": [
       {
@@ -199,7 +199,7 @@
       },
       {
        "type": "node",
-       "id": "nk4yve1uh"
+       "id": "nxfz9v15j"
       }
      ],
      "dynamic": false,
@@ -209,7 +209,7 @@
    {
     "op": "group.set",
     "payload": {
-     "id": "gk50mqa0p",
+     "id": "gxg108abi",
      "label": "pair",
      "member_refs": [
       {
@@ -218,7 +218,7 @@
       },
       {
        "type": "node",
-       "id": "nk4yve1uh"
+       "id": "nxfz9v15j"
       }
      ],
      "dynamic": false,
@@ -236,12 +236,12 @@
    {
     "op": "analysis.set",
     "payload": {
-     "id": "ak5162bp1",
+     "id": "axg1jxbw8",
      "label": "pair",
      "member_refs": [
       {
        "type": "group",
-       "id": "gk50mqa0p"
+       "id": "gxg108abi"
       }
      ],
      "mode": "impact",
@@ -251,7 +251,7 @@
    {
     "op": "reason.request",
     "payload": {
-     "analysis_id": "ak5162bp1",
+     "analysis_id": "axg1jxbw8",
      "mode": "impact"
     }
    }
@@ -285,7 +285,7 @@
      "edge_class_id": "conditional_on",
      "from": {
       "type": "edge",
-      "id": "ek4z9m4zl"
+      "id": "exfzny46h"
      },
      "to": {
       "type": "node",
@@ -411,7 +411,7 @@
    {
     "op": "card.drop",
     "payload": {
-     "id": "nk57kecz9",
+     "id": "nxg5cvcr1",
      "class_id": "undefined",
      "label": "drafting_table/design v1",
      "source_ref": {
@@ -437,12 +437,12 @@
    {
     "op": "analysis.set",
     "payload": {
-     "id": "ak5162bp1",
+     "id": "axg1jxbw8",
      "label": "pair",
      "member_refs": [
       {
        "type": "group",
-       "id": "gk50mqa0p"
+       "id": "gxg108abi"
       },
       {
        "type": "node",
@@ -464,7 +464,7 @@
    {
     "op": "node.move",
     "payload": {
-     "id": "nk4yve1uh",
+     "id": "nxfz9v15j",
      "pos": {
       "x": 231,
       "y": 121

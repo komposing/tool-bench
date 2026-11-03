@@ -66,12 +66,12 @@
   {
     "name": "inspector shows field_map edge with its fields",
     "ok": true,
-    "detail": "Field map ev8so5197classconditional on (shared)depends on (shared)field maprelates to (shared) label fromorders .id tocustomers .email relationmaps (copied / de"
+    "detail": "Field map exg9r41rhclassconditional on (shared)depends on (shared)field maprelates to (shared) label fromorders .id tocustomers .email relationmaps (copied / de"
   },
   {
     "name": "node inspector lists field maps with fields",
     "ok": true,
-    "detail": "Node t_orderslabel classactor (shared)constraint (shared)core objectgoal (shared)goalledgeroutcome (shared)principle (shared)undefined (shared) Attributes grey = from core object ⠿ kind × ⠿ key ×Add P"
+    "detail": "Node t_orderslabel classactor (shared)constraint (shared)core objectgoal (shared)goalledgeroutcome (shared)principle (shared)undefined (shared) Attributes grey = from core object ⠿ kind × ⠿ key ×Add b"
   },
   {
     "name": "field map edge is labelled by its fields on the board",
