@@ -158,7 +158,7 @@
    {
     "op": "node.add",
     "payload": {
-     "id": "nxfmd70b0",
+     "id": "nzm49m01q",
      "class_id": "undefined",
      "label": "undefined",
      "attributes": {},
@@ -175,7 +175,7 @@
    {
     "op": "node.amend",
     "payload": {
-     "id": "nxfmd70b0",
+     "id": "nzm49m01q",
      "label": "label"
     }
    }
@@ -211,7 +211,7 @@
    {
     "op": "edge_class.define",
     "payload": {
-     "id": "xxfn2p2vr",
+     "id": "xzm5252l2",
      "name": "bounds",
      "parent": "relates_to",
      "directional": true,
@@ -224,8 +224,8 @@
    {
     "op": "edge.add",
     "payload": {
-     "id": "exfn2p3wy",
-     "edge_class_id": "xxfn2p2vr",
+     "id": "ezm5263x9",
+     "edge_class_id": "xzm5252l2",
      "from": {
       "type": "node",
       "id": "n1",
@@ -249,7 +249,7 @@
    {
     "op": "group.set",
     "payload": {
-     "id": "gxfp3n48s",
+     "id": "gzm71q4am",
      "label": "group",
      "member_refs": [
       {
@@ -276,7 +276,7 @@
    {
     "op": "group.set",
     "payload": {
-     "id": "gxfp3n48s",
+     "id": "gzm71q4am",
      "label": "group",
      "member_refs": [
       {
@@ -310,7 +310,7 @@
    {
     "op": "group.set",
     "payload": {
-     "id": "gxfp3n48s",
+     "id": "gzm71q4am",
      "label": "group",
      "member_refs": [
       {

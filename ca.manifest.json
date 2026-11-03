@@ -255,6 +255,11 @@
       "note": "Drafting Table (TB:drafting-table v1.2.0, 2026-11-02): layers: global, data model (data-storing nodes expand into columns via engine op schema; column drags make field_map edges) and process flow (engine ops flows and flow drawn as step diagrams, draft read-only); layer kept in view.set (T560)"
     },
     {
+      "version": "3.8.1",
+      "change": "C998",
+      "note": "Drafting Table (TB:drafting-table v1.2.1, 2026-11-03): data-model layer resolves name-keyed tables (tbl:<name> sent as the bare name; tbl:<id> token picked out of key/table/store attributes) and a click on a data node's title band toggles its columns (T569; ledger friction 7ojtw3x9q5lm4k3sc6i1)"
+    },
+    {
       "version": "3.9.0",
       "change": "C000",
       "note": "Drafting Table (TB:drafting-table v1.3.0, 2026-11-03): drill-down: scope nesting (scope key; breadcrumbs; portal chips; view.set carries scope), ports from attribute keys (from.key/to.key edges), semantic zoom, group collapse, history scrub, keyboard walk"
