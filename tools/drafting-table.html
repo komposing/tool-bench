@@ -9,7 +9,7 @@
   "description": "Paired concept-modelling board (ca.draft/1): palette, board, inspector, analysis and finder over the CA_V3 Drafting Engine. The op log is the draft; the page replays it on the std drafting poll budget so the agent's ops appear live. Layers: global, data model (data nodes expand into columns; column drags make field_map edges), process flow (engine workflows as step diagrams).",
   "category": "CA_V3",
   "tags": ["drafting", "design", "paired", "ca.draft/1"],
-  "version": "1.2.0",
+  "version": "1.2.1",
   "contract": { "config_keys": ["drafting"], "requires": ["wf:VkS7B5UucVMrNwWm", "std:drafting"] },
   "sandbox": { "scripts": true, "forms": false, "modals": false, "popups": false, "downloads": false, "sameOrigin": false },
   "config_schema": {
@@ -868,7 +868,9 @@ svg.addEventListener("pointerdown", ev => {
     INSP = ref; renderBoard(); renderInspector();
     if (ref.type === "analysis") { ACTIVE_AN = ref.id; renderAnalysis(); }
     const movable = SEL.filter(r => ["node", "note", "analysis", "class"].includes(r.type) && !(r.type === "class" && !isLocalClass(r.id)));
-    MODE = { kind: "move", refs: movable, start: w, sx: ev.clientX, sy: ev.clientY, moved: false };
+    // C998: in the data layer a plain click on a data node's title band (no drag, no modifier) also toggles its columns at pointerup
+    const tapNode = ref.type === "node" && LAYER === "data" && !(ev.shiftKey || ev.metaKey || ev.ctrlKey) && isDataNode(R.nodes[ref.id]) && (b => b && w.y - b.y <= NH)(boxOf(ref)) ? ref.id : "";
+    MODE = { kind: "move", refs: movable, start: w, sx: ev.clientX, sy: ev.clientY, moved: false, tap: tapNode };
     svg.setPointerCapture(ev.pointerId); return;
   }
   if (ev.shiftKey) { MODE = { kind: "marquee", start: w }; svg.setPointerCapture(ev.pointerId); return; }
@@ -918,6 +920,8 @@ svg.addEventListener("pointerup", ev => {
     }
     DRAG.pos = {};
     if (ops.length) emit(ops); else renderBoard();
+  } else if (m.kind === "move" && m.tap) {
+    toggleExpand(m.tap);   // C998: click on a data node's title band expands or collapses its columns
   } else if (m.kind === "relate" && m.field) {
     clearHover();
     if (Math.hypot(ev.clientX - m.sx, ev.clientY - m.sy) < 4) return;   // a click: the column stays selected
@@ -1578,10 +1582,18 @@ function isDataNode(n){
   if (ch.some(c => c.id === "core_object") && DATA_KINDS.has(String(a.kind || "").trim())) return true;
   return /^(tbl|sheet|std):/.test(String(a.key || "").trim());
 }
+/* C998: what the page asks the engine op schema for. The engine resolves tbl:<n8n table id> or a bare table name declared in
+   std data_model; it never resolves tbl:<name>. Boards key tables both ways (tbl:pwlC29yKZxbj8jgV, tbl:CA_standards), and
+   some carry the table in a `table` or `store` attribute with prose around it ("tbl:FrdIprb6uGEtLLoe CA_V4_docs {...}"),
+   so: take the first tbl: token found in key, table, store, label, id; keep it when the suffix is an id, else send the name. */
+const TBL_ID = /^[A-Za-z0-9]{16}$/;
+function schemaTarget(a, label, id){
+  const cands = [a.key, a.table, a.store, label, id].map(v => (v === undefined || v === null) ? "" : String(v).trim()).filter(Boolean);
+  for (const c of cands) { const m = c.match(/(?:^|[\s,;(])tbl:([A-Za-z0-9_\-.]+)/i); if (m) return TBL_ID.test(m[1]) ? "tbl:" + m[1] : m[1]; }
+  return cands[0] || "";
+}
 function schemaKey(n){
-  const a = Object.assign({}, classAttrs(n.class_id), n.attributes || {});
-  const k = String(a.key || "").trim();
-  return k || String(a.table || n.label || n.id).trim();
+  return schemaTarget(Object.assign({}, classAttrs(n.class_id), n.attributes || {}), n.label, n.id);
 }
 function isFieldMap(e){ return !!e && (e.edge_class_id === "field_map" || e.class_id === "field_map"); }
 function nodeDims(id){
@@ -1669,7 +1681,7 @@ function setLayer(l, silent){
   const was = LAYER; LAYER = l;
   $$("#layers [data-layer]").forEach(b => b.classList.toggle("on", b.dataset.layer === l));
   $("#app").classList.toggle("l-process", l === "process");
-  $("#hint").textContent = l === "data" ? "data model · ▸ expands a node's columns · drag a column onto another node's column to map fields"
+  $("#hint").textContent = l === "data" ? "data model · click a table node (or ▸) to expand its columns · drag a column onto another node's column to map fields"
     : l === "process" ? "process flow · tick workflows on the right · the draft is read-only here"
     : "drag a class in · drag ○ to relate · double-click to add · shift-drag to select · wheel to zoom";
   if (l === "process") loadFlows();
@@ -1786,7 +1798,7 @@ async function start(){
   catch (e) { syncErr = e.message; toast(e.message, true); setSync(); showDrafts(); }
 }
 window.DT = { get S(){ return S; }, get R(){ return R; }, get SEQ(){ return SEQ; }, get LOG(){ return LOG; }, get OUTBOX(){ return OUTBOX; }, get POLL(){ return POLL; }, get POLL_FROM(){ return POLL_FROM; },
-  get LAYER(){ return LAYER; }, get DM(){ return DM; }, get PF(){ return PF; }, pollDue, emit, openDraft, step, rebuild, setLayer, isDataNode, layoutFlow, fieldMapOps, toggleExpand, tickFlow };
+  get LAYER(){ return LAYER; }, get DM(){ return DM; }, get PF(){ return PF; }, pollDue, emit, openDraft, step, rebuild, setLayer, isDataNode, schemaKey, schemaTarget, layoutFlow, fieldMapOps, toggleExpand, tickFlow };
 start();
 </script>
 </body></html>

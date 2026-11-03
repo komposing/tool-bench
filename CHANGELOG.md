@@ -1,5 +1,19 @@
 # Changelog
 
+## 3.8.1 — C998
+
+- **Drafting Table** (`TB:drafting-table` v1.2.1, T569): **data-model layer expands what the board keys**. The engine op
+  `schema` resolves `tbl:<n8n table id>` or a bare table name declared in std `data_model`, never `tbl:<name>`, so a node
+  keyed `tbl:CA_standards` answered "unknown table" and a node carrying the table inside a `table` or `store` attribute
+  with prose around it never resolved at all. `schemaTarget` now takes the first `tbl:` token found in `key`, `table`,
+  `store`, label or id, keeps it when the suffix is an n8n id and sends the bare name otherwise. A plain click on a data
+  node's title band (no drag, no modifier) toggles its columns, as the chevron does; a drag still moves it and a
+  modifier click still multi-selects. Hint text updated. Harness `test/drafting-table/layers.js` gains 6 checks (37)
+  and keys one fixture table by id and one by name. Ledger friction `7ojtw3x9q5lm4k3sc6i1`.
+
+### Fixed
+- none
+
 ## 3.8.0 — C980
 
 - **Drafting Table** (`TB:drafting-table` v1.2.0, T560): **layers**. A segmented control in the toolbar switches the board
