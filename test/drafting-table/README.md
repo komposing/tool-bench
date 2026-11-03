@@ -13,6 +13,7 @@ NODE_PATH=$(npm root -g) node test/drafting-table/run.js
 NODE_PATH=$(npm root -g) node test/drafting-table/bench.js   # after node scripts/build.mjs
 NODE_PATH=$(npm root -g) node test/drafting-table/poll.js    # poll budget (C944): fake clock, hidden pause, backoff, one replay in flight
 NODE_PATH=$(npm root -g) node test/drafting-table/layers.js  # layers (C980): data model columns and field maps, process flow diagram, 400 fallback
+NODE_PATH=$(npm root -g) node test/drafting-table/exchanges.js  # CA_V4 exchanges lane: pending feed, arm-and-post decisions, refusals, empty state (fixtures/hub-*.json)
 ```
 
 `run.js` drives two tabs at 1280 px and one at 390 px through the acceptance list; `bench.js` runs the tool inside

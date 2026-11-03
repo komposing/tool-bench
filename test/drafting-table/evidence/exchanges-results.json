@@ -1,0 +1,280 @@
+{
+  "results": [
+    {
+      "name": "badge shows – before the first read, no hub call at boot",
+      "ok": true,
+      "detail": "badge –, calls 0"
+    },
+    {
+      "name": "tool block version bumped (minor)",
+      "ok": true
+    },
+    {
+      "name": "panel open reads v4.hub.pending once",
+      "ok": true,
+      "detail": "{\"to\":\"operator\",\"open_only\":true,\"limit\":40}"
+    },
+    {
+      "name": "envelope is ca.payload/1 with the page principal",
+      "ok": true,
+      "detail": "{\"surface\":\"page\",\"tool\":\"drafting-table\",\"tool_session_id\":\"page-9ro8w0sf\"}"
+    },
+    {
+      "name": "no viewer key in the V4 envelope",
+      "ok": true,
+      "detail": "the drafting key stays on the V3 endpoint"
+    },
+    {
+      "name": "badge = exchanges count (proposals not read)",
+      "ok": true,
+      "detail": "badge 3"
+    },
+    {
+      "name": "threads newest first",
+      "ok": true,
+      "detail": "hub-fixture-newer,hub-fixture-older"
+    },
+    {
+      "name": "one row per open decision",
+      "ok": true,
+      "detail": "3"
+    },
+    {
+      "name": "(n) body lines render as option buttons in order",
+      "ok": true,
+      "detail": "[\"(1) a webhook entry on the Hub now [recommended]\",\"(2) wait for the V4 Surface (D6)\",\"(3) other - steer\"]"
+    },
+    {
+      "name": "a row without options shows the body and the other field only",
+      "ok": true
+    },
+    {
+      "name": "refs render as chips and links",
+      "ok": true
+    },
+    {
+      "name": "proposals lane is a visible stub",
+      "ok": true
+    },
+    {
+      "name": "first click arms the option, no post",
+      "ok": true
+    },
+    {
+      "name": "second click posts v4.hub.post kind decision",
+      "ok": true,
+      "detail": "{\"thread_id\":\"hub-fixture-newer\",\"kind\":\"decision\",\"answers\":5,\"to\":\"claude-ai-fixture-newer\",\"body\":\"1: a webhook entry on the Hub now [recommended]\",\"refs\":\"[\\\"draft:dmw1122kroij7#sf_page_entry\\\",\\\"https://example.invalid/doc\\\"]\"}"
+    },
+    {
+      "name": "body is the option number and text; to = the asking session",
+      "ok": true,
+      "detail": "claude-ai-fixture-newer"
+    },
+    {
+      "name": "refs of the row ride on the decision",
+      "ok": true
+    },
+    {
+      "name": "row moves to the decided list with the decision seq",
+      "ok": true,
+      "detail": "{\"thread_id\":\"hub-fixture-newer\",\"seq\":5,\"body\":\"1: a webhook entry on the Hub now [recommended]\",\"decision_seq\":10,\"ts\":\"2026-11-03T22:38:39.132Z\"}"
+    },
+    {
+      "name": "panel refreshed after the settle",
+      "ok": true,
+      "detail": "2"
+    },
+    {
+      "name": "other submit arms the field",
+      "ok": true
+    },
+    {
+      "name": "other posts the steer prefixed by other",
+      "ok": true,
+      "detail": "other: go with the webhook, name it Doc Page"
+    },
+    {
+      "name": "refused post: row stays open, refusal {code, reason} in place, no retry",
+      "ok": true
+    },
+    {
+      "name": "filter by asking session narrows the rows",
+      "ok": true
+    },
+    {
+      "name": "filter by thread narrows the threads",
+      "ok": true
+    },
+    {
+      "name": "refused read: badge shows ? and the lane shows the refusal",
+      "ok": true
+    },
+    {
+      "name": "empty feed: no decisions waiting with the last read time",
+      "ok": true
+    },
+    {
+      "name": "close hides the panel",
+      "ok": true
+    },
+    {
+      "name": "reopen reads again",
+      "ok": true
+    },
+    {
+      "name": "nothing V4 went to the V3 drafting endpoint",
+      "ok": true
+    },
+    {
+      "name": "no page errors",
+      "ok": true,
+      "detail": ""
+    }
+  ],
+  "calls": [
+    {
+      "protocol": "ca.payload/1",
+      "key": "v4.hub.pending",
+      "session_ref": "page-9ro8w0sf",
+      "principal": {
+        "surface": "page",
+        "tool": "drafting-table",
+        "tool_session_id": "page-9ro8w0sf"
+      },
+      "params": {
+        "to": "operator",
+        "open_only": true,
+        "limit": 40
+      }
+    },
+    {
+      "protocol": "ca.payload/1",
+      "key": "v4.hub.post",
+      "session_ref": "page-9ro8w0sf",
+      "principal": {
+        "surface": "page",
+        "tool": "drafting-table",
+        "tool_session_id": "page-9ro8w0sf"
+      },
+      "params": {
+        "thread_id": "hub-fixture-newer",
+        "kind": "decision",
+        "answers": 5,
+        "to": "claude-ai-fixture-newer",
+        "body": "1: a webhook entry on the Hub now [recommended]",
+        "refs": "[\"draft:dmw1122kroij7#sf_page_entry\",\"https://example.invalid/doc\"]"
+      }
+    },
+    {
+      "protocol": "ca.payload/1",
+      "key": "v4.hub.pending",
+      "session_ref": "page-9ro8w0sf",
+      "principal": {
+        "surface": "page",
+        "tool": "drafting-table",
+        "tool_session_id": "page-9ro8w0sf"
+      },
+      "params": {
+        "to": "operator",
+        "open_only": true,
+        "limit": 40
+      }
+    },
+    {
+      "protocol": "ca.payload/1",
+      "key": "v4.hub.post",
+      "session_ref": "page-9ro8w0sf",
+      "principal": {
+        "surface": "page",
+        "tool": "drafting-table",
+        "tool_session_id": "page-9ro8w0sf"
+      },
+      "params": {
+        "thread_id": "hub-fixture-older",
+        "kind": "decision",
+        "answers": 4,
+        "to": "claude-ai-fixture-older",
+        "body": "other: go with the webhook, name it Doc Page",
+        "refs": ""
+      }
+    },
+    {
+      "protocol": "ca.payload/1",
+      "key": "v4.hub.pending",
+      "session_ref": "page-9ro8w0sf",
+      "principal": {
+        "surface": "page",
+        "tool": "drafting-table",
+        "tool_session_id": "page-9ro8w0sf"
+      },
+      "params": {
+        "to": "operator",
+        "open_only": true,
+        "limit": 40
+      }
+    },
+    {
+      "protocol": "ca.payload/1",
+      "key": "v4.hub.post",
+      "session_ref": "page-9ro8w0sf",
+      "principal": {
+        "surface": "page",
+        "tool": "drafting-table",
+        "tool_session_id": "page-9ro8w0sf"
+      },
+      "params": {
+        "thread_id": "hub-fixture-newer",
+        "kind": "decision",
+        "answers": 8,
+        "to": "session_01fixture",
+        "body": "2: hold",
+        "refs": ""
+      }
+    },
+    {
+      "protocol": "ca.payload/1",
+      "key": "v4.hub.pending",
+      "session_ref": "page-9ro8w0sf",
+      "principal": {
+        "surface": "page",
+        "tool": "drafting-table",
+        "tool_session_id": "page-9ro8w0sf"
+      },
+      "params": {
+        "to": "operator",
+        "open_only": true,
+        "limit": 40
+      }
+    },
+    {
+      "protocol": "ca.payload/1",
+      "key": "v4.hub.pending",
+      "session_ref": "page-9ro8w0sf",
+      "principal": {
+        "surface": "page",
+        "tool": "drafting-table",
+        "tool_session_id": "page-9ro8w0sf"
+      },
+      "params": {
+        "to": "operator",
+        "open_only": true,
+        "limit": 40
+      }
+    },
+    {
+      "protocol": "ca.payload/1",
+      "key": "v4.hub.pending",
+      "session_ref": "page-9ro8w0sf",
+      "principal": {
+        "surface": "page",
+        "tool": "drafting-table",
+        "tool_session_id": "page-9ro8w0sf"
+      },
+      "params": {
+        "to": "operator",
+        "open_only": true,
+        "limit": 40
+      }
+    }
+  ]
+}

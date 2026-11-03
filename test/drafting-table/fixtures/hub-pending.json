@@ -1,0 +1,73 @@
+{
+  "protocol": "ca.payload/1",
+  "outcome": "ok",
+  "key": "v4.hub.pending",
+  "run_id": "v4hub-fixture-pending",
+  "result": {
+    "to": "operator",
+    "open_only": true,
+    "threads": [
+      {
+        "thread_id": "hub-fixture-older",
+        "title": "Older thread with one open decision",
+        "increment": "ca_v4/inc/fixture-older",
+        "closed": false,
+        "seq_head": 6,
+        "items": [
+          {
+            "seq": 4,
+            "kind": "decision_request",
+            "from": { "surface": "claude", "tool": "claude-ai", "session": "claude-ai-fixture-older" },
+            "body": "Free-text decision with no numbered options: steer only.",
+            "refs": "",
+            "model_hint": "",
+            "ts": "2026-11-03T20:00:00.000Z",
+            "answered_by": null,
+            "row_id": 101
+          }
+        ]
+      },
+      {
+        "thread_id": "hub-fixture-newer",
+        "title": "Newer thread with two open decisions",
+        "increment": "ca_v4/inc/fixture-newer",
+        "closed": false,
+        "seq_head": 9,
+        "items": [
+          {
+            "seq": 5,
+            "kind": "decision_request",
+            "from": { "surface": "claude", "tool": "claude-ai", "session": "claude-ai-fixture-newer" },
+            "body": "D99 Which entry serves the lane?\n(1) a webhook entry on the Hub now [recommended]\n(2) wait for the V4 Surface (D6)\n(3) other - steer",
+            "refs": "[\"draft:dmw1122kroij7#sf_page_entry\",\"https://example.invalid/doc\"]",
+            "model_hint": "{\"class\":\"decision\",\"effort\":\"low\"}",
+            "ts": "2026-11-03T21:30:00.000Z",
+            "answered_by": null,
+            "row_id": 102
+          },
+          {
+            "seq": 8,
+            "kind": "decision_request",
+            "from": { "surface": "code", "tool": "claude-code", "session": "session_01fixture" },
+            "body": "Merge the branch?\n(1) merge now\n(2) hold",
+            "refs": "",
+            "model_hint": "",
+            "ts": "2026-11-03T21:45:00.000Z",
+            "answered_by": null,
+            "row_id": 103
+          }
+        ]
+      }
+    ],
+    "pending_count": 3,
+    "truncated": false,
+    "limit": 40,
+    "settle_with": "v4.hub.post {thread_id, kind decision, answers: <seq>, body} as author user (the page entry sets author user)",
+    "count": 3
+  },
+  "errors": [],
+  "warnings": [],
+  "conformance": { "mode": "enforced", "on_fail": "refuse" },
+  "session_ref": "page-fixture",
+  "principal": { "id": "page", "surface": "page", "tool": "drafting-table", "tool_session_id": "page-fixture" }
+}
