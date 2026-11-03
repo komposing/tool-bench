@@ -262,7 +262,7 @@
     {
       "version": "3.9.0",
       "change": "C000",
-      "note": "Drafting Table (TB:drafting-table v1.3.0, 2026-11-03): drill-down: scope nesting (scope key; breadcrumbs; portal chips; view.set carries scope), ports from attribute keys (from.key/to.key edges), semantic zoom, group collapse, history scrub, keyboard walk"
+      "note": "Drafting Table (TB:drafting-table v1.4.0, 2026-11-03): drill-down: scope nesting (scope key; breadcrumbs; portals; view.set carries scope), ports from attribute keys, semantic zoom, group collapse, history scrub, keyboard walk; merges lab transcript tab (configurable author, ambient auth)"
     }
   ]
 }

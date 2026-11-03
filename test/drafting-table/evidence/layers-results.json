@@ -91,7 +91,7 @@
   {
     "name": "inspector shows field_map edge with its fields",
     "ok": true,
-    "detail": "Field map ezm14c17wclassconditional on (shared)depends on (shared)field maprelates to (shared) label fromorders .id tocustomers .email relationmaps (copied / de"
+    "detail": "Field map ezn6o3187classconditional on (shared)depends on (shared)field maprelates to (shared) label fromorders .id tocustomers .email relationmaps (copied / de"
   },
   {
     "name": "title-band click on an expanded node collapses it (C998)",

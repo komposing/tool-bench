@@ -2,7 +2,7 @@
 
 ## 3.9.0 — C___
 
-- **Drafting Table** (`TB:drafting-table` v1.3.0): **drill-down**, so the board reads as a node graph. Six mechanisms, each one
+- **Drafting Table** (`TB:drafting-table` v1.4.0): **drill-down**, so the board reads as a node graph. Six mechanisms, each one
   evolution of the root principle (one ref per object, relate to anything, constraints as lenses) and no new op.
   **Scope**: one key `scope: {type:"node", id}` on nodes, notes and groups says which node's board they sit on; a node with
   anything scoped to it shows a `▣ n` badge and a 2.5px stroke; a double press, Enter, the badge or *Open as board* drills
@@ -20,6 +20,8 @@
   selected node, Enter drills in, Escape clears, climbs, then closes history. Double press is detected in the pointer
   handler because the board re-renders between clicks and the browser's dblclick does not fire across them.
   Harness `test/drafting-table/lab.js` (25 checks) against the same stand-in engine; run.js, layers.js and poll.js unchanged.
+- **Drafting Table**: merges branch `lab/drafting-table-lab-transcript` (lab transcript tab in the finder pane, configurable author,
+  ambient auth; harness `test/drafting-table/transcript.js`) and `c998/drafting-table-data-expand` (3.8.1 below) into one page.
 
 ### Fixed
 - none

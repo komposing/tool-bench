@@ -13,6 +13,7 @@ NODE_PATH=$(npm root -g) node test/drafting-table/run.js
 NODE_PATH=$(npm root -g) node test/drafting-table/bench.js   # after node scripts/build.mjs
 NODE_PATH=$(npm root -g) node test/drafting-table/poll.js    # poll budget (C944): fake clock, hidden pause, backoff, one replay in flight
 NODE_PATH=$(npm root -g) node test/drafting-table/layers.js  # layers (C980): data model columns and field maps, process flow diagram, 400 fallback
+NODE_PATH=$(npm root -g) node test/drafting-table/transcript.js  # lab transcript (C-lab): second bottom tab folds a transcript draft, on-demand load, entries/status/links/export, ambient auth, create
 ```
 
 `run.js` drives two tabs at 1280 px and one at 390 px through the acceptance list; `bench.js` runs the tool inside
