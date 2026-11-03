@@ -6,10 +6,10 @@
   "format": "toolbench.tool/1",
   "id": "TB:drafting-table",
   "name": "Drafting Table",
-  "description": "Paired concept-modelling board (ca.draft/1): palette, board, inspector, analysis and finder over the CA_V3 Drafting Engine. The op log is the draft; the page replays it on the std drafting poll budget so the agent's ops appear live. Layers: global, data model (data nodes expand into columns; column drags make field_map edges), process flow (engine workflows as step diagrams).",
+  "description": "Paired concept-modelling board (ca.draft/1): palette, board, inspector, analysis, finder and lab transcript over the CA_V3 Drafting Engine; the op log is the draft, replayed on the std poll budget. Layers: global, data model, process flow. Drill-down: scope nesting with breadcrumbs and portals, ports from attribute keys, semantic zoom, group collapse, history scrub, keyboard walk.",
   "category": "CA_V3",
   "tags": ["drafting", "design", "paired", "ca.draft/1"],
-  "version": "1.2.0",
+  "version": "1.4.0",
   "contract": { "config_keys": ["drafting"], "requires": ["wf:VkS7B5UucVMrNwWm", "std:drafting"] },
   "sandbox": { "scripts": true, "forms": false, "modals": false, "popups": false, "downloads": false, "sameOrigin": false },
   "config_schema": {
@@ -19,7 +19,12 @@
       { "path": "headers.X-Api-Key", "label": "Viewer key (X-Api-Key)", "type": "secret", "required": false, "secret": true, "help": "CA_V3 viewer key. Leave empty to use the key saved for the CA_V3 Viewer (cav3)." },
       { "path": "poll_ms", "label": "Active poll override (ms)", "type": "number", "help": "Blank: the active interval from std drafting reach.page.poll (2 s). Set it to replace only the active interval; idle backoff and the hidden pause still follow the standard" },
       { "path": "debounce_ms", "label": "Apply debounce (ms)", "type": "number", "default": 300 },
-      { "path": "draft_id", "label": "Open draft", "type": "string", "help": "Draft opened on start; blank shows the draft list" }
+      { "path": "draft_id", "label": "Open draft", "type": "string", "help": "Draft opened on start; blank shows the draft list" },
+      { "path": "author", "label": "Author", "type": "string", "default": "user", "help": "Who this page writes as: user, or agent:<tag> for an agent driving the page (its ops are then attributed to it, not to you)" },
+      { "path": "auth_mode", "label": "Auth mode", "type": "string", "default": "key", "help": "key: send the viewer key as X-Api-Key (default). ambient: send no key; the environment the page runs in attaches one (e.g. a cloud-session network secret)" },
+      { "path": "transcript_draft_id", "label": "Lab transcript draft", "type": "string", "default": "dmw0tjl1kc1sx", "help": "Draft that holds the lab transcript (lab_entry nodes); the default is the CA_V4 UI lab transcript. Blank: the transcript tab offers to create one" },
+      { "path": "transcript_refresh_s", "label": "Transcript auto-refresh (s)", "type": "number", "default": 0, "help": "0: refresh by hand only. Otherwise the transcript replays every N seconds while its tab is visible; each refresh is one engine execution" },
+      { "path": "lab_tag", "label": "Lab tag", "type": "string", "help": "Written into the env field of transcript entries made from this page, e.g. CA_V4 UI lab" }
     ]
   }
 }
@@ -127,6 +132,22 @@ h3{font:600 10px/1 var(--mono);letter-spacing:.18em;text-transform:uppercase;col
 #toast{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:7px 12px;border-radius:6px;font-size:12px;z-index:80;display:none;max-width:90vw}
 #toast.bad{background:var(--bad)}
 .muted{color:var(--ink3)} .small{font-size:11px}
+/* bottom pane tabs and the lab transcript (C-lab) */
+#findTabs{display:flex;gap:4px;align-items:center;margin:0} #findTabs .ftab{border:none;background:none;padding:2px 6px;font:600 10px/1 var(--mono);letter-spacing:.18em;text-transform:uppercase;color:var(--ink3);border-radius:0;border-bottom:2px solid transparent}
+#findTabs .ftab.on{color:var(--ink);border-bottom-color:var(--ink)} #findTabs .ftab:hover{color:var(--ink)}
+#finder,#trans{display:flex;flex-direction:column;gap:6px;flex:1;min-height:0} #finder[hidden],#trans[hidden]{display:none}
+#trBody{overflow:auto;flex:1;min-height:0;background:#fff;border:1px solid var(--line);border-radius:5px}
+#trTable{margin:0} #trTable th{position:sticky;top:0;background:var(--panel);z-index:1;font:600 10px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--ink2)}
+#trTable td{vertical-align:top;font-size:12px} #trTable tr.tre{cursor:pointer} #trTable tr.tre:hover td{background:#FBFAF7} #trTable tr.tre.open td{background:#F3F1EC}
+#trTable tr.trd td{background:#FBFAF7;border-left:3px solid var(--line);padding:6px 10px 8px}
+#trTable .pre{white-space:pre-wrap;font-size:12px;margin:2px 0 6px} #trTable .lk{font:11px var(--mono)}
+.kpill{font:10px var(--mono);padding:0 6px;border-radius:8px;border:1px solid;white-space:nowrap}
+#trKinds button{font-size:11px;padding:1px 7px} #trKinds button.off{opacity:.4}
+#trForm{display:grid;grid-template-columns:repeat(4,minmax(120px,1fr));gap:4px 8px;align-items:start} #trForm[hidden]{display:none}
+#trForm label{display:flex;flex-direction:column;gap:2px;font:10px var(--mono);color:var(--ink3);text-transform:uppercase;letter-spacing:.1em}
+#trForm label input,#trForm label select,#trForm label textarea{font:12px var(--sans);text-transform:none;letter-spacing:0;color:var(--ink)}
+#trForm .wide{grid-column:span 2} #trForm .acts{grid-column:1/-1;display:flex;gap:6px;justify-content:flex-end;align-items:center}
+#shExp textarea{width:100%;height:50vh;font:11.5px var(--mono)}
 /* layers (C980): segmented control, data-model columns, process-flow sidebar and diagram */
 #layers{display:inline-flex;border:1px solid var(--line);border-radius:5px;overflow:hidden;flex:none}
 #layers button{border:none;border-radius:0;padding:3px 9px;background:#fff;font-size:12px} #layers button+button{border-left:1px solid var(--line)}
@@ -147,6 +168,19 @@ h3{font:600 10px/1 var(--mono);letter-spacing:.18em;text-transform:uppercase;col
 .fh text.ft{font-weight:600;font-size:13px} .fh text.fi{font:10px var(--mono);fill:var(--ink3)}
 @media (max-width:820px){ #flows{width:min(272px,70vw)} }
 .mobtoggle{display:none}
+/* drill-down (lab) */
+#crumbs{display:inline-flex;align-items:center;gap:2px;font:11px var(--mono);color:var(--ink2);white-space:nowrap;max-width:360px;overflow:hidden}
+#crumbs button{border:none;background:none;padding:1px 4px;color:var(--acc);font:inherit} #crumbs button:last-child{color:var(--ink);font-weight:600}
+#crumbs .sep{color:var(--ink3);flex:none}
+.n .kids rect{fill:#fff;stroke:#5B6670;stroke-width:1} .n .kids text{font:9.5px var(--mono);fill:#5B6670} .n.has-kids rect.b{stroke-width:2.5}
+.n .port rect{fill:transparent} .n .port:hover rect{fill:#FFF1D6} .n .port text{font-size:10px!important} .n .port text.pk{font-family:var(--mono);fill:#5B6670} .n .port text.pv{fill:var(--ink3)}
+.n .port circle{fill:#fff;stroke:#5B6670;stroke-width:1.2;cursor:crosshair} .n .port:hover circle{fill:var(--acc)} .n .port.sel rect{fill:#DCE8FA}
+.portal rect{fill:#fff;stroke:#9DB6DD;stroke-dasharray:4 3;rx:12} .portal text{font:10.5px var(--mono);fill:#3D6FB6}
+.grp.folded rect.gb{fill:#EEF2F8;stroke:#3D6FB6;stroke-dasharray:none;rx:8;stroke-width:1.6} .grp.folded text.gn{font:10px var(--mono);fill:#5B6670}
+.lod0 .n text{display:none} .lod0 .n text.lab{display:block;font-size:14px} .lod0 .e text,.lod0 .e circle.m,.lod0 .badge,.lod0 .n .h{display:none}
+#scrub{display:none;align-items:center;gap:6px;position:absolute;left:10px;right:10px;bottom:28px;background:#fff;border:1px solid var(--line);border-radius:6px;padding:6px 10px;z-index:4;box-shadow:0 2px 8px rgba(0,0,0,.08);font:11px var(--mono)}
+#scrub.show{display:flex} #scrub input[type=range]{flex:1} #scrub .at{min-width:180px;color:var(--ink2)}
+#app.scrubbing #board{outline:3px solid #C77700;outline-offset:-3px} .since rect.b,.since rect.nb,.since path.l{stroke:#FF8F00!important;stroke-width:3}
 @media (max-width:820px){
   #app{grid-template-columns:1fr;grid-template-rows:40px 1fr;grid-template-areas:"top" "board"}
   .split,#hb{display:none!important}
@@ -167,6 +201,7 @@ h3{font:600 10px/1 var(--mono);letter-spacing:.18em;text-transform:uppercase;col
     <span class="brand">Drafting</span>
     <button id="bDraft" class="title" title="Draft attributes">—</button>
     <button id="bDrafts" title="Open or create a draft">Drafts</button>
+    <span id="crumbs" title="Scope: where you are on the board"></span>
     <span id="sync" title="sync state"><i></i><span id="syncTxt">offline</span></span>
     <span class="sep"></span>
     <span id="layers" title="Layer: what the board shows"><button data-layer="global" class="on">global</button><button data-layer="data">data model</button><button data-layer="process">process flow</button></span>
@@ -175,7 +210,10 @@ h3{font:600 10px/1 var(--mono);letter-spacing:.18em;text-transform:uppercase;col
     <button class="mobtoggle" data-m="find">Find</button>
     <button id="tReason" title="Inline thread bubbles">Show reasoning</button>
     <button id="tFollow" title="Move the camera to the agent's latest op">Follow agent</button>
+    <button id="tTrans" title="Lab transcript: what an agent found and changed on this page, as a table">Transcript</button>
     <button id="bFit" title="Fit the board">Fit</button>
+    <button id="tPorts" title="Draw attribute keys as ports">Ports</button>
+    <button id="tScrub" title="Replay the op log to any seq">History</button>
     <button class="deskonly" data-c="nopal" title="Collapse palette">◧</button>
     <button class="deskonly" data-c="noright" title="Collapse inspector and analysis">◨</button>
     <button class="deskonly" data-c="nofind" title="Collapse finder">⬓</button>
@@ -209,6 +247,7 @@ h3{font:600 10px/1 var(--mono);letter-spacing:.18em;text-transform:uppercase;col
       <button id="sNote">Annotate</button>
       <button id="sDel">Delete</button>
     </div>
+    <div id="scrub"><span>seq</span><input type="range" id="scrubR" min="1" max="1" value="1"><span id="scrubV">—</span><span class="at" id="scrubAt"></span><button id="scrubMark" class="link" title="Mark this seq; what changed after it is highlighted">mark</button><button id="scrubOff" class="link">close</button></div>
     <div id="hint">drag a class in · drag ○ to relate · double-click to add · shift-drag to select · wheel to zoom</div>
     <div id="flows">
       <div class="row" style="margin:0"><h3>Workflows</h3><span class="sep"></span><span class="small muted" id="flCount"></span><button class="link" id="flRefresh" title="Reload the workflow list (op flows)">refresh</button></div>
@@ -227,15 +266,48 @@ h3{font:600 10px/1 var(--mono);letter-spacing:.18em;text-transform:uppercase;col
 
   <div id="hb"></div>
   <div id="find" class="pane">
-    <div class="row" style="margin:0">
-      <h3 style="margin-right:6px">Finder</h3>
-      <input id="fq" placeholder="search docs and drafts" style="max-width:340px">
-      <label class="small"><input type="checkbox" id="fDocs" checked> docs</label>
-      <label class="small"><input type="checkbox" id="fDrafts" checked> drafts</label>
-      <button id="fGo">Find</button>
-      <span class="small muted" id="fCount"></span>
+    <div id="findTabs"><button class="ftab on" data-ft="finder">Finder</button><button class="ftab" data-ft="trans">Lab transcript <span class="pill" id="trN" style="display:none"></span></button></div>
+    <div id="finder">
+      <div class="row" style="margin:0">
+        <input id="fq" placeholder="search docs and drafts" style="max-width:340px">
+        <label class="small"><input type="checkbox" id="fDocs" checked> docs</label>
+        <label class="small"><input type="checkbox" id="fDrafts" checked> drafts</label>
+        <button id="fGo">Find</button>
+        <span class="small muted" id="fCount"></span>
+      </div>
+      <div id="cards"><span class="small muted">Cards appear here. Drag one onto the board to make a node, or into the analysis to add it.</span></div>
     </div>
-    <div id="cards"><span class="small muted">Cards appear here. Drag one onto the board to make a node, or into the analysis to add it.</span></div>
+    <div id="trans" hidden>
+      <div class="row" style="margin:0">
+        <code id="trDraft" class="small muted" title="the draft that holds the transcript">—</code>
+        <span class="small muted" id="trAs"></span>
+        <span class="sep"></span>
+        <span class="small muted" id="trCount"></span>
+        <button id="trRefresh" title="Replay the transcript draft since the last seq: one engine execution">Refresh</button>
+        <button id="trAuto" title="Refresh on a timer while this tab is visible (one execution per refresh)">Auto</button>
+        <button id="trExport" title="Markdown of the rows shown, to paste into a chat">Export</button>
+        <button id="trAdd" class="pri" title="Add an entry as the page's author">+ Entry</button>
+      </div>
+      <div class="row" style="margin:0">
+        <select id="trAuthor" title="author" style="flex:none;min-width:120px"><option value="">all authors</option></select>
+        <select id="trStatus" title="status" style="flex:none;min-width:100px"><option value="">any status</option><option>open</option><option>fixed</option><option>verified</option><option>wontfix</option></select>
+        <span id="trKinds" class="tabs" style="margin:0"></span>
+        <input id="trQ" placeholder="filter text" style="flex:none;width:170px">
+      </div>
+      <div id="trForm" class="ent" hidden>
+        <label>kind<select id="teKind"></select></label>
+        <label>round<input id="teRound" placeholder="e.g. 3"></label>
+        <label>subject<input id="teSubject" placeholder="F2, node:k_pointer, inspector…"></label>
+        <label>status<select id="teStatus"><option>open</option><option>fixed</option><option>verified</option><option>wontfix</option><option>n/a</option></select></label>
+        <label class="wide">summary<input id="teSummary" placeholder="one line: what was found, changed or proved"></label>
+        <label>resolves / evidences<input id="teLinks" placeholder="entry ids, comma-separated"></label>
+        <label>page version<input id="tePage" placeholder="e.g. 1.3.1"></label>
+        <label class="wide">detail<textarea id="teDetail" rows="3" placeholder="how to reproduce, what was wrong, what the change does"></textarea></label>
+        <label class="wide">evidence<textarea id="teEvidence" rows="3" placeholder="one per line: screenshot:name.png sha256:… · diff:file · exec:count"></textarea></label>
+        <div class="acts"><span class="small muted" id="teNote"></span><button id="teCancel">Cancel</button><button class="pri" id="teSave">Save entry</button></div>
+      </div>
+      <div id="trBody"><table class="dl" id="trTable"><tr><td class="muted">—</td></tr></table></div>
+    </div>
   </div>
 </div>
 
@@ -247,6 +319,11 @@ h3{font:600 10px/1 var(--mono);letter-spacing:.18em;text-transform:uppercase;col
   <div class="row"><input id="ndTitle" placeholder="new draft title"><button class="pri" id="ndGo">Create</button></div>
   <label class="small row"><input type="checkbox" id="ndRemember"> open the chosen draft next time (saved in Tool Bench settings)</label>
   <div class="row" style="justify-content:flex-end"><button id="dlClose">Close</button></div>
+</div></div>
+<div class="sheet" id="shExp"><div class="box">
+  <h3>Transcript export <span class="small muted" style="text-transform:none;letter-spacing:0" id="expNote"></span></h3>
+  <textarea id="expText" readonly></textarea>
+  <div class="row" style="justify-content:flex-end"><button id="expCopy">Copy</button><button id="expClose">Close</button></div>
 </div></div>
 <div class="sheet" id="shSet"><div class="box">
   <h3>Settings</h3>
@@ -278,8 +355,14 @@ const CONF = {
   keyFrom: getPath(DC, "headers.X-Api-Key") ? "drafting" : (getPath(TC, "cav3.dashboard.headers.X-Api-Key") ? "cav3" : ""),
   pollOverride: DC.poll_ms == null || DC.poll_ms === "" ? null : Math.max(500, +DC.poll_ms || 2000),
   debounce: Math.max(0, DC.debounce_ms == null ? 300 : +DC.debounce_ms),
-  draft: DC.draft_id || ""
+  draft: DC.draft_id || "",
+  auth: DC.auth_mode === "ambient" ? "ambient" : "key",                    // ambient: no key sent; the page's environment attaches one
+  transcript: DC.transcript_draft_id === undefined ? "dmw0tjl1kc1sx" : String(DC.transcript_draft_id || "").trim(),   // the draft that holds the lab transcript; unset = the CA_V4 UI lab one, "" = none yet
+  transcriptRefresh: Math.max(0, +DC.transcript_refresh_s || 0),           // 0 = refresh by hand only
+  labTag: String(DC.lab_tag || "").trim()
 };
+// Who this page writes as. The engine takes user or agent:<tag>; anything else falls back to user so a typo cannot refuse every apply.
+const AUTHOR = (a => a === "user" || /^agent:[A-Za-z0-9_.-]+$/.test(a) ? a : "user")(String(DC.author || "user").trim());
 /* Poll budget: std drafting reach.page.poll (C944, T536). Built-in defaults equal std drafting v2; the engine's open
    reply relays the live row as reach_page_poll once C903-s3 lands, and that wins. poll_ms overrides active_ms only. */
 const POLL_DEFAULT = { active_ms: 2000, active_window_ms: 30000, idle_ms: [10000, 30000, 60000], hidden: "pause", in_flight: 1, request_timeout_ms: 40000 };
@@ -298,7 +381,6 @@ function setPollBudget(src, from){
   if (CONF.pollOverride != null) { p.active_ms = CONF.pollOverride; POLL_FROM += "+override"; }
   POLL = p;
 }
-const AUTHOR = "user";
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
 const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -313,11 +395,14 @@ const parseRk = s => { const m = /^([a-z_]+):(.+?)(?:#(.+))?$/.exec(s || ""); re
 function toast(msg, bad){ const t = $("#toast"); t.textContent = msg; t.className = bad ? "bad" : ""; t.style.display = "block"; clearTimeout(toast.h); toast.h = setTimeout(() => t.style.display = "none", bad ? 6000 : 2600); }
 
 /* ============================== transport ============================== */
+function hasAuth(){ return !!CONF.key || CONF.auth === "ambient"; }
 async function call(op, params, signal){
-  if (!CONF.key) throw new Error("No viewer key: set it in Tool Bench Settings (Drafting Table or CA_V3 Viewer) or in ⚙");
+  if (!hasAuth()) throw new Error("No viewer key: set it in Tool Bench Settings (Drafting Table or CA_V3 Viewer) or in ⚙");
   let res;
   try {
-    res = await fetch(CONF.url, { method: "POST", headers: { "Content-Type": "application/json", "X-Api-Key": CONF.key },
+    const headers = { "Content-Type": "application/json" };
+    if (CONF.key) headers["X-Api-Key"] = CONF.key;   // ambient mode sends none: the page's environment attaches the credential
+    res = await fetch(CONF.url, { method: "POST", headers,
       body: JSON.stringify(Object.assign({ op }, params || {})), cache: "no-store", signal: signal || undefined });
   } catch (e) { if (e && e.name === "AbortError") throw e; throw new Error("Drafting endpoint unreachable (network or CORS): " + (e.message || e)); }
   const txt = await res.text();
@@ -351,6 +436,14 @@ let lastPoll = 0, lastOk = 0, syncErr = "", busy = false, lastEdit = 0;
 let lastChange = 0, idleStep = 0, replayBusy = false, HELD = [];   // poll budget state (C944)
 let LAYER = "global";      // board layer (C980): global | data | process
 const DM = { expanded: new Set(), schema: new Map(), pending: new Set(), colSel: "" };   // data model layer: view-only state, schema cache per key for the page session
+/* drill-down (lab) */
+let SCOPE = null;          // current board scope: null = the draft's root, else {type:"node", id}
+const SCOPES = new Map();  // scope key -> saved camera
+let PORTS = false;         // draw attribute keys as ports (view state)
+let SCRUB = null;          // null, or the seq the board is replayed to (read-only while set)
+let SCRUB_MARK = 0;        // seq after which objects are highlighted as changed
+let LOD = 1;               // 0 chips, 1 cards, 2 detail (from CAM.k)
+let LASTPRESS = null;      // {k, t}: last pressed object, for drill-in on a double press
 const PF = { flows: [], loaded: false, loading: false, ticked: [], flow: new Map(), pending: new Set(), boxes: [], filter: "" };   // process flow layer
 
 function blankState(){
@@ -438,7 +531,7 @@ function step(st, e, ctx){
 }
 function rebuild(){
   const st = blankState();
-  for (const e of LOG) step(st, e);
+  for (const e of LOG) { if (SCRUB != null && e.seq > SCRUB) break; step(st, e); }
   let n = 0;
   for (const o of INFLIGHT.concat(OUTBOX)) step(st, Object.assign({ seq: "local" + (n++), author: AUTHOR, ts: "" }, o));
   S = st;
@@ -491,6 +584,7 @@ function emit(ops){
   if (!DRAFT) { toast("Open a draft first", true); return; }
   ops = Array.isArray(ops) ? ops : [ops];
   if (LAYER === "process" && ops.some(o => o.op !== "view.set")) { toast("The process flow layer is read-only: switch to global or data model to edit the draft"); renderBoard(); return; }
+  if (SCRUB != null && ops.some(o => o.op !== "view.set")) { toast("History view is read-only: close it to edit"); return; }
   for (const o of ops) OUTBOX.push({ op: o.op, payload: o.payload, origin_request: o.origin_request || undefined });
   lastEdit = Date.now(); if (ops.some(isChange)) markActive();
   rebuild(); renderAll();
@@ -535,7 +629,7 @@ function touchedRef(e){
 }
 function noteIncoming(e){
   const ref = touchedRef(e);
-  const tag = e.author === AUTHOR ? "user (other tab)" : e.author;
+  const tag = e.author === AUTHOR ? AUTHOR + " (other tab)" : e.author;
   if (ref && ref.id) RECENT.set(rk(ref), { author: tag, at: Date.now() });
   if (FLAGS.follow && /^agent:/.test(e.author || "") && ref) followTo(ref);
 }
@@ -662,6 +756,7 @@ function boxOf(ref, depth){
     case "note": { if (!o) return null; const p = DRAG.pos["note:" + ref.id] || o.pos || { x: -260, y: 320 + Math.max(0, Object.keys(R.notes).filter(k => !R.notes[k].pos).indexOf(ref.id)) * 80 }; return { x: p.x, y: p.y, w: NOTEW, h: NOTEH }; }
     case "edge": { const m = edgeMid(o, depth); return m ? { x: m.x - 6, y: m.y - 6, w: 12, h: 12 } : null; }
     case "group": { const b = groupBox(o, depth); return b; }
+    case "portal": { if (!PORTALS.has(ref.id)) PORTALS.set(ref.id, PORTALS.size); return portalBox(ref.id); }
     case "analysis": case "class": case "draft": {
       if (!o) return null;
       const p = DRAG.pos[rk(ref)] || o.pos || autoPos(ref);
@@ -674,6 +769,7 @@ function boxOf(ref, depth){
 function centre(b){ return { x: b.x + b.w / 2, y: b.y + b.h / 2 }; }
 function groupBox(g, depth){
   if (!g) return null;
+  if (g.collapsed) { const p = DRAG.pos["group:" + g.id] || g.pos || (() => { const bs = (g.member_refs || []).map(r => boxOf(r, (depth || 0) + 1)).filter(Boolean); return bs.length ? { x: Math.min(...bs.map(b => b.x)), y: Math.min(...bs.map(b => b.y)) } : { x: 0, y: 0 }; })(); return { x: p.x, y: p.y, w: NW, h: NH }; }
   const bs = (g.member_refs || []).map(r => boxOf(r, (depth || 0) + 1)).filter(Boolean);
   if (!bs.length) { const p = g.pos || { x: 0, y: 0 }; return { x: p.x, y: p.y, w: 160, h: 60 }; }
   const x1 = Math.min(...bs.map(b => b.x)) - 18, y1 = Math.min(...bs.map(b => b.y)) - 30;
@@ -683,11 +779,14 @@ function groupBox(g, depth){
 function edgePts(e, depth){
   if (!e) return null;
   const fm = LAYER === "data" && isFieldMap(e) ? (e.attributes || {}) : null;
-  const a = (fm && colBox(e.from.id, fm.from_field)) || boxOf(e.from, (depth || 0) + 1), b = (fm && colBox(e.to.id, fm.to_field)) || boxOf(e.to, (depth || 0) + 1);
+  const ef = foldedGroupOf(e.from) || resolveEnd(e.from), et = foldedGroupOf(e.to) || resolveEnd(e.to);
+  const a = (fm && colBox(e.from.id, fm.from_field)) || (e.from.key && portBox(e.from.id, e.from.key)) || boxOf(ef, (depth || 0) + 1), b = (fm && colBox(e.to.id, fm.to_field)) || (e.to.key && portBox(e.to.id, e.to.key)) || boxOf(et, (depth || 0) + 1);
   if (!a || !b) return null;
   const ca = centre(a), cb = centre(b);
   return { a: clip(a, ca, cb), b: clip(b, cb, ca) };
 }
+function foldedGroupOf(ref){ for (const g of Object.values(R.groups)) if (g.collapsed && (g.member_refs || []).some(m => sameObj(m, ref))) return { type: "group", id: g.id }; return null; }
+function hiddenByFold(ref){ return !!foldedGroupOf(ref); }
 function edgeMid(e, depth){ const p = edgePts(e, depth); return p ? { x: (p.a.x + p.b.x) / 2, y: (p.a.y + p.b.y) / 2 } : null; }
 function clip(box, from, to){
   // where the segment from the box centre to `to` leaves the box
@@ -725,17 +824,22 @@ function cls(ref, o, base){
 }
 function renderBoard(){
   const out = [];
-  const show = layerVisible();   // null: everything (global); else a predicate over refs (C980)
+  LOD = lodOf(CAM.k); $("#world").setAttribute("class", "lod" + LOD);
+  PORTALS.clear(); PORTAL_O = portalOrigin();
+  const show = layerVisible();   // a predicate over refs: the layer (C980) and the scope (lab)
   // groups
   for (const g of Object.values(R.groups)) {
     if (show && !show({ type: "group", id: g.id })) continue;
     const b = groupBox(g); if (!b) continue; const ref = { type: "group", id: g.id };
+    if (g.collapsed) { out.push(`<g class="${cls(ref, g, "grp folded")}" data-ref="group:${esc(g.id)}"><rect class="gb" x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}"/>
+      <text class="gn" x="${b.x + 10}" y="${b.y + 16}">▣ group · ${(g.member_refs || []).length}</text><text x="${b.x + 10}" y="${b.y + 37}" font-size="13" font-weight="600" fill="#12161A">${esc(trunc(g.label || "group", 21))}</text>${badge(ref, b.x + b.w - 6, b.y + 2)}</g>`); continue; }
     out.push(`<g class="${cls(ref, g, "grp")}" data-ref="group:${esc(g.id)}"><rect class="gb" x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}"/>
       <text x="${b.x + 10}" y="${b.y + 18}" font-size="11.5" font-weight="600" fill="#3D6FB6">${esc(trunc(g.label || "group", 40))}</text>${badge(ref, b.x + b.w - 8, b.y + 8)}</g>`);
   }
   // edges (edges about edges need the target edge's midpoint, which boxOf resolves)
   for (const e of Object.values(R.edges)) {
     if (show && !show({ type: "edge", id: e.id })) continue;
+    { const gf = foldedGroupOf(e.from), gt = foldedGroupOf(e.to); if (gf && gt && gf.id === gt.id) continue; }   // internal to a folded group
     const p = edgePts(e); if (!p) continue;
     const ref = { type: "edge", id: e.id }, ec = ecOf(e.edge_class_id) || ROOT_EDGE, st = ecStyle(e.edge_class_id);
     const stroke = st.stroke || "#9E9E9E", dash = st.dash ? ' stroke-dasharray="6 4"' : "";
@@ -766,23 +870,28 @@ function renderBoard(){
     let anchor = "";
     if (n.anchor) { const ab = boxOf(n.anchor); if (ab) { const c = centre(ab); anchor = `<path d="M${b.x + b.w / 2},${b.y + b.h / 2}L${c.x},${c.y}" stroke="#E2C64A" stroke-dasharray="3 3" fill="none"/>`; } }
     const lines = String(n.text || "(empty note)").split(/\n/).flatMap(l => l.match(/.{1,24}(\s|$)|.{1,24}/g) || [""]).slice(0, 4);
-    out.push(`<g class="${cls(ref, n, "note")}" data-ref="note:${esc(n.id)}">${anchor}<rect class="nb" x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}"/>
+    out.push(`<g class="${cls(ref, n, "note")}${sinceMark(n) ? " since" : ""}" data-ref="note:${esc(n.id)}">${anchor}<rect class="nb" x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}"/>
       ${lines.map((l, i) => `<text x="${b.x + 8}" y="${b.y + 16 + i * 13}" font-size="11" fill="#5A4A00">${esc(l)}</text>`).join("")}${badge(ref, b.x + b.w - 4, b.y + 2)}${tagText(ref, b.x, b.y - 4)}</g>`);
   }
   // nodes
   for (const n of Object.values(R.nodes)) {
-    const ref = { type: "node", id: n.id }; if (show && !show(ref)) continue; const b = boxOf(ref);
+    const ref = { type: "node", id: n.id }; if (show && !show(ref)) continue; if (hiddenByFold(ref)) continue; const b = boxOf(ref);
     const st = styleOf(n.class_id), c = clsOf(n.class_id);
     const dash = st.dash ? ' stroke-dasharray="5 3"' : "";
     const dm = LAYER === "data" && isDataNode(n), ex = dm && DM.expanded.has(n.id);
-    out.push(`<g class="${cls(ref, n, "n")}" data-ref="node:${esc(n.id)}"><rect class="b" x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" fill="${st.fill || "#fff"}" stroke="${st.stroke || "#888"}"${dash}/>
+    const kids = childrenOf(n.id).length;
+    out.push(`<g class="${cls(ref, n, "n")}${kids ? " has-kids" : ""}${sinceMark(n) ? " since" : ""}" data-ref="node:${esc(n.id)}"><rect class="b" x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" fill="${st.fill || "#fff"}" stroke="${st.stroke || "#888"}"${dash}/>
       <text x="${b.x + 10}" y="${b.y + 16}" font-size="10" fill="#5B6670" font-family="ui-monospace,monospace">${esc(trunc(c ? c.name : n.class_id, 24))}${n.source_ref ? " ⧉" : ""}</text>
-      <text x="${b.x + 10}" y="${b.y + 37}" font-size="13" font-weight="600" fill="#12161A">${esc(trunc(n.label || n.id, dm ? 18 : 21))}</text>
+      <text class="lab" x="${b.x + 10}" y="${b.y + 37}" font-size="13" font-weight="600" fill="#12161A">${esc(trunc(n.label || n.id, dm ? 18 : 21))}</text>
+      ${kids ? `<g class="kids" data-drill="${esc(n.id)}" transform="translate(${b.x + b.w - 46},${b.y + 24})"><title>${kids} inside · double-click to open</title><rect width="40" height="18" rx="9"/><text x="20" y="12.5" text-anchor="middle">▣ ${kids}</text></g>` : ""}
+      ${!ex ? portRows(n, b) : ""}
       ${dm ? `<g class="ex" data-expand="${esc(n.id)}" transform="translate(${b.x + b.w - 26},${b.y + 24})"><rect width="20" height="20" rx="4"/><text x="10" y="14" text-anchor="middle" font-size="12" fill="#5B6670">${ex ? "▾" : "▸"}</text></g>` : ""}
       ${ex ? columnRows(n, b) : ""}
       <circle class="h" data-handle="node:${esc(n.id)}" cx="${b.x + b.w}" cy="${b.y + NH / 2}" r="6"/>
       ${badge(ref, b.x + b.w - 6, b.y + 2)}${bubbles(ref, b.x, b.y + b.h + 6)}${tagText(ref, b.x, b.y - 5)}</g>`);
   }
+  for (const [id, i] of PORTALS) { const b = portalBox(id); const far = parseRk(id); const o = objOf(far); const chain = (() => { let x = o, t = [], g = 0; while (x && g++ < 6) { const sc = scopeOf(x); if (!sc) break; t.unshift((R.nodes[sc.id] || {}).label || sc.id); x = R.nodes[sc.id]; } return t; })();
+    out.push(`<g class="portal" data-ref="${esc(id)}" data-portal="${esc(id)}"><title>outside this board${chain.length ? " · in " + esc(chain.join(" › ")) : " · root"}</title><rect x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}"/><text x="${b.x + 10}" y="${b.y + 17}">⇱ ${esc(trunc(nameOf(far), 20))}</text></g>`); }
   if (LAYER === "process") out.push(renderFlows());
   $("#world").innerHTML = out.join("");
   applyCam();
@@ -795,10 +904,11 @@ function applyCam(){ $("#world").setAttribute("transform", `translate(${CAM.x},$
   $("#board").style.backgroundPosition = `${CAM.x}px ${CAM.y}px`; $("#board").style.backgroundSize = `${22 * CAM.k}px ${22 * CAM.k}px`; }
 function allBoxes(){
   const bs = [], show = layerVisible();
-  for (const id in R.nodes) if (!show || show({ type: "node", id })) bs.push(boxOf({ type: "node", id }));
+  for (const id in R.nodes) if ((!show || show({ type: "node", id })) && !hiddenByFold({ type: "node", id })) bs.push(boxOf({ type: "node", id }));
   for (const id in R.notes) if (!show || show({ type: "note", id })) bs.push(boxOf({ type: "note", id }));
   for (const id in R.groups) if (!show || show({ type: "group", id })) bs.push(groupBox(R.groups[id]));
   if (LAYER === "process") for (const b of PF.boxes) bs.push(b);
+  for (const id of PORTALS.keys()) bs.push(portalBox(id));
   return bs.filter(Boolean);
 }
 function fit(){
@@ -852,6 +962,16 @@ svg.addEventListener("pointerdown", ev => {
   }
   const xb = ev.target.closest("[data-expand]");
   if (xb) { ev.preventDefault(); toggleExpand(xb.dataset.expand); return; }
+  const pt = ev.target.closest("[data-port]");
+  if (pt) {   // a port row: click selects the node at that key; dragging relates from the key
+    ev.preventDefault();
+    const ref = { type: "node", id: pt.dataset.port, key: pt.dataset.key };
+    SEL = [ref]; INSP = { type: "node", id: ref.id }; renderBoard(); renderInspector();
+    MODE = { kind: "relate", from: ref, port: true, sx: ev.clientX, sy: ev.clientY };
+    svg.setPointerCapture(ev.pointerId); return;
+  }
+  const pl = ev.target.closest("[data-portal]");
+  if (pl) { ev.preventDefault(); const far = parseRk(pl.dataset.portal); const o = objOf(far); const sc = o ? scopeOf(o) : null; enterScope(sc); SEL = [far]; INSP = far; renderBoard(); renderInspector(); followTo(far); return; }
   const col = ev.target.closest("[data-col]");
   if (col) {   // data model layer: a column row; click selects it, dragging maps it onto a column of another expanded node
     ev.preventDefault();
@@ -863,12 +983,20 @@ svg.addEventListener("pointerdown", ev => {
   const t = ev.target.closest("[data-ref]");
   if (t) {
     const ref = parseRk(t.dataset.ref);
+    const now = Date.now();   // a second press on the same object within 450 ms: drill in or unfold (the DOM re-renders between clicks, so dblclick cannot be relied on)
+    if (LASTPRESS && LASTPRESS.k === rk(ref) && now - LASTPRESS.t < 450) {
+      LASTPRESS = null;
+      if (ref.type === "node" && (childrenOf(ref.id).length || ev.target.closest("[data-drill]"))) { ev.preventDefault(); enterScope(ref); return; }
+      if (ref.type === "group" && (R.groups[ref.id] || {}).collapsed) { ev.preventDefault(); toggleFold(ref.id); return; }
+    } else LASTPRESS = { k: rk(ref), t: now };
     if (ev.shiftKey || ev.metaKey || ev.ctrlKey) SEL = selected(ref) ? SEL.filter(r => rk(r) !== rk(ref)) : SEL.concat([ref]);
     else if (!selected(ref)) SEL = [ref];
     INSP = ref; renderBoard(); renderInspector();
     if (ref.type === "analysis") { ACTIVE_AN = ref.id; renderAnalysis(); }
-    const movable = SEL.filter(r => ["node", "note", "analysis", "class"].includes(r.type) && !(r.type === "class" && !isLocalClass(r.id)));
-    MODE = { kind: "move", refs: movable, start: w, sx: ev.clientX, sy: ev.clientY, moved: false };
+    const movable = SEL.filter(r => ["node", "note", "analysis", "class"].includes(r.type) && !(r.type === "class" && !isLocalClass(r.id)) || (r.type === "group" && (R.groups[r.id] || {}).collapsed));
+    // C998: in the data layer a plain click on a data node's title band (no drag, no modifier) also toggles its columns at pointerup
+    const tapNode = ref.type === "node" && LAYER === "data" && !(ev.shiftKey || ev.metaKey || ev.ctrlKey) && isDataNode(R.nodes[ref.id]) && (b => b && w.y - b.y <= NH)(boxOf(ref)) ? ref.id : "";
+    MODE = { kind: "move", refs: movable, start: w, sx: ev.clientX, sy: ev.clientY, moved: false, tap: tapNode };
     svg.setPointerCapture(ev.pointerId); return;
   }
   if (ev.shiftKey) { MODE = { kind: "marquee", start: w }; svg.setPointerCapture(ev.pointerId); return; }
@@ -891,7 +1019,7 @@ svg.addEventListener("pointermove", ev => {
     renderBoard();
     const z = dropZoneAt(ev.clientX, ev.clientY); clearHover(); if (z && z.dataset.drop === "analysis") z.classList.add("over");
   } else if (MODE.kind === "relate") {
-    const cb = MODE.field ? colBox(MODE.from.id, MODE.field) : null, b = cb || boxOf(MODE.from), a = cb ? { x: cb.x + cb.w, y: cb.y + cb.h / 2 } : { x: b.x + b.w, y: b.y + NH / 2 };
+    const cb = MODE.field ? colBox(MODE.from.id, MODE.field) : MODE.port ? portBox(MODE.from.id, MODE.from.key) : null, b = cb || boxOf(MODE.from), a = cb ? { x: cb.x + cb.w + (MODE.port ? 4 : 0), y: cb.y + cb.h / 2 } : { x: b.x + b.w, y: b.y + NH / 2 };
     $("#tmpl").innerHTML = `<path class="tmp" d="M${a.x},${a.y}L${w.x},${w.y}"/>`;
     MODE.target = MODE.field ? hoverCol(ev.clientX, ev.clientY) : hoverRef(ev.clientX, ev.clientY);
   } else if (MODE.kind === "marquee") {
@@ -907,6 +1035,11 @@ svg.addEventListener("pointerup", ev => {
     if (z && z.dataset.drop === "analysis") {   // dragged out of the board into the analysis: add as members, don't move
       DRAG.pos = {}; clearHover(); addMembers(SEL.slice()); renderBoard(); return;
     }
+    if (ev.altKey) {   // alt-drop onto a node: move the selection onto that node's board
+      let tgt = null;
+      for (const el of document.elementsFromPoint(ev.clientX, ev.clientY)) { const t = el.closest && el.closest("#world [data-ref]"); if (!t) continue; const r = parseRk(t.dataset.ref); if (r.type === "node" && !m.refs.some(x => sameObj(x, r))) { tgt = r; break; } }
+      if (tgt) { DRAG.pos = {}; moveIntoScope(m.refs, tgt); toast("moved inside " + trunc(nameOf(tgt), 24)); return; }
+    }
     const ops = [];
     for (const r of m.refs) {
       const p = DRAG.pos[r.type === "node" ? r.id : rk(r)]; if (!p) continue;
@@ -915,9 +1048,12 @@ svg.addEventListener("pointerup", ev => {
       else if (r.type === "note" && o) ops.push({ op: "note.set", payload: Object.assign(strip(o), { pos: p }) });
       else if (r.type === "analysis" && o) ops.push({ op: "analysis.set", payload: Object.assign(strip(o), { pos: p }) });
       else if (r.type === "class" && o && isLocalClass(r.id)) ops.push({ op: "class.amend", payload: { id: r.id, pos: p } });
+      else if (r.type === "group" && o && o.collapsed) ops.push({ op: "group.set", payload: Object.assign(strip(o), { pos: p }) });
     }
     DRAG.pos = {};
     if (ops.length) emit(ops); else renderBoard();
+  } else if (m.kind === "move" && m.tap) {
+    toggleExpand(m.tap);   // C998: click on a data node's title band expands or collapses its columns
   } else if (m.kind === "relate" && m.field) {
     clearHover();
     if (Math.hypot(ev.clientX - m.sx, ev.clientY - m.sy) < 4) return;   // a click: the column stays selected
@@ -925,12 +1061,15 @@ svg.addEventListener("pointerup", ev => {
     if (to && !(to.node === m.from.id && to.field === m.field)) startFieldMap(m.from.id, m.field, to.node, to.field, ev.clientX, ev.clientY);
   } else if (m.kind === "relate") {
     clearHover();
-    const to = refAt(ev.clientX, ev.clientY);
+    if (m.port && Math.hypot(ev.clientX - m.sx, ev.clientY - m.sy) < 4) return;   // a click on a port: it stays selected
+    const tp = portAt(ev.clientX, ev.clientY);
+    let to = tp ? { type: "node", id: tp.node, key: tp.key } : refAt(ev.clientX, ev.clientY);
+    if (to && to.type === "portal") to = parseRk(to.id);   // relating to a portal relates to the thing behind it
     if (to && !(to.type === m.from.type && to.id === m.from.id && !to.key)) startEdge(m.from, to, ev.clientX, ev.clientY);
   } else if (m.kind === "marquee" && m.rect) {
     const inR = b => b && b.x >= m.rect.x && b.y >= m.rect.y && b.x + b.w <= m.rect.x + m.rect.w && b.y + b.h <= m.rect.y + m.rect.h;
     const show = layerVisible();
-    SEL = Object.keys(R.nodes).map(id => ({ type: "node", id })).concat(Object.keys(R.notes).map(id => ({ type: "note", id }))).filter(r => (!show || show(r)) && inR(boxOf(r)));
+    SEL = Object.keys(R.nodes).map(id => ({ type: "node", id })).concat(Object.keys(R.notes).map(id => ({ type: "note", id }))).filter(r => (!show || show(r)) && !hiddenByFold(r) && inR(boxOf(r)));
     renderBoard();
   }
 });
@@ -939,14 +1078,20 @@ svg.addEventListener("wheel", ev => {
   const r = svg.getBoundingClientRect(), px = ev.clientX - r.left, py = ev.clientY - r.top;
   const k = Math.max(.2, Math.min(3, CAM.k * Math.exp(-ev.deltaY * .0015)));
   CAM.x = px - (px - CAM.x) * k / CAM.k; CAM.y = py - (py - CAM.y) * k / CAM.k; CAM.k = k; applyCam();
+  if (lodOf(k) !== LOD) renderBoard();
 }, { passive: false });
 svg.addEventListener("dblclick", ev => {
   const t = ev.target.closest("[data-ref]");
-  if (t) { const ref = parseRk(t.dataset.ref); if (ref.type === "node" || ref.type === "note" || ref.type === "group") renameInline(ref, ev.clientX, ev.clientY); return; }
+  if (t) {
+    const ref = parseRk(t.dataset.ref);
+    if (ref.type === "node" && (childrenOf(ref.id).length || ev.target.closest("[data-drill]"))) { enterScope(ref); return; }
+    if (ref.type === "group" && (R.groups[ref.id] || {}).collapsed) { toggleFold(ref.id); return; }
+    if (ref.type === "node" || ref.type === "note" || ref.type === "group") renameInline(ref, ev.clientX, ev.clientY); return;
+  }
   const w = toWorld(ev.clientX, ev.clientY);
   const cid = PAL_SEL && PAL_SEL.type === "class" ? PAL_SEL.id : "undefined";
   const id = uid("n");
-  emit({ op: "node.add", payload: { id, class_id: cid, label: (clsOf(cid) || ROOT_CLASS).name, attributes: {}, pos: { x: Math.round(w.x - NW / 2), y: Math.round(w.y - NH / 2) } } });
+  emit({ op: "node.add", payload: Object.assign({ id, class_id: cid, label: (clsOf(cid) || ROOT_CLASS).name, attributes: {}, pos: { x: Math.round(w.x - NW / 2), y: Math.round(w.y - NH / 2) } }, SCOPE ? { scope: clone(SCOPE) } : {}) });
   SEL = [{ type: "node", id }]; INSP = SEL[0]; renderAll();
   renameInline({ type: "node", id }, ev.clientX, ev.clientY);
 });
@@ -958,7 +1103,10 @@ svg.addEventListener("contextmenu", ev => {
     ["Reason: principle", () => reasonWith(SEL, "principle")], ["Reason: free", () => reasonWith(SEL, "free")], "-",
     ["Add to active analysis", () => addMembers(SEL)], ["Annotate", () => annotate(SEL)]];
   if (SEL.length > 1) items.push(["Group", () => groupSel()]);
-  if (ref.type === "node") items.push(["Promote node to class", () => promoteNode(ref.id)]);
+  if (ref.type === "node") items.push(["Open as board (drill in)", () => enterScope(ref)], ["Promote node to class", () => promoteNode(ref.id)]);
+  if (SEL.length && SCOPE) items.push(["Move selection out to " + (scopeChain().length > 1 ? "parent board" : "root"), () => { const ch = scopeChain(); moveIntoScope(SEL.slice(), ch.length > 1 ? ch[ch.length - 2] : null); }]);
+  if (SEL.length > 1 && ref.type === "node") items.push(["Move the others inside this node", () => moveIntoScope(SEL.filter(r => !sameObj(r, ref)), ref)]);
+  if (ref.type === "group") items.push([(R.groups[ref.id] || {}).collapsed ? "Expand group" : "Collapse group", () => toggleFold(ref.id)]);
   if (ref.type === "node" || ref.type === "note" || ref.type === "group") items.push(["Rename", () => renameInline(ref, ev.clientX, ev.clientY)]);
   if (["node", "edge"].includes(ref.type)) items.push("-", ["Delete", () => deleteSel()]);
   openMenu(ev.clientX, ev.clientY, items);
@@ -1009,10 +1157,11 @@ function autoColor(s){ let h = 0; for (const c of String(s)) h = (h * 31 + c.cha
 function autoFill(s){ let h = 0; for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) % 360; return `hsl(${h},60%,94%)`; }
 
 /* selection actions */
+function toggleFold(gid){ const g = objOf({ type: "group", id: gid }, S); if (!g) return; emit({ op: "group.set", payload: Object.assign(strip(g), { collapsed: !g.collapsed, pos: g.pos || groupBox(R.groups[gid]) }) }); }
 function groupSel(){
   const members = SEL.filter(r => r.type !== "group"); if (members.length < 1) return;
   const id = uid("g");
-  emit({ op: "group.set", payload: { id, label: "group", member_refs: members.map(r => clone(r)), dynamic: false, style: {} } });
+  emit({ op: "group.set", payload: Object.assign({ id, label: "group", member_refs: members.map(r => clone(r)), dynamic: false, style: {} }, SCOPE ? { scope: clone(SCOPE) } : {}) });
   SEL = [{ type: "group", id }]; INSP = SEL[0]; renderAll();
   const b = groupBox(R.groups[id]); if (b) { const s = toScreen(b.x, b.y); const r = $("#board").getBoundingClientRect(); renameInline({ type: "group", id }, s.x + r.left + 80, s.y + r.top + 14); }
 }
@@ -1021,7 +1170,7 @@ function annotate(refs){
   const b = anchor ? boxOf(anchor) : null;
   const pos = b ? { x: Math.round(b.x + b.w + 30), y: Math.round(b.y - 40) } : (() => { const r = svg.getBoundingClientRect(); const w = toWorld(r.left + r.width / 2, r.top + r.height / 2); return { x: Math.round(w.x), y: Math.round(w.y) }; })();
   const id = uid("m");
-  emit({ op: "note.set", payload: Object.assign({ id, text: "", pos }, anchor ? { anchor } : {}) });
+  emit({ op: "note.set", payload: Object.assign({ id, text: "", pos }, anchor ? { anchor } : {}, SCOPE ? { scope: clone(SCOPE) } : {}) });
   SEL = [{ type: "note", id }]; INSP = SEL[0]; renderAll();
   const s = toScreen(pos.x, pos.y), r = $("#board").getBoundingClientRect();
   renameInline({ type: "note", id }, s.x + r.left + 80, s.y + r.top + 14);
@@ -1052,7 +1201,9 @@ $("#sDel").onclick = deleteSel;
 document.addEventListener("keydown", ev => {
   if (/INPUT|TEXTAREA|SELECT/.test((ev.target.tagName || ""))) return;
   if ((ev.key === "Delete" || ev.key === "Backspace") && SEL.length) { ev.preventDefault(); deleteSel(); }
-  if (ev.key === "Escape") { SEL = []; closeMenu(); renderBoard(); }
+  if (ev.key === "Escape") { if (SCRUB != null) { $("#scrubOff").click(); return; } if (!SEL.length && SCOPE) { exitScope(); return; } SEL = []; closeMenu(); renderBoard(); }
+  if (ev.key === "Enter") { const n = SEL.find(r => r.type === "node"); if (n) { ev.preventDefault(); enterScope(n); } }
+  if (/^Arrow/.test(ev.key) && !ev.altKey) { ev.preventDefault(); walk(ev.key); }
 });
 
 /* ============================== context menu ============================== */
@@ -1108,12 +1259,12 @@ function dropCard(zone, card, cx, cy){
     const w = toWorld(cx, cy), pos = { x: Math.round(w.x - NW / 2), y: Math.round(w.y - NH / 2) };
     if (ref && ref.type === "class") {
       const c = clsOf(ref.id), id = uid("n");
-      emit({ op: "node.add", payload: { id, class_id: ref.id, label: c ? c.name : ref.id, attributes: {}, pos } });
+      emit({ op: "node.add", payload: Object.assign({ id, class_id: ref.id, label: c ? c.name : ref.id, attributes: {}, pos }, SCOPE ? { scope: clone(SCOPE) } : {}) });
       SEL = [{ type: "node", id }]; INSP = SEL[0]; renderAll(); return;
     }
     if (ref) return;   // a ref already on this board: nothing to make
     const id = uid("n");
-    emit({ op: "card.drop", payload: { id, class_id: "undefined", label: trunc(card.title || card.id || "card", 80), source_ref: card.source_ref != null ? card.source_ref : card.id, pos } });
+    emit({ op: "card.drop", payload: Object.assign({ id, class_id: "undefined", label: trunc(card.title || card.id || "card", 80), source_ref: card.source_ref != null ? card.source_ref : card.id, pos }, SCOPE ? { scope: clone(SCOPE) } : {}) });
     SEL = [{ type: "node", id }]; INSP = SEL[0]; renderAll(); return;
   }
   if (zone === "analysis") {
@@ -1292,6 +1443,7 @@ function renderInspector(){
         <div class="row"><span class="lbl">class</span><select id="iClass">${classSelect(o.class_id)}</select></div>
         ${o.source_ref != null ? `<div class="row small"><span class="lbl">source</span><code>${esc(typeof o.source_ref === "string" ? o.source_ref : JSON.stringify(o.source_ref))}</code></div>` : ""}
         <div class="sec"><h3>Attributes <span class="small muted" style="text-transform:none;letter-spacing:0">grey = from ${esc(c ? c.name : o.class_id)}</span></h3>${attrRows(ref, o.attributes || {}, inh, null, { promote: true })}<div id="iOffer"></div></div>
+        <div class="row small"><span class="lbl">board</span><span>${(() => { const sc = scopeOf(o); return sc ? `inside <b>${esc((R.nodes[sc.id] || {}).label || sc.id)}</b>` : "root"; })()} · ${childrenOf(o.id).length} inside</span><button id="iDrill">Open as board</button></div>
         <div class="row"><button id="iPromoteNode">Promote node to class</button><button id="iReason">Reason…</button><button id="iDel">Delete</button></div>` + edgesHtml(ref) + threadHtml(ref);
       break;
     }
@@ -1355,7 +1507,7 @@ function renderInspector(){
       emit({ op: "node.amend", payload: { id: o.id, attributes: a } });
       if (added && !(added in classAttrs(o.class_id))) offerPromote(o.id, added);
     }, k => promoteAttr(o.id, k));
-    on("#iPromoteNode", "click", () => promoteNode(o.id));
+    on("#iPromoteNode", "click", () => promoteNode(o.id)); on("#iDrill", "click", () => enterScope(ref));
   }
   if (ref.type === "edge") {
     on("#iEClass", "change", e => emit({ op: "edge.amend", payload: { id: o.id, edge_class_id: e.target.value } }));
@@ -1538,8 +1690,8 @@ addEventListener("message", ev => { const d = ev.data; if (d && d.type === "tool
 $("#bSet").onclick = () => {
   $("#cPoll").value = CONF.pollOverride == null ? "" : CONF.pollOverride; $("#cDeb").value = CONF.debounce; $("#cUrl").value = CONF.url; $("#cKey").value = "";
   $("#cConn").style.display = TM ? "none" : "";
-  $("#cNote").textContent = TM ? `Saved in Tool Bench settings (namespace drafting); the tool reloads. Endpoint ${CONF.url}; key ${CONF.key ? "from " + CONF.keyFrom : "missing: set it in Tool Bench Settings"}.`
-                               : "Standalone: kept in memory for this page only.";
+  $("#cNote").textContent = (TM ? `Saved in Tool Bench settings (namespace drafting); the tool reloads. Endpoint ${CONF.url}; key ${CONF.key ? "from " + CONF.keyFrom : (CONF.auth === "ambient" ? "ambient (attached by the environment)" : "missing: set it in Tool Bench Settings")}.`
+                               : "Standalone: kept in memory for this page only.") + ` Writing as ${AUTHOR}.`;
   $("#shSet").classList.add("open");
 };
 $("#cClose").onclick = () => $("#shSet").classList.remove("open");
@@ -1578,14 +1730,22 @@ function isDataNode(n){
   if (ch.some(c => c.id === "core_object") && DATA_KINDS.has(String(a.kind || "").trim())) return true;
   return /^(tbl|sheet|std):/.test(String(a.key || "").trim());
 }
+/* C998: what the page asks the engine op schema for. The engine resolves tbl:<n8n table id> or a bare table name declared in
+   std data_model; it never resolves tbl:<name>. Boards key tables both ways (tbl:pwlC29yKZxbj8jgV, tbl:CA_standards), and
+   some carry the table in a `table` or `store` attribute with prose around it ("tbl:FrdIprb6uGEtLLoe CA_V4_docs {...}"),
+   so: take the first tbl: token found in key, table, store, label, id; keep it when the suffix is an id, else send the name. */
+const TBL_ID = /^[A-Za-z0-9]{16}$/;
+function schemaTarget(a, label, id){
+  const cands = [a.key, a.table, a.store, label, id].map(v => (v === undefined || v === null) ? "" : String(v).trim()).filter(Boolean);
+  for (const c of cands) { const m = c.match(/(?:^|[\s,;(])tbl:([A-Za-z0-9_\-.]+)/i); if (m) return TBL_ID.test(m[1]) ? "tbl:" + m[1] : m[1]; }
+  return cands[0] || "";
+}
 function schemaKey(n){
-  const a = Object.assign({}, classAttrs(n.class_id), n.attributes || {});
-  const k = String(a.key || "").trim();
-  return k || String(a.table || n.label || n.id).trim();
+  return schemaTarget(Object.assign({}, classAttrs(n.class_id), n.attributes || {}), n.label, n.id);
 }
 function isFieldMap(e){ return !!e && (e.edge_class_id === "field_map" || e.class_id === "field_map"); }
 function nodeDims(id){
-  if (LAYER !== "data" || !DM.expanded.has(id)) return { w: NW, h: NH };
+  if (LAYER !== "data" || !DM.expanded.has(id)) { const n = R.nodes[id]; const pk = n ? portKeys(n).length : 0; return { w: NW, h: NH + (pk ? pk * ROWH + 4 : 0) }; }
   const n = R.nodes[id]; if (!n || !isDataNode(n)) return { w: NW, h: NH };
   const sc = DM.schema.get(schemaKey(n));
   const rows = sc ? Math.max(1, (sc.columns || []).length) : 1;
@@ -1650,7 +1810,112 @@ function startFieldMap(fromNode, fromField, toNode, toField, cx, cy){
   const go = relation => { const r = fieldMapOps(fromNode, fromField, toNode, toField, relation); emit(r.ops); SEL = [{ type: "edge", id: r.id }]; INSP = SEL[0]; DM.colSel = ""; renderAll(); };
   openMenu(cx, cy, [[`${fromField} → ${toField}`, () => {}], "-", ["maps (copied / derived)", () => go("maps")], ["fk (foreign key)", () => go("fk")], ["eq (same value)", () => go("eq")]]);
 }
+/* ============================== drill-down (lab) ============================== */
+/* Scope: one key on nodes, notes and groups — scope: {type:"node", id} — says which node's board they sit on. No key: the root.
+   A node with anything scoped to it is a sub-board: double-click drills in. Edges whose far end lies outside the scope draw to a
+   portal chip, so a relation never disappears when you drill. view.set carries the scope. Nothing here is a new op. */
+const scopeKey = r => r ? rk(r) : "";
+function scopeOf(o){ return o && isObj(o.scope) && o.scope.id ? { type: o.scope.type || "node", id: o.scope.id } : null; }
+function inScope(o){ return scopeKey(scopeOf(o)) === scopeKey(SCOPE); }
+function childrenOf(nid){
+  const k = "node:" + nid, out = [];
+  for (const n of Object.values(R.nodes)) if (scopeKey(scopeOf(n)) === k) out.push({ type: "node", id: n.id });
+  for (const n of Object.values(R.notes)) if (scopeKey(scopeOf(n)) === k) out.push({ type: "note", id: n.id });
+  return out;
+}
+function scopeChain(){ const out = []; let s = SCOPE, guard = 0; while (s && guard++ < 12) { out.unshift(s); const o = R.nodes[s.id]; s = o ? scopeOf(o) : null; } return out; }
+function scopeVisible(r){
+  if (!r) return false;
+  if (r.type === "node" || r.type === "note") { const o = objOf(r); return !!o && inScope(o); }
+  if (r.type === "group") { const g = R.groups[r.id]; return !!g && (isObj(g.scope) ? inScope(g) : (g.member_refs || []).some(m => scopeVisible(m))); }
+  if (r.type === "edge") { const e = R.edges[r.id]; return !!e && (endVisible(e.from) || endVisible(e.to)); }
+  return !SCOPE;   // chips (classes, analyses, the draft) live on the root board
+}
+function endVisible(ref){ if (!ref) return false; if (ref.type === "node" || ref.type === "note" || ref.type === "group") return scopeVisible(ref); if (ref.type === "edge") { const e = R.edges[ref.id]; return !!e && endVisible(e.from) && endVisible(e.to); } return !SCOPE; }
+// an edge end outside the scope resolves to the nearest ancestor node that IS on this board (a port on the parent), else to a portal chip
+function resolveEnd(ref){
+  if (endVisible(ref)) return ref;
+  let o = objOf(ref), guard = 0;
+  while (o && guard++ < 12) { const sc = scopeOf(o); if (!sc) break; if (scopeVisible(sc)) return sc; o = objOf(sc); }
+  return { type: "portal", id: rk(ref) };
+}
+const PORTALS = new Map();   // rk of the far object -> slot index, laid out as a column left of the board's content
+let PORTAL_O = { x: -300, y: 0 };
+function portalOrigin(){ const bs = []; for (const id in R.nodes) if (scopeVisible({ type: "node", id })) bs.push(boxOf({ type: "node", id })); for (const id in R.notes) if (scopeVisible({ type: "note", id })) bs.push(boxOf({ type: "note", id })); const v = bs.filter(Boolean); return v.length ? { x: Math.min(...v.map(b => b.x)) - 240, y: Math.min(...v.map(b => b.y)) } : { x: -300, y: 0 }; }
+function portalBox(id){ const i = PORTALS.get(id); return { x: PORTAL_O.x, y: PORTAL_O.y + (i == null ? 0 : i) * 40, w: 180, h: 26 }; }
+function enterScope(ref){
+  if (ref && !R.nodes[ref.id]) return;
+  SCOPES.set(scopeKey(SCOPE), clone(CAM));
+  SCOPE = ref ? { type: "node", id: ref.id } : null; SEL = []; INSP = ref || null; PORTALS.clear();
+  const cam = SCOPES.get(scopeKey(SCOPE)); if (cam) { CAM = cam; applyCam(); renderAll(); } else { renderAll(); fit(); }
+  if (DRAFT) { lastView = JSON.stringify(viewPayload()); emit({ op: "view.set", payload: viewPayload() }); }
+  renderCrumbs();
+}
+function exitScope(){ const ch = scopeChain(); enterScope(ch.length > 1 ? ch[ch.length - 2] : null); }
+function renderCrumbs(){
+  const ch = scopeChain();
+  const parts = [`<button data-scope="">${esc(trunc(S.draft.title || "draft", 18))}</button>`].concat(ch.map(r => `<span class="sep">›</span><button data-scope="${esc(r.id)}">${esc(trunc((R.nodes[r.id] || {}).label || r.id, 16))}</button>`));
+  $("#crumbs").innerHTML = parts.join("");
+  $$("#crumbs [data-scope]").forEach(b => b.onclick = () => enterScope(b.dataset.scope ? { type: "node", id: b.dataset.scope } : null));
+}
+function moveIntoScope(refs, target){   // target: node ref or null (root)
+  const ops = [];
+  for (const r of refs) {
+    if (target && r.type === "node" && (r.id === target.id || isAncestorScope(r.id, target.id))) continue;   // no cycles
+    const o = objOf(r, S); if (!o) continue;
+    const sc = target ? { type: "node", id: target.id } : null;
+    if (r.type === "node") ops.push({ op: "node.amend", payload: { id: r.id, scope: sc } });
+    else if (r.type === "note") ops.push({ op: "note.set", payload: Object.assign(strip(o), { scope: sc }) });
+    else if (r.type === "group") ops.push({ op: "group.set", payload: Object.assign(strip(o), { scope: sc }) });
+  }
+  if (ops.length) emit(ops);
+}
+function isAncestorScope(nid, maybeDesc){ let o = R.nodes[maybeDesc], guard = 0; while (o && guard++ < 12) { const sc = scopeOf(o); if (!sc) return false; if (sc.id === nid) return true; o = R.nodes[sc.id]; } return false; }
+/* ports: a node's attribute keys (own + inherited) drawn as rows with a handle; an edge dragged from one carries from.key */
+function portKeys(n){ if (!PORTS && LOD < 2) return []; const a = Object.assign({}, classAttrs(n.class_id), n.attributes || {}); return Object.keys(a).filter(k => k !== "scope").slice(0, 8); }
+function portBox(nid, key){ const n = R.nodes[nid]; if (!n) return null; const i = portKeys(n).indexOf(key); if (i < 0) return null; const b = boxOf({ type: "node", id: nid }); return { x: b.x + 4, y: b.y + NH + i * ROWH, w: b.w - 8, h: ROWH }; }
+function portRows(n, b){
+  const a = Object.assign({}, classAttrs(n.class_id), n.attributes || {}), keys = portKeys(n); if (!keys.length) return "";
+  let h = `<line x1="${b.x}" y1="${b.y + NH}" x2="${b.x + b.w}" y2="${b.y + NH}" stroke="#DEDAD1"/>`;
+  keys.forEach((k, i) => { const y = b.y + NH + i * ROWH, v = a[k]; const sel = SEL.some(r => r.type === "node" && r.id === n.id && r.key === k) ? " sel" : "";
+    h += `<g class="port${sel}" data-port="${esc(n.id)}" data-key="${esc(k)}"><rect x="${b.x + 4}" y="${y}" width="${b.w - 8}" height="${ROWH}" rx="3"/><text class="pk" x="${b.x + 10}" y="${y + 13}">${esc(trunc(k, 14))}</text><text class="pv" x="${b.x + 96}" y="${y + 13}">${esc(trunc(String(v == null || v === "" ? "—" : isObj(v) ? JSON.stringify(v) : v), 12))}</text><circle cx="${b.x + b.w}" cy="${y + ROWH / 2}" r="4.5"/></g>`; });
+  return h;
+}
+function portAt(cx, cy){ for (const el of document.elementsFromPoint(cx, cy)) { const t = el.closest && el.closest("[data-port]"); if (t) return { node: t.dataset.port, key: t.dataset.key }; } return null; }
+/* semantic zoom: the camera scale picks the level of detail */
+function lodOf(k){ return k < .55 ? 0 : k > 1.6 ? 2 : 1; }
+/* time scrub: replay the log to a seq; the board is read-only while scrubbing */
+function setScrub(seq){
+  const was = SCRUB; SCRUB = seq == null ? null : Math.max(1, Math.min(SEQ, +seq || 1));
+  $("#app").classList.toggle("scrubbing", SCRUB != null); $("#scrub").classList.toggle("show", SCRUB != null);
+  if (SCRUB != null) { $("#scrubR").max = SEQ; $("#scrubR").value = SCRUB; $("#scrubV").textContent = SCRUB + " / " + SEQ; const e = LOG.find(x => x.seq === SCRUB); $("#scrubAt").textContent = e ? `${e.op} · ${e.author} · ${String(e.ts || "").slice(0, 19).replace("T", " ")}` : ""; }
+  if (was !== SCRUB) { rebuild(); renderAll(); }
+}
+function sinceMark(o){ return SCRUB_MARK > 0 && o && typeof o._seq === "number" && o._seq > SCRUB_MARK; }
+$("#tScrub").onclick = () => { if (!DRAFT) return; setScrub(SCRUB == null ? SEQ : null); $("#tScrub").classList.toggle("on", SCRUB != null); };
+$("#scrubOff").onclick = () => { setScrub(null); $("#tScrub").classList.remove("on"); };
+$("#scrubR").addEventListener("input", e => setScrub(e.target.value));
+$("#scrubMark").onclick = () => { SCRUB_MARK = SCRUB || 0; toast("marked seq " + SCRUB_MARK + ": later changes are highlighted"); renderBoard(); };
+$("#tPorts").onclick = () => { PORTS = !PORTS; $("#tPorts").classList.toggle("on", PORTS); renderBoard(); };
+/* keyboard graph walk: arrows follow edges from the selected node, Enter drills in, Escape climbs out */
+function walk(dir){
+  const cur = SEL.find(r => r.type === "node"); if (!cur) { const first = Object.keys(R.nodes).find(id => scopeVisible({ type: "node", id })); if (first) { SEL = [{ type: "node", id: first }]; INSP = SEL[0]; renderBoard(); renderInspector(); } return; }
+  const here = boxOf(cur); if (!here) return;
+  const cands = [];
+  for (const e of Object.values(R.edges)) { const o = sameObj(e.from, cur) ? e.to : sameObj(e.to, cur) ? e.from : null; if (o && o.type === "node" && scopeVisible(o)) cands.push(o); }
+  const c0 = centre(here);
+  const pick = cands.map(r => ({ r, b: boxOf(r) })).filter(x => x.b).map(x => { const c = centre(x.b); return { r: x.r, dx: c.x - c0.x, dy: c.y - c0.y }; })
+    .filter(x => dir === "ArrowRight" ? x.dx > 0 : dir === "ArrowLeft" ? x.dx < 0 : dir === "ArrowDown" ? x.dy > 0 : x.dy < 0)
+    .sort((a, b) => Math.hypot(a.dx, a.dy) - Math.hypot(b.dx, b.dy))[0];
+  if (pick) { SEL = [pick.r]; INSP = pick.r; followTo(pick.r); renderBoard(); renderInspector(); }
+}
+
 function layerVisible(){
+  const lay = layerOnly();
+  if (!lay) return r => scopeVisible(r);
+  return r => lay(r) && scopeVisible(r);
+}
+function layerOnly(){
   if (LAYER === "global") return null;
   if (LAYER === "data") {
     const vis = r => r && r.type === "node" && isDataNode(R.nodes[r.id]);
@@ -1663,13 +1928,13 @@ function savedLayer(){
   for (let i = LOG.length - 1; i >= 0; i--) { const e = LOG[i]; if (e.op === "view.set" && e.author === AUTHOR && e.payload && LAYERS.includes(e.payload.layer)) return e.payload.layer; }
   return "global";
 }
-function viewPayload(){ return { camera: { x: Math.round(CAM.x), y: Math.round(CAM.y), k: +CAM.k.toFixed(2) }, selection: SEL.map(r => clone(r)), layer: LAYER }; }
+function viewPayload(){ return { camera: { x: Math.round(CAM.x), y: Math.round(CAM.y), k: +CAM.k.toFixed(2) }, selection: SEL.map(r => clone(r)), layer: LAYER, scope: SCOPE ? clone(SCOPE) : null }; }
 function setLayer(l, silent){
   if (!LAYERS.includes(l)) l = "global";
   const was = LAYER; LAYER = l;
   $$("#layers [data-layer]").forEach(b => b.classList.toggle("on", b.dataset.layer === l));
   $("#app").classList.toggle("l-process", l === "process");
-  $("#hint").textContent = l === "data" ? "data model · ▸ expands a node's columns · drag a column onto another node's column to map fields"
+  $("#hint").textContent = l === "data" ? "data model · click a table node (or ▸) to expand its columns · drag a column onto another node's column to map fields"
     : l === "process" ? "process flow · tick workflows on the right · the draft is read-only here"
     : "drag a class in · drag ○ to relate · double-click to add · shift-drag to select · wheel to zoom";
   if (l === "process") loadFlows();
@@ -1777,16 +2042,214 @@ function renderFlows(){
 $("#flFilter").addEventListener("input", e => { PF.filter = e.target.value.trim(); renderFlowList(); });
 $("#flRefresh").onclick = () => loadFlows(true);
 
+/* ============================== lab transcript (C-lab) ============================== */
+/* A transcript is a draft, not a side table: entries are nodes of class lab_entry (one subclass per kind: finding, fix,
+   evidence, decision, question, note) and links are edges (resolves: fix → finding; evidences: evidence → fix or
+   finding). The page folds that draft with the same step() as the board and shows it as a table in the bottom pane,
+   so the human sees what an agent driving this page found and changed, and anything that reads CA_drafts can trace a
+   finding to its fix and its evidence. It is loaded on demand (one replay per refresh), never polled with the board;
+   entries are written through apply as AUTHOR, with no origin_request, so they are never ghosted. */
+const LAB_KINDS = ["finding", "fix", "evidence", "decision", "question", "note"];
+const LAB_STYLE = { finding: { fill: "#FFF1D6", stroke: "#C77700" }, fix: { fill: "#D7EED9", stroke: "#2E7D32" }, evidence: { fill: "#E3F2FD", stroke: "#1E66D0" },
+  decision: { fill: "#EDE7F6", stroke: "#7E57C2" }, question: { fill: "#FFF6C9", stroke: "#B8860B" }, note: { fill: "#F3F1EC", stroke: "#8A939B" } };
+const LAB_FIELDS = { round: "", subject: "", summary: "", detail: "", evidence: "", page_version: "", status: "open", env: "", session: "", resolves: "" };
+const LAB_STATUS = ["open", "fixed", "verified", "wontfix", "n/a"];
+const TR = { id: CONF.transcript, st: null, seq: 0, log: [], seen: new Set(), ts: new Map(), loaded: false, loading: false, err: "", at: 0,
+  open: new Set(), kinds: new Set(LAB_KINDS), auto: null, tab: "finder", linkFor: "" };
+function trBlank(){ const st = blankState(); st.draft.id = TR.id; return st; }
+function labBootstrapOps(st){
+  st = st || { classes: {}, edge_classes: {} };
+  const ops = [];
+  if (!st.classes.lab_entry) ops.push({ op: "class.define", payload: { id: "lab_entry", name: "lab entry", parent: "undefined", attributes: clone(LAB_FIELDS), style: { fill: "#FFFFFF", stroke: "#5B6670" } } });
+  for (const k of LAB_KINDS) if (!st.classes["lab_" + k]) ops.push({ op: "class.define", payload: { id: "lab_" + k, name: k, parent: "lab_entry", attributes: {}, style: LAB_STYLE[k] } });
+  if (!st.edge_classes.resolves) ops.push({ op: "edge_class.define", payload: { id: "resolves", name: "resolves", parent: "relates_to", directional: true, attributes: {}, style: { stroke: "#2E7D32" } } });
+  if (!st.edge_classes.evidences) ops.push({ op: "edge_class.define", payload: { id: "evidences", name: "evidences", parent: "relates_to", directional: true, attributes: {}, style: { stroke: "#1E66D0" } } });
+  return ops;
+}
+function trKind(cid){ if (!cid) return ""; if (cid === "lab_entry") return "entry"; if (/^lab_/.test(cid)) return cid.slice(4); const c = TR.st && TR.st.classes[cid]; return c && c.parent ? trKind(c.parent) : ""; }
+function trAttrs(n){ const a = {}; const seen = new Set(); let c = TR.st.classes[n.class_id]; const chainC = []; while (c && !seen.has(c.id)) { seen.add(c.id); chainC.push(c); c = c.parent ? TR.st.classes[c.parent] : null; } for (const k of chainC.reverse()) Object.assign(a, k.attributes || {}); return Object.assign(a, n.attributes || {}); }
+function trEntries(){
+  if (!TR.st) return [];
+  return Object.values(TR.st.nodes).map(n => { const kind = trKind(n.class_id); return kind ? { id: n.id, kind, label: n.label || "", a: trAttrs(n), by: n._by || "", seq: n._seq, ts: TR.ts.get(n._seq) || "", node: n } : null; })
+    .filter(Boolean).sort((x, y) => (x.seq || 0) - (y.seq || 0));
+}
+function trLinks(id){
+  const es = TR.st ? Object.values(TR.st.edges) : [];
+  const f = (cls, dir) => es.filter(e => (e.edge_class_id || e.class_id) === cls && e[dir] && e[dir].id === id).map(e => dir === "from" ? e.to.id : e.from.id);
+  return { resolves: f("resolves", "from"), resolvedBy: f("resolves", "to"), evidences: f("evidences", "from"), evidencedBy: f("evidences", "to") };
+}
+async function trLoad(full){
+  if (!TR.id) { trRender(); return; }
+  if (TR.loading) return;
+  TR.loading = true; TR.err = ""; trRender();
+  try {
+    if (full || !TR.st) { TR.st = trBlank(); TR.seq = 0; TR.log = []; TR.seen = new Set(); TR.ts = new Map(); }
+    const r = await call("replay", { draft_id: TR.id, since_seq: TR.seq });
+    for (const e of r.ops || []) { if (TR.seen.has(e.seq)) continue; TR.seen.add(e.seq); TR.log.push(e); TR.ts.set(e.seq, e.ts || ""); step(TR.st, e); }
+    TR.seq = Math.max(TR.seq, r.seq_head || 0); TR.loaded = true; TR.at = Date.now();
+  } catch (e) { TR.err = e.message; }
+  finally { TR.loading = false; trRender(); }
+}
+async function trApply(ops){
+  if (!TR.id) throw new Error("No transcript draft");
+  ops = Array.isArray(ops) ? ops : [ops];
+  const r = await call("apply", { draft_id: TR.id, ops: ops.map(o => ({ op: o.op, payload: o.payload })), author: AUTHOR });   // append-only: no expect_seq
+  await trLoad();
+  return r;
+}
+async function trCreate(){
+  const r = await call("open", { title: "UI lab transcript", author: AUTHOR });
+  TR.id = r.draft_id; TR.st = null; TR.loaded = false;
+  const ops = [{ op: "draft.amend", payload: { attributes: { agent_ops: "apply", transcript: "lab", lab: CONF.labTag || "" } } }].concat(labBootstrapOps());
+  await trApply(ops);
+  if (TM) saveSettings({ transcript_draft_id: TR.id });
+  toast(`Transcript draft ${TR.id} created${TM ? " and saved in settings" : ": set transcript_draft_id to keep it"}`);
+}
+function trPos(){ const n = TR.st ? Object.keys(TR.st.nodes).length : 0; return { x: (n % 6) * 220, y: Math.floor(n / 6) * 110 }; }
+// entry {kind, round, subject, summary, detail, evidence, page_version, status, links[]} -> ops (bootstrap first if the draft lacks the classes)
+function trEntryOps(en){
+  const kind = LAB_KINDS.includes(en.kind) ? en.kind : "note";
+  const id = en.id || uid("le");
+  const attrs = {};
+  for (const k of Object.keys(LAB_FIELDS)) { const v = en[k]; if (v != null && String(v).trim() !== "" && !(k === "status" && v === "open")) attrs[k] = String(v).trim(); }
+  if (!attrs.env && CONF.labTag) attrs.env = CONF.labTag;
+  const links = (en.links || []).map(x => String(x).trim()).filter(Boolean);
+  const cls = kind === "evidence" ? "evidences" : "resolves";
+  if (links.length) attrs.resolves = links.join(",");
+  const ops = labBootstrapOps(TR.st).concat([{ op: "node.add", payload: { id, class_id: "lab_" + kind, label: trunc(en.summary || en.subject || kind, 80), attributes: attrs, pos: trPos() } }]);
+  for (const t of links) ops.push({ op: "edge.add", payload: { id: uid("e"), edge_class_id: cls, from: { type: "node", id }, to: { type: "node", id: t }, attributes: {} } });
+  return ops;
+}
+async function trAddEntry(en){
+  if (!TR.loaded) await trLoad();   // the classes and link targets are judged against the folded draft
+  const unknown = (en.links || []).filter(t => !(TR.st && TR.st.nodes[t]));
+  if (unknown.length) throw new Error("Unknown entry id(s): " + unknown.join(", "));
+  return trApply(trEntryOps(en));
+}
+async function trSetStatus(id, status){
+  const n = TR.st && TR.st.nodes[id]; if (!n) return;
+  const own = Object.assign({}, n.attributes || {}, { status });   // the engine replaces the whole set: send every own key
+  await trApply({ op: "node.amend", payload: { id, attributes: own } });
+}
+function trFilter(list){
+  const au = $("#trAuthor").value, stt = $("#trStatus").value, q = $("#trQ").value.trim().toLowerCase();
+  return list.filter(e => TR.kinds.has(e.kind) && (!au || e.by === au) && (!stt || (e.a.status || "open") === stt) &&
+    (!q || [e.id, e.label, e.a.subject, e.a.detail, e.a.evidence, e.a.round, e.by].join(" ").toLowerCase().includes(q)));
+}
+function kpill(kind){ const s = LAB_STYLE[kind] || { fill: "#fff", stroke: "#9E9E9E" }; return `<span class="kpill" style="background:${s.fill};border-color:${s.stroke};color:${s.stroke}">${esc(kind)}</span>`; }
+function spill(st){ st = st || "open"; return `<span class="pill${st === "open" ? " warn" : st === "fixed" || st === "verified" ? " ok" : ""}">${esc(st)}</span>`; }
+function trLinkBtn(id){ const e = TR.st && TR.st.nodes[id]; return `<button class="link lk" data-trgo="${esc(id)}" title="${esc(e ? e.label : "")}">#${esc(id)}</button>`; }
+function trRender(){
+  if ($("#trAs")) $("#trAs").textContent = `writing as ${AUTHOR}`;
+  $("#trDraft").textContent = TR.id ? (TR.st && TR.st.draft.title ? `${TR.st.draft.title} · ` : "") + TR.id : "no transcript draft";
+  const kb = $("#trKinds");
+  if (!kb.children.length) kb.innerHTML = LAB_KINDS.map(k => `<button data-kind="${k}" class="${TR.kinds.has(k) ? "" : "off"}" title="show or hide ${k} entries">${kpill(k)}</button>`).join("");
+  else kb.querySelectorAll("[data-kind]").forEach(b => b.classList.toggle("off", !TR.kinds.has(b.dataset.kind)));
+  const t = $("#trTable");
+  if (!TR.id) { t.innerHTML = `<tr><td class="small">No transcript draft is configured. <button class="link" id="trCreate">Create one</button> (a draft titled “UI lab transcript”, with the lab_entry classes) or set <code>transcript_draft_id</code> in Tool Bench settings.</td></tr>`; $("#trCount").textContent = ""; $("#trN").style.display = "none"; bindTr(); return; }
+  if (!TR.loaded) { t.innerHTML = `<tr><td class="small muted">${TR.loading ? "loading…" : (TR.err ? `<span style="color:var(--bad)">${esc(TR.err)}</span>` : "not loaded")}</td></tr>`; $("#trCount").textContent = ""; bindTr(); return; }
+  const all = trEntries(), rows = trFilter(all);
+  const authors = Array.from(new Set(all.map(e => e.by))).sort();
+  const sel = $("#trAuthor"), cur = sel.value;
+  sel.innerHTML = `<option value="">all authors</option>` + authors.map(a => `<option${a === cur ? " selected" : ""}>${esc(a)}</option>`).join("");
+  const openN = all.filter(e => (e.a.status || "open") === "open" && (e.kind === "finding" || e.kind === "question")).length;
+  $("#trN").style.display = all.length ? "" : "none"; $("#trN").textContent = openN ? `${openN} open` : String(all.length);
+  $("#trCount").textContent = `${rows.length} of ${all.length} · seq ${TR.seq}${TR.err ? " · " + TR.err : ""}${TR.loading ? " · loading…" : ""}`;
+  const hdr = `<tr><th>#</th><th>when</th><th>author</th><th>rd</th><th>kind</th><th>subject</th><th>summary</th><th>status</th><th>links</th></tr>`;
+  t.innerHTML = hdr + (rows.map(e => {
+    const L = trLinks(e.id), nl = L.resolves.length + L.resolvedBy.length + L.evidences.length + L.evidencedBy.length;
+    const open = TR.open.has(e.id);
+    let h = `<tr class="tre${open ? " open" : ""}" data-tr="${esc(e.id)}"><td class="lk muted">${esc(e.seq)}</td><td class="small muted" title="${esc(e.ts)}">${esc((e.ts || "").replace("T", " ").slice(5, 16))}</td><td class="small">${esc(e.by)}</td><td class="small">${esc(e.a.round || "")}</td><td>${kpill(e.kind)}</td><td class="small">${esc(e.a.subject || "")}</td><td>${esc(e.label)}</td><td>${spill(e.a.status)}</td><td class="small">${nl ? `${L.resolvedBy.length ? "⇐" + L.resolvedBy.length + " fix " : ""}${L.resolves.length ? "⇒" + L.resolves.length + " " : ""}${L.evidencedBy.length ? "ev " + L.evidencedBy.length : ""}`.trim() : ""}</td></tr>`;
+    if (open) h += `<tr class="trd" data-trd="${esc(e.id)}"><td colspan="9">
+      <div class="small muted">id <code>${esc(e.id)}</code> · ${esc(e.by)} · ${esc(e.ts)} · page ${esc(e.a.page_version || "—")} · env ${esc(e.a.env || "—")} · session ${esc(e.a.session || "—")}</div>
+      ${e.a.detail ? `<div class="pre">${esc(e.a.detail)}</div>` : `<div class="small muted">no detail</div>`}
+      ${e.a.evidence ? `<div class="small"><b>evidence</b></div><div class="pre">${esc(e.a.evidence)}</div>` : ""}
+      <div class="small">${L.resolves.length ? `resolves → ${L.resolves.map(trLinkBtn).join(" ")} · ` : ""}${L.resolvedBy.length ? `fixed by ← ${L.resolvedBy.map(trLinkBtn).join(" ")} · ` : ""}${L.evidences.length ? `evidence for → ${L.evidences.map(trLinkBtn).join(" ")} · ` : ""}${L.evidencedBy.length ? `evidenced by ← ${L.evidencedBy.map(trLinkBtn).join(" ")}` : ""}</div>
+      <div class="row" style="margin:6px 0 0"><span class="lbl">status</span>${LAB_STATUS.map(s => `<button data-trst="${esc(e.id)}|${s}" class="${(e.a.status || "open") === s ? "on" : ""}">${s}</button>`).join("")}
+        <span class="sep"></span><button data-trfix="${esc(e.id)}" title="add a fix entry linked to this one">+ fix for this</button><button data-trev="${esc(e.id)}" title="add an evidence entry linked to this one">+ evidence</button></div></td></tr>`;
+    return h;
+  }).join("") || `<tr><td colspan="9" class="small muted">No entries${all.length ? " match the filters" : " yet"}.</td></tr>`);
+  bindTr();
+}
+function bindTr(){
+  const t = $("#trTable");
+  const c = $("#trCreate"); if (c) c.onclick = async () => { try { await trCreate(); } catch (e) { toast(e.message, true); } };
+  t.querySelectorAll("tr.tre").forEach(r => r.onclick = () => { const id = r.dataset.tr; if (TR.open.has(id)) TR.open.delete(id); else TR.open.add(id); trRender(); });
+  t.querySelectorAll("[data-trgo]").forEach(b => b.onclick = ev => { ev.stopPropagation(); const id = b.dataset.trgo; TR.open.add(id); trRender(); const row = t.querySelector(`tr[data-tr="${CSS.escape(id)}"]`); if (row) row.scrollIntoView({ block: "center" }); });
+  t.querySelectorAll("[data-trst]").forEach(b => b.onclick = async ev => { ev.stopPropagation(); const [id, s] = b.dataset.trst.split("|"); try { await trSetStatus(id, s); } catch (e) { toast(e.message, true); } });
+  t.querySelectorAll("[data-trfix]").forEach(b => b.onclick = ev => { ev.stopPropagation(); trOpenForm({ kind: "fix", links: b.dataset.trfix }); });
+  t.querySelectorAll("[data-trev]").forEach(b => b.onclick = ev => { ev.stopPropagation(); trOpenForm({ kind: "evidence", links: b.dataset.trev }); });
+}
+function trOpenForm(pre){
+  pre = pre || {};
+  const f = $("#trForm"); f.hidden = false;
+  if (!$("#teKind").children.length) $("#teKind").innerHTML = LAB_KINDS.map(k => `<option>${k}</option>`).join("");
+  $("#teKind").value = pre.kind || "finding"; $("#teLinks").value = pre.links || ""; $("#teStatus").value = pre.status || (pre.kind === "fix" ? "fixed" : "open");
+  if (pre.subject != null) $("#teSubject").value = pre.subject;
+  $("#teNote").textContent = `as ${AUTHOR}${CONF.labTag ? " · env " + CONF.labTag : ""} · one apply (1 execution)`;
+  $("#teSummary").focus();
+}
+function trCloseForm(){ $("#trForm").hidden = true; for (const id of ["teRound", "teSubject", "teSummary", "teLinks", "tePage", "teDetail", "teEvidence"]) $("#" + id).value = ""; }
+async function trSaveForm(){
+  const en = { kind: $("#teKind").value, round: $("#teRound").value, subject: $("#teSubject").value, summary: $("#teSummary").value, status: $("#teStatus").value,
+    page_version: $("#tePage").value, detail: $("#teDetail").value, evidence: $("#teEvidence").value, links: $("#teLinks").value.split(",").map(s => s.trim()).filter(Boolean) };
+  if (!en.summary.trim()) { toast("Summary is required", true); return; }
+  try { await trAddEntry(en); trCloseForm(); toast("Entry saved"); } catch (e) { toast(e.message, true); }
+}
+function trExport(){
+  const rows = trFilter(trEntries());
+  const md = [`| # | when | author | round | kind | subject | summary | status | links |`, `|---|---|---|---|---|---|---|---|---|`]
+    .concat(rows.map(e => { const L = trLinks(e.id); const links = [].concat(L.resolves.map(x => "resolves #" + x), L.resolvedBy.map(x => "fixed by #" + x), L.evidences.map(x => "evidence for #" + x), L.evidencedBy.map(x => "evidenced by #" + x)).join(", ");
+      const cell = s => String(s == null ? "" : s).replace(/\|/g, "\\|").replace(/\s+/g, " ");
+      return `| ${e.seq} | ${cell((e.ts || "").slice(0, 16))} | ${cell(e.by)} | ${cell(e.a.round)} | ${e.kind} | ${cell(e.a.subject)} | ${cell(e.label)} | ${cell(e.a.status || "open")} | ${cell(links)} |`; }))
+    .concat([""], rows.filter(e => e.a.detail || e.a.evidence).map(e => `### #${e.id} · ${e.kind} · ${e.label}\n${e.a.detail ? e.a.detail + "\n" : ""}${e.a.evidence ? "\nevidence:\n" + e.a.evidence + "\n" : ""}`)).join("\n");
+  $("#expText").value = md; $("#expNote").textContent = `${rows.length} entries · draft ${TR.id} · seq ${TR.seq}`;
+  $("#shExp").classList.add("open"); $("#expText").select();
+}
+function trVisible(){ return TR.tab === "trans" && !$("#app").classList.contains("nofind") && document.visibilityState === "visible"; }
+function trAutoToggle(on){
+  if (TR.auto) { clearInterval(TR.auto); TR.auto = null; }
+  const s = Math.max(15, CONF.transcriptRefresh || 60);
+  if (on) TR.auto = setInterval(() => { if (trVisible() && !TR.loading) trLoad(); }, s * 1000);
+  $("#trAuto").classList.toggle("on", !!TR.auto); $("#trAuto").textContent = TR.auto ? `Auto ${s}s` : "Auto";
+}
+function setFindTab(tab){
+  TR.tab = tab;
+  $$("#findTabs .ftab").forEach(b => b.classList.toggle("on", b.dataset.ft === tab));
+  $("#finder").hidden = tab !== "finder"; $("#trans").hidden = tab !== "trans";
+  if (tab === "trans" && innerWidth > 820) {   // a table needs height: open the pane to a third of the window the first time, the splitter still rules after
+    const cur = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--bh")) || 0, want = Math.min(420, Math.round(innerHeight / 3));
+    if (cur < want) { document.documentElement.style.setProperty("--bh", want + "px"); setTimeout(renderBoard, 0); }
+  }
+  if (tab === "trans" && TR.id && !TR.loaded && !TR.loading) trLoad(); else if (tab === "trans") trRender();
+}
+$$("#findTabs .ftab").forEach(b => b.onclick = () => setFindTab(b.dataset.ft));
+$("#tTrans").onclick = () => { const app = $("#app"); if (app.classList.contains("nofind")) { app.classList.remove("nofind"); const c = $('[data-c="nofind"]'); if (c) c.classList.remove("on"); } setFindTab("trans"); openMobile("find"); setTimeout(renderBoard, 0); };
+$("#trRefresh").onclick = () => trLoad();
+$("#trAuto").onclick = () => trAutoToggle(!TR.auto);
+$("#trExport").onclick = trExport;
+$("#trAdd").onclick = () => trOpenForm();
+$("#teCancel").onclick = trCloseForm;
+$("#teSave").onclick = trSaveForm;
+$("#trAuthor").onchange = $("#trStatus").onchange = () => trRender();
+$("#trQ").addEventListener("input", () => trRender());
+$("#trKinds").addEventListener("click", ev => { const b = ev.target.closest("[data-kind]"); if (!b) return; const k = b.dataset.kind; if (TR.kinds.has(k)) TR.kinds.delete(k); else TR.kinds.add(k); trRender(); });
+$("#expClose").onclick = () => $("#shExp").classList.remove("open");
+$("#expCopy").onclick = async () => { try { await navigator.clipboard.writeText($("#expText").value); toast("Copied"); } catch (e) { $("#expText").select(); toast("Select-all and copy: clipboard blocked here"); } };
+if (CONF.transcriptRefresh > 0) trAutoToggle(true);
+
 /* ============================== boot ============================== */
-function renderAll(){ renderPalette(); renderBoard(); renderInspector(); renderAnalysis(); $("#bDraft").textContent = S.draft.title || DRAFT || "—"; setSync(); }
+function renderAll(){ renderCrumbs(); renderPalette(); renderBoard(); renderInspector(); renderAnalysis(); $("#bDraft").textContent = S.draft.title || DRAFT || "—"; setSync(); }
 async function start(){
-  renderAll();
-  if (!CONF.key) { setSync("err", "no key"); $("#insp").innerHTML = `<h3>Connect</h3><p class="small">No viewer key. ${TM ? "Set <b>Viewer key</b> for Drafting Table (or the CA_V3 Viewer) in Tool Bench Settings." : "Open ⚙ and enter the endpoint and key."}</p>`; return; }
+  renderAll(); trRender();
+  if (!hasAuth()) { setSync("err", "no key"); $("#insp").innerHTML = `<h3>Connect</h3><p class="small">No viewer key. ${TM ? "Set <b>Viewer key</b> for Drafting Table (or the CA_V3 Viewer) in Tool Bench Settings." : "Open ⚙ and enter the endpoint and key."}</p>`; return; }
   try { if (CONF.draft) await openDraft(CONF.draft); else showDrafts(); }
   catch (e) { syncErr = e.message; toast(e.message, true); setSync(); showDrafts(); }
 }
-window.DT = { get S(){ return S; }, get R(){ return R; }, get SEQ(){ return SEQ; }, get LOG(){ return LOG; }, get OUTBOX(){ return OUTBOX; }, get POLL(){ return POLL; }, get POLL_FROM(){ return POLL_FROM; },
-  get LAYER(){ return LAYER; }, get DM(){ return DM; }, get PF(){ return PF; }, pollDue, emit, openDraft, step, rebuild, setLayer, isDataNode, layoutFlow, fieldMapOps, toggleExpand, tickFlow };
+window.DT = { get SCOPE(){ return SCOPE; }, get LOD(){ return LOD; }, get SCRUB(){ return SCRUB; }, enterScope, setScrub, get S(){ return S; }, get R(){ return R; }, get SEQ(){ return SEQ; }, get LOG(){ return LOG; }, get OUTBOX(){ return OUTBOX; }, get POLL(){ return POLL; }, get POLL_FROM(){ return POLL_FROM; },
+  get LAYER(){ return LAYER; }, get DM(){ return DM; }, get PF(){ return PF; }, get TR(){ return TR; }, get AUTHOR(){ return AUTHOR; },
+  pollDue, emit, openDraft, step, rebuild, setLayer, isDataNode, schemaKey, schemaTarget, layoutFlow, fieldMapOps, toggleExpand, tickFlow,
+  trLoad, trApply, trAddEntry, trSetStatus, trEntries, trLinks, trEntryOps, labBootstrapOps, setFindTab };
 start();
 </script>
 </body></html>

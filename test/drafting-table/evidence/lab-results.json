@@ -1,0 +1,111 @@
+[
+ {
+  "name": "parent node shows a child-count badge",
+  "ok": true,
+  "detail": "▣ 2 on n1"
+ },
+ {
+  "name": "scoped nodes are hidden on the root board",
+  "ok": true
+ },
+ {
+  "name": "edge from inside the sub-board draws to the parent on the root board",
+  "ok": true
+ },
+ {
+  "name": "double-click drills in; breadcrumb shows the scope",
+  "ok": true,
+  "detail": "smoke›ship it"
+ },
+ {
+  "name": "inside the sub-board its nodes show",
+  "ok": true
+ },
+ {
+  "name": "the far end of a crossing edge appears as a portal chip",
+  "ok": true
+ },
+ {
+  "name": "root nodes are not on the sub-board",
+  "ok": true
+ },
+ {
+  "name": "view.set carries the scope",
+  "ok": true
+ },
+ {
+  "name": "a node added inside carries scope: n1",
+  "ok": true
+ },
+ {
+  "name": "clicking a portal climbs to the board that holds its object",
+  "ok": true
+ },
+ {
+  "name": "ports: attribute keys render as rows on the node",
+  "ok": true
+ },
+ {
+  "name": "drag from a port makes an edge with from.key",
+  "ok": true,
+  "detail": "xzn0p92dg"
+ },
+ {
+  "name": "zooming out drops to chip level (lod0)",
+  "ok": true,
+  "detail": "0:lod0"
+ },
+ {
+  "name": "zooming in opens detail level (lod2, attributes inline without the Ports toggle)",
+  "ok": true,
+  "detail": "lod 2"
+ },
+ {
+  "name": "grouped two nodes",
+  "ok": true
+ },
+ {
+  "name": "collapse writes group.set collapsed:true",
+  "ok": true
+ },
+ {
+  "name": "a collapsed group draws as one box and hides its members",
+  "ok": true
+ },
+ {
+  "name": "double-click expands the group",
+  "ok": true
+ },
+ {
+  "name": "history scrub replays the board to seq 7 (only the seed nodes)",
+  "ok": true,
+  "detail": "1|7"
+ },
+ {
+  "name": "the board is read-only while scrubbing",
+  "ok": true
+ },
+ {
+  "name": "closing history returns to the head",
+  "ok": true,
+  "detail": "seq 24"
+ },
+ {
+  "name": "ArrowRight walks along an edge to the neighbour",
+  "ok": true,
+  "detail": "node:n2"
+ },
+ {
+  "name": "Enter drills in, Escape climbs out",
+  "ok": true
+ },
+ {
+  "name": "alt-drop onto a node moves the selection onto its board (node.amend scope)",
+  "ok": true
+ },
+ {
+  "name": "no page errors",
+  "ok": true,
+  "detail": ""
+ }
+]

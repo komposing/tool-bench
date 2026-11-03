@@ -1,5 +1,45 @@
 # Changelog
 
+## 3.9.0 — C___
+
+- **Drafting Table** (`TB:drafting-table` v1.4.0): **drill-down**, so the board reads as a node graph. Six mechanisms, each one
+  evolution of the root principle (one ref per object, relate to anything, constraints as lenses) and no new op.
+  **Scope**: one key `scope: {type:"node", id}` on nodes, notes and groups says which node's board they sit on; a node with
+  anything scoped to it shows a `▣ n` badge and a 2.5px stroke; a double press, Enter, the badge or *Open as board* drills
+  in; a breadcrumb in the toolbar shows the trail and climbs back; Escape climbs out; new objects take the current scope;
+  alt-drop moves a selection onto a node's board (`node.amend` / `note.set` / `group.set` with `scope`); *Move out* lifts
+  it. An edge whose far end is outside the board resolves to the nearest ancestor on it, else to a **portal chip** (`⇱`) in
+  a column left of the content; clicking a portal goes to the board that holds its object. `view.set` carries the scope.
+  **Ports**: a *Ports* toggle (view state) draws a node's attribute keys (own and inherited) as rows with handles; dragging
+  from one makes an edge carrying `from.key`, dropping on another node's row sets `to.key`; at detail zoom the rows open
+  without the toggle. **Semantic zoom**: below 0.55 nodes draw as chips (label only, no edge labels or handles), above 1.6
+  attributes open inline. **Collapse**: `collapsed: true` on `group.set` folds a group to one node-sized box with a member
+  count that moves as a unit; edges to members re-route to it and edges inside it hide; a double press expands.
+  **History**: a toolbar toggle replays the log to any seq on a slider (op · author · time shown); the board is read-only
+  while scrubbing; *mark* remembers a seq and later changes are highlighted. **Keyboard**: arrows walk along edges from the
+  selected node, Enter drills in, Escape clears, climbs, then closes history. Double press is detected in the pointer
+  handler because the board re-renders between clicks and the browser's dblclick does not fire across them.
+  Harness `test/drafting-table/lab.js` (25 checks) against the same stand-in engine; run.js, layers.js and poll.js unchanged.
+- **Drafting Table**: merges branch `lab/drafting-table-lab-transcript` (lab transcript tab in the finder pane, configurable author,
+  ambient auth; harness `test/drafting-table/transcript.js`) and `c998/drafting-table-data-expand` (3.8.1 below) into one page.
+
+### Fixed
+- none
+
+## 3.8.1 — C998
+
+- **Drafting Table** (`TB:drafting-table` v1.2.1, T569): **data-model layer expands what the board keys**. The engine op
+  `schema` resolves `tbl:<n8n table id>` or a bare table name declared in std `data_model`, never `tbl:<name>`, so a node
+  keyed `tbl:CA_standards` answered "unknown table" and a node carrying the table inside a `table` or `store` attribute
+  with prose around it never resolved at all. `schemaTarget` now takes the first `tbl:` token found in `key`, `table`,
+  `store`, label or id, keeps it when the suffix is an n8n id and sends the bare name otherwise. A plain click on a data
+  node's title band (no drag, no modifier) toggles its columns, as the chevron does; a drag still moves it and a
+  modifier click still multi-selects. Hint text updated. Harness `test/drafting-table/layers.js` gains 6 checks (37)
+  and keys one fixture table by id and one by name. Ledger friction `7ojtw3x9q5lm4k3sc6i1`.
+
+### Fixed
+- none
+
 ## 3.8.0 — C980
 
 - **Drafting Table** (`TB:drafting-table` v1.2.0, T560): **layers**. A segmented control in the toolbar switches the board

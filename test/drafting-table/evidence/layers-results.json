@@ -40,6 +40,31 @@
     "detail": "no board op"
   },
   {
+    "name": "tbl:<name> key is sent as the bare name (C998)",
+    "ok": true,
+    "detail": "[\"CA_customers\"]"
+  },
+  {
+    "name": "schemaTarget: id kept, name stripped, token picked out of prose, otherwise first candidate (C998)",
+    "ok": true,
+    "detail": "[\"tbl:pwlC29yKZxbj8jgV\",\"CA_standards\",\"tbl:FrdIprb6uGEtLLoe\",\"DataTable CA_V4_index (to create)\",\"tbl:(to create)\",\"CA_drafts\",\"n9\"]"
+  },
+  {
+    "name": "click on a data node's title band collapses it (C998)",
+    "ok": true,
+    "detail": "collapsed and selected"
+  },
+  {
+    "name": "click again expands it; schema not refetched (C998)",
+    "ok": true,
+    "detail": "2 schema calls"
+  },
+  {
+    "name": "drag on a data node moves it, no toggle (C998)",
+    "ok": true,
+    "detail": "1 node.move"
+  },
+  {
     "name": "click selects a column",
     "ok": true,
     "detail": "t_orders.status"
@@ -57,7 +82,7 @@
   {
     "name": "define precedes the edge.add in the same apply",
     "ok": true,
-    "detail": "view.set,edge_class.define,edge.add"
+    "detail": "view.set,node.move,edge_class.define,edge.add"
   },
   {
     "name": "second field map reuses the class",
@@ -66,12 +91,16 @@
   {
     "name": "inspector shows field_map edge with its fields",
     "ok": true,
-    "detail": "Field map ev8so5197classconditional on (shared)depends on (shared)field maprelates to (shared) label fromorders .id tocustomers .email relationmaps (copied / de"
+    "detail": "Field map ezn6o3187classconditional on (shared)depends on (shared)field maprelates to (shared) label fromorders .id tocustomers .email relationmaps (copied / de"
+  },
+  {
+    "name": "title-band click on an expanded node collapses it (C998)",
+    "ok": true
   },
   {
     "name": "node inspector lists field maps with fields",
     "ok": true,
-    "detail": "Node t_orderslabel classactor (shared)constraint (shared)core objectgoal (shared)goalledgeroutcome (shared)principle (shared)undefined (shared) Attributes grey = from core object ⠿ kind × ⠿ key ×Add P"
+    "detail": "Node t_orderslabel classactor (shared)constraint (shared)core objectgoal (shared)goalledgeroutcome (shared)principle (shared)undefined (shared) Attributes grey = from core object ⠿ kind × ⠿ key ×Add b"
   },
   {
     "name": "field map edge is labelled by its fields on the board",
@@ -115,7 +144,7 @@
   {
     "name": "no board ops from the process layer",
     "ok": true,
-    "detail": "3 -> 3"
+    "detail": "4 -> 4"
   },
   {
     "name": "layer restored from the author's last view.set on reopen",
@@ -134,7 +163,7 @@
   {
     "name": "schema 400 degrades to a toast with the reason and an empty node",
     "ok": true,
-    "detail": "schema tbl:orders: unknown"
+    "detail": "schema tbl:Pq0rdersTbl00001: unknown"
   },
   {
     "name": "flows 400 degrades to a toast and an empty list",
