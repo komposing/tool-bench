@@ -1,0 +1,12 @@
+{
+  "protocol": "ca.payload/1",
+  "outcome": "ok",
+  "key": "v4.hub.post",
+  "run_id": "v4hub-fixture-post",
+  "result": { "thread_id": "hub-fixture-newer", "seq": 10, "kind": "decision", "to": "claude-ai-fixture-newer", "status": "posted", "increment": "ca_v4/inc/fixture-newer", "row_id": 104, "answers": 5, "count": 1 },
+  "errors": [],
+  "warnings": [],
+  "conformance": { "mode": "enforced", "on_fail": "refuse" },
+  "session_ref": "page-fixture",
+  "principal": { "id": "page", "surface": "page", "tool": "drafting-table", "tool_session_id": "page-fixture" }
+}

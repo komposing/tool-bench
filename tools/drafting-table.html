@@ -6,10 +6,10 @@
   "format": "toolbench.tool/1",
   "id": "TB:drafting-table",
   "name": "Drafting Table",
-  "description": "Paired concept-modelling board (ca.draft/1): palette, board, inspector, analysis and finder over the CA_V3 Drafting Engine. The op log is the draft; the page replays it on the std drafting poll budget so the agent's ops appear live. Layers: global, data model (data nodes expand into columns; column drags make field_map edges), process flow (engine workflows as step diagrams).",
+  "description": "Paired concept-modelling board (ca.draft/1): palette, board, inspector, analysis and finder over the CA_V3 Drafting Engine; the op log is the draft, replayed live on the std poll budget. Layers: global, data model, process flow. Approvals (CA_V4): exchanges lane (open decisions on hub threads, decided through the Hub page entry, ca.payload/1) and a proposals stub.",
   "category": "CA_V3",
-  "tags": ["drafting", "design", "paired", "ca.draft/1"],
-  "version": "1.2.0",
+  "tags": ["drafting", "design", "paired", "ca.draft/1", "ca.payload/1", "ca_v4"],
+  "version": "1.3.0",
   "contract": { "config_keys": ["drafting"], "requires": ["wf:VkS7B5UucVMrNwWm", "std:drafting"] },
   "sandbox": { "scripts": true, "forms": false, "modals": false, "popups": false, "downloads": false, "sameOrigin": false },
   "config_schema": {
@@ -19,7 +19,9 @@
       { "path": "headers.X-Api-Key", "label": "Viewer key (X-Api-Key)", "type": "secret", "required": false, "secret": true, "help": "CA_V3 viewer key. Leave empty to use the key saved for the CA_V3 Viewer (cav3)." },
       { "path": "poll_ms", "label": "Active poll override (ms)", "type": "number", "help": "Blank: the active interval from std drafting reach.page.poll (2 s). Set it to replace only the active interval; idle backoff and the hidden pause still follow the standard" },
       { "path": "debounce_ms", "label": "Apply debounce (ms)", "type": "number", "default": 300 },
-      { "path": "draft_id", "label": "Open draft", "type": "string", "help": "Draft opened on start; blank shows the draft list" }
+      { "path": "draft_id", "label": "Open draft", "type": "string", "help": "Draft opened on start; blank shows the draft list" },
+      { "path": "hub_page_url", "label": "CA_V4 Hub page entry", "type": "url", "required": false, "default": "https://komposing.app.n8n.cloud/webhook/ca-v4-hub-page", "help": "Page-reachable V4 entry (ca.payload/1) serving v4.hub.pending and the decision post for the exchanges lane; n8n user sign-in on the same origin, no key" },
+      { "path": "doc_page_url", "label": "CA_V4 Doc Store page entry", "type": "url", "required": false, "help": "Page-reachable entry for the proposals lane (v4.draft.pending, ops.accept/reject). Empty until it exists: the lane stays a stub" }
     ]
   }
 }
@@ -146,6 +148,28 @@ h3{font:600 10px/1 var(--mono);letter-spacing:.18em;text-transform:uppercase;col
 .fk rect{rx:7} .fk text{font:9px var(--mono)!important;fill:#fff}
 .fh text.ft{font-weight:600;font-size:13px} .fh text.fi{font:10px var(--mono);fill:var(--ink3)}
 @media (max-width:820px){ #flows{width:min(272px,70vw)} }
+/* approvals (CA_V4, dmw1122kroij7 r_approvals): a panel over the board with two lanes, opened from the header control */
+#bAppr .pill{margin-left:4px} #bAppr .pill.q{background:#FFE7C2;color:#8A5300}
+#appr{position:absolute;right:8px;top:8px;bottom:8px;width:min(560px,92vw);background:#fff;border:1px solid var(--line);border-radius:6px;display:none;flex-direction:column;padding:8px;gap:6px;z-index:4;box-shadow:0 2px 12px rgba(0,0,0,.12)}
+#app.appr #appr{display:flex} #apBody{overflow:auto;flex:1;min-height:0}
+.lane{border:1px solid var(--line);border-radius:6px;padding:6px 8px;margin:6px 0;background:var(--panel)}
+.lane h3{margin-bottom:4px} .lane.stub{opacity:.75;border-style:dashed}
+.sum{display:flex;gap:10px;flex-wrap:wrap;font:11px var(--mono);color:var(--ink2);padding:4px 2px}
+.sum b{color:var(--ink)}
+.thr{background:#fff;border:1px solid var(--line);border-radius:5px;margin:5px 0}
+.thr>.th{display:flex;gap:6px;align-items:center;padding:5px 7px;cursor:pointer;flex-wrap:wrap}
+.thr>.th .tt{font-weight:600;flex:1;min-width:120px} .thr>.th .ti{font:10.5px var(--mono);color:var(--ink3)}
+.thr.closed>.th .tt{color:var(--ink3)}
+.dr{border-top:1px solid var(--line);padding:6px 8px} .dr.decided{border-left:4px solid #7E57C2;opacity:.8} .dr.stale{opacity:.5}
+.dr .meta{font:10.5px var(--mono);color:var(--ink3);display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.dr .body{white-space:pre-wrap;margin:4px 0;font-size:12.5px}
+.dr .opts{display:flex;flex-direction:column;gap:4px;margin:4px 0}
+.dr .opts button{text-align:left;white-space:normal} .dr .opts button.armed{border-color:var(--acc);background:#E7F0FD;outline:2px solid var(--acc)}
+.dr .opts button.armed::after{content:" · click again to post";color:var(--acc);font-size:11px}
+.dr form{display:flex;gap:4px;margin:4px 0} .dr form input{flex:1} .dr form.armed input{outline:2px solid var(--acc)}
+.dr .ref{font:10.5px var(--mono);background:#F3F1EC;border-radius:3px;padding:0 4px}
+.dr .refusal{color:var(--bad);font-size:12px;margin:3px 0}
+.dr.posting{opacity:.6} .dr.posting button,.dr.posting input{pointer-events:none}
 .mobtoggle{display:none}
 @media (max-width:820px){
   #app{grid-template-columns:1fr;grid-template-rows:40px 1fr;grid-template-areas:"top" "board"}
@@ -179,6 +203,7 @@ h3{font:600 10px/1 var(--mono);letter-spacing:.18em;text-transform:uppercase;col
     <button class="deskonly" data-c="nopal" title="Collapse palette">◧</button>
     <button class="deskonly" data-c="noright" title="Collapse inspector and analysis">◨</button>
     <button class="deskonly" data-c="nofind" title="Collapse finder">⬓</button>
+    <button id="bAppr" title="Approvals: open decisions on hub threads and pending proposals">Approvals<span class="pill" id="apprN">–</span></button>
     <button id="bSet" title="Settings">⚙</button>
   </div>
 
@@ -215,6 +240,11 @@ h3{font:600 10px/1 var(--mono);letter-spacing:.18em;text-transform:uppercase;col
       <input id="flFilter" placeholder="filter workflows">
       <div id="flowList"><span class="small muted">loading…</span></div>
       <div class="small muted">Tick a workflow to draw its steps. Nothing here writes to the draft.</div>
+    </div>
+    <div id="appr">
+      <div class="row" style="margin:0"><h3>Approvals</h3><span class="sep"></span><span class="small muted" id="apRead"></span><button class="link" id="apRefresh" title="Re-read both lanes">refresh</button><button class="link" id="apClose">close</button></div>
+      <div class="row" style="margin:0"><select id="apThread" title="Filter by thread"><option value="">all threads</option></select><select id="apFrom" title="Filter by asking session"><option value="">all sessions</option></select></div>
+      <div id="apBody"></div>
     </div>
   </div>
   <div id="sr" class="split"></div>
@@ -255,6 +285,7 @@ h3{font:600 10px/1 var(--mono);letter-spacing:.18em;text-transform:uppercase;col
   <div id="cConn">
     <div class="row"><span class="lbl">endpoint</span><input id="cUrl"></div>
     <div class="row"><span class="lbl">key</span><input id="cKey" type="password" placeholder="X-Api-Key (kept in memory only)"></div>
+    <div class="row"><span class="lbl">hub entry</span><input id="cHub" placeholder="CA_V4 Hub page entry (ca-v4-hub-page)"></div>
   </div>
   <p class="small muted" id="cNote"></p>
   <div class="row" style="justify-content:flex-end"><button id="cClose">Cancel</button><button class="pri" id="cSave">Save</button></div>
@@ -278,7 +309,9 @@ const CONF = {
   keyFrom: getPath(DC, "headers.X-Api-Key") ? "drafting" : (getPath(TC, "cav3.dashboard.headers.X-Api-Key") ? "cav3" : ""),
   pollOverride: DC.poll_ms == null || DC.poll_ms === "" ? null : Math.max(500, +DC.poll_ms || 2000),
   debounce: Math.max(0, DC.debounce_ms == null ? 300 : +DC.debounce_ms),
-  draft: DC.draft_id || ""
+  draft: DC.draft_id || "",
+  hubPageUrl: DC.hub_page_url || "https://komposing.app.n8n.cloud/webhook/ca-v4-hub-page",   // CA_V4 Hub page entry (D20): v4.hub.pending + the decision post
+  docPageUrl: DC.doc_page_url || ""                                                          // CA_V4 Doc Store page entry: none yet, the proposals lane is a stub
 };
 /* Poll budget: std drafting reach.page.poll (C944, T536). Built-in defaults equal std drafting v2; the engine's open
    reply relays the live row as reach_page_poll once C903-s3 lands, and that wins. poll_ms overrides active_ms only. */
@@ -327,6 +360,32 @@ async function call(op, params, signal){
   if (!res.ok || j.status === "error" || (j.outcome && j.outcome !== "ok")) {
     const why = (j.errors || []).map(e => `${e.param}: ${e.reason}`).join("; ") || j.message || j.text || `HTTP ${res.status}`;
     const err = new Error(`${op} ${j.outcome || "refused"}: ${why}`); err.body = j; throw err;
+  }
+  return j;
+}
+/* V4 transport (CA_V4, D17.2/D20): the page is its own surface. One ca.payload/1 envelope per call, the page principal
+   {surface page, tool drafting-table, tool_session_id = this page session}, session_ref = that id; same-origin n8n
+   user sign-in rides on the cookie (credentials include), no viewer key. A refusal is returned, never thrown: the lane
+   renders it in place (s_dr_refused) and nothing is retried. */
+const PAGE_SID = uid("page-");
+async function callV4(url, key, params){
+  const refused = (code, reason, extra) => Object.assign({ protocol: "ca.payload/1", outcome: "refused", key, result: {}, errors: [{ code, reason }], refusal: { code, reason } }, extra || {});
+  if (!url) return refused("no_entry", "no page entry configured for " + key);
+  const envelope = { protocol: "ca.payload/1", key, session_ref: PAGE_SID, principal: { surface: "page", tool: "drafting-table", tool_session_id: PAGE_SID }, params: params || {} };
+  let res, txt;
+  try {
+    res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify(envelope), cache: "no-store" });
+    txt = await res.text();
+  } catch (e) { return refused("unreachable", "page entry unreachable (network, CORS or sign-in): " + (e && e.message || e)); }
+  let j; try { j = JSON.parse(txt); } catch (e) { return refused("http_" + res.status, res.status === 401 || res.status === 403 ? "not signed in to n8n on this origin (HTTP " + res.status + ")" : `HTTP ${res.status}: ${trunc(txt, 140) || "empty response"}`); }
+  if (Array.isArray(j)) j = j[0] || {};
+  if (j && isObj(j.data) && j.data.protocol === "ca.payload/1") j = j.data;
+  if (!isObj(j)) return refused("http_" + res.status, "no reply object");
+  if (!isObj(j.result)) j.result = {};
+  if (j.outcome !== "ok") {
+    const e = (Array.isArray(j.errors) && j.errors[0]) || {};
+    const reason = e.param ? `${e.param}: ${e.reason || ""}`.trim() : (e.reason || j.message || j.text || `HTTP ${res.status}`);
+    j.outcome = j.outcome || "refused"; j.refusal = { code: e.code || j.outcome, reason };
   }
   return j;
 }
@@ -1536,7 +1595,7 @@ function saveSettings(values){
 }
 addEventListener("message", ev => { const d = ev.data; if (d && d.type === "toolbench:config:result") { if (!d.ok) toast("Settings refused: " + (d.errors || []).join("; "), true); } });
 $("#bSet").onclick = () => {
-  $("#cPoll").value = CONF.pollOverride == null ? "" : CONF.pollOverride; $("#cDeb").value = CONF.debounce; $("#cUrl").value = CONF.url; $("#cKey").value = "";
+  $("#cPoll").value = CONF.pollOverride == null ? "" : CONF.pollOverride; $("#cDeb").value = CONF.debounce; $("#cUrl").value = CONF.url; $("#cKey").value = ""; $("#cHub").value = CONF.hubPageUrl;
   $("#cConn").style.display = TM ? "none" : "";
   $("#cNote").textContent = TM ? `Saved in Tool Bench settings (namespace drafting); the tool reloads. Endpoint ${CONF.url}; key ${CONF.key ? "from " + CONF.keyFrom : "missing: set it in Tool Bench Settings"}.`
                                : "Standalone: kept in memory for this page only.";
@@ -1550,6 +1609,7 @@ $("#cSave").onclick = () => {
   CONF.pollOverride = poll; CONF.debounce = deb; setPollBudget(POLL_FROM.startsWith("std") ? POLL : null, POLL_FROM.replace("+override", ""));
   if ($("#cUrl").value.trim()) CONF.url = $("#cUrl").value.trim();
   if ($("#cKey").value) { CONF.key = $("#cKey").value; CONF.keyFrom = "this page"; }
+  CONF.hubPageUrl = $("#cHub").value.trim();
   toast("Settings applied"); if (!DRAFT) start();
 };
 // view.set is author-scoped: sent rarely, when the camera has settled; the other party's are ignored
@@ -1777,6 +1837,146 @@ function renderFlows(){
 $("#flFilter").addEventListener("input", e => { PF.filter = e.target.value.trim(); renderFlowList(); });
 $("#flRefresh").onclick = () => loadFlows(true);
 
+/* ============================== approvals (CA_V4) ============================== */
+/* Design: draft dmw1122kroij7 (r_approvals amended seq 107-108; exchanges lane seq 64-106). One panel over the board,
+   two lanes. Exchanges (D19.4): open decision_requests across open hub threads, read with v4.hub.pending through the
+   Hub page entry (dc_hub_pending) and settled with v4.hub.post kind decision (dc_hub_decide) - options are the body
+   lines "(n) ..." as buttons (recommended first, I12), "other" is a typed steer; one click arms, a second within 5 s
+   posts (the viewer has no dialogs). Proposals: v4.draft.pending has no page entry yet (CONF.docPageUrl empty), so
+   the lane is a stub and its count is not read. The badge sums both lanes; refreshes on open, after every settle and
+   on the shared button. States: s_dr_pending | posting | decided | refused | stale (thread closed) | empty. */
+const ARM_MS = 5000;
+const AP = { open: false, loading: false, threads: [], count: null, readAt: 0, refusal: null, truncated: false, decided: [], rows: new Map(),
+  filterThread: "", filterFrom: "", collapsed: new Set(), prop: { count: null, readAt: 0, refusal: null } };
+const rowKey = (t, seq) => t + "|" + seq;
+function rowState(k){ if (!AP.rows.has(k)) AP.rows.set(k, { state: "pending", armed: "", armedAt: 0, other: "", refusal: null, decisionSeq: null }); return AP.rows.get(k); }
+function parseOptions(body){
+  const opts = [], rest = [];
+  for (const line of String(body == null ? "" : body).split(/\r?\n/)) { const m = /^\s*\((\d+)\)\s*(.*\S)\s*$/.exec(line); if (m) opts.push({ n: m[1], text: m[2] }); else rest.push(line); }
+  return { opts, text: rest.join("\n").trim() };
+}
+function parseRefs(refs){
+  if (Array.isArray(refs)) return refs.map(String);
+  const s = String(refs == null ? "" : refs).trim(); if (!s) return [];
+  try { const j = JSON.parse(s); if (Array.isArray(j)) return j.map(x => typeof x === "string" ? x : JSON.stringify(x)); if (isObj(j)) return Object.entries(j).map(([k, v]) => k + ": " + (typeof v === "string" ? v : JSON.stringify(v))); } catch (e) { /* plain text */ }
+  return s.split(/\s*[,\n]\s*/).filter(Boolean);
+}
+function normaliseThread(t){
+  const items = (Array.isArray(t.items) ? t.items : []).filter(i => i && i.seq != null).map(i => ({ seq: +i.seq, kind: i.kind || "decision_request", from: isObj(i.from) ? i.from : { surface: "", tool: "", session: "" },
+    body: i.body == null ? "" : String(i.body), refs: parseRefs(i.refs), model_hint: i.model_hint == null ? "" : (typeof i.model_hint === "string" ? i.model_hint : JSON.stringify(i.model_hint)), ts: i.ts || "", answered_by: i.answered_by == null ? null : i.answered_by })).sort((a, b) => a.seq - b.seq);
+  return { thread_id: String(t.thread_id || ""), title: t.title == null ? "" : String(t.title), increment: t.increment == null ? "" : String(t.increment), closed: !!t.closed, seq_head: +t.seq_head || 0, items, last_ts: items.reduce((m, i) => i.ts > m ? i.ts : m, "") };
+}
+async function refreshAppr(){
+  if (AP.loading) return;
+  AP.loading = true; renderAppr();
+  const r = await callV4(CONF.hubPageUrl, "v4.hub.pending", { to: "operator", open_only: true, limit: 40 });
+  AP.loading = false;
+  if (r.outcome === "ok") {
+    AP.threads = (Array.isArray(r.result.threads) ? r.result.threads : []).map(normaliseThread).filter(t => t.thread_id).sort((a, b) => a.last_ts < b.last_ts ? 1 : a.last_ts > b.last_ts ? -1 : 0);   // newest first
+    const open = AP.threads.reduce((n, t) => n + t.items.filter(i => i.answered_by == null && !t.closed).length, 0);
+    AP.count = r.result.pending_count != null ? +r.result.pending_count : open; AP.truncated = !!r.result.truncated; AP.readAt = Date.now(); AP.refusal = null;
+  } else { AP.refusal = r.refusal || { code: "refused", reason: "refused" }; AP.count = null; AP.readAt = Date.now(); }
+  renderAppr();
+}
+function apprBadge(){
+  const el = $("#apprN"); if (!el) return;
+  const ex = AP.refusal ? "?" : (AP.count == null ? "–" : String(AP.count)), pr = AP.prop.count == null ? "–" : String(AP.prop.count);
+  const sum = !AP.refusal && AP.count != null && AP.prop.count != null ? String(AP.count + AP.prop.count) : (AP.refusal ? "?" : (AP.count == null ? "–" : String(AP.count)));
+  el.textContent = sum; el.className = "pill" + (AP.refusal ? " q" : (AP.count ? " warn" : ""));
+  el.title = `exchanges ${ex} · proposals ${pr}` + (AP.refusal ? " · last read refused: " + AP.refusal.reason : "");
+}
+const hhmm = t => t ? new Date(t).toLocaleTimeString("en-GB", { hour12: false }) : "";
+function renderAppr(){
+  apprBadge();
+  if (!AP.open) return;
+  const tsel = $("#apThread"), fsel = $("#apFrom");
+  const sessions = [...new Set(AP.threads.flatMap(t => t.items.map(i => i.from.session).filter(Boolean)))];
+  tsel.innerHTML = `<option value="">all threads</option>` + AP.threads.map(t => `<option value="${esc(t.thread_id)}"${AP.filterThread === t.thread_id ? " selected" : ""}>${esc(t.thread_id)}</option>`).join("");
+  fsel.innerHTML = `<option value="">all sessions</option>` + sessions.map(s => `<option value="${esc(s)}"${AP.filterFrom === s ? " selected" : ""}>${esc(s)}</option>`).join("");
+  $("#apRead").textContent = AP.loading ? "reading…" : (AP.readAt ? "read " + hhmm(AP.readAt) : "not read");
+  const decidedKeys = new Set(AP.decided.map(d => rowKey(d.thread_id, d.seq)));
+  const threads = AP.threads.filter(t => !AP.filterThread || t.thread_id === AP.filterThread).map(t => Object.assign({}, t, { items: t.items.filter(i => !AP.filterFrom || i.from.session === AP.filterFrom) })).filter(t => t.items.length);
+  const openN = AP.threads.reduce((n, t) => n + t.items.filter(i => !decidedKeys.has(rowKey(t.thread_id, i.seq))).length, 0);
+  let h = `<div class="sum">
+    <span>exchanges: open decisions <b>${AP.refusal ? "?" : (AP.count == null ? "not read" : AP.count)}</b></span><span>threads <b>${AP.threads.length}</b></span><span>decided this page-session <b>${AP.decided.length}</b></span>
+    <span>proposals: pending <b>not read</b></span><span>groups <b>–</b></span><span>drafts <b>–</b></span><span>settled <b>–</b></span></div>`;
+  h += `<div class="lane stub"><h3>Proposals <span class="pill">stub</span></h3><div class="small muted">${CONF.docPageUrl ? "Doc Store page entry configured (" + esc(CONF.docPageUrl) + ") but the lane's transport is not built: proposals are not read." : "No page-reachable entry for v4.draft.pending yet: pending proposals are not read from here (settle them with v4_draft_apply ops.accept / ops.reject from a session). The lane fills in when the Doc Store has a page entry (config doc_page_url)."}</div></div>`;
+  h += `<div class="lane"><h3>Exchanges <span class="pill">${AP.refusal ? "?" : (AP.count == null ? "–" : AP.count)}</span></h3>`;
+  if (AP.refusal) h += `<div class="refusal small" style="color:var(--bad)">v4.hub.pending refused · ${esc(AP.refusal.code)}: ${esc(AP.refusal.reason)}</div>`;
+  else if (AP.loading && !AP.threads.length) h += `<div class="small muted">reading…</div>`;
+  else if (!AP.readAt) h += `<div class="small muted">not read yet</div>`;
+  else if (!openN) h += `<div class="small muted">No decisions waiting · ${AP.threads.length} open thread${AP.threads.length === 1 ? "" : "s"} with decisions at the last read · read ${hhmm(AP.readAt)}</div>`;
+  else if (!threads.length) h += `<div class="small muted">No decision matches the filter.</div>`;
+  if (AP.truncated) h += `<div class="small muted">more than 40 open decisions: the feed was truncated</div>`;
+  for (const t of threads) {
+    const open = t.items.filter(i => !decidedKeys.has(rowKey(t.thread_id, i.seq)));
+    const col = AP.collapsed.has(t.thread_id);
+    h += `<div class="thr${t.closed ? " closed" : ""}" data-thr="${esc(t.thread_id)}"><div class="th" data-toggle="${esc(t.thread_id)}"><span class="tt" title="${esc(t.title)}">${esc(trunc(t.title || t.thread_id, 120))}</span><span class="pill${open.length ? " warn" : ""}">${open.length} open</span>${t.closed ? '<span class="pill bad">closed</span>' : ""}<span class="ti">${esc(t.thread_id)}${t.increment ? " · " + esc(t.increment) : ""} · seq ${t.seq_head} · <span title="thread read (v4.hub.thread) is not page-reachable yet (D20)">${col ? "▸" : "▾"}</span></span></div>`;
+    if (!col) for (const i of t.items) {
+      const k = rowKey(t.thread_id, i.seq), st = rowState(k), decided = decidedKeys.has(k), { opts, text } = parseOptions(i.body);
+      const stale = t.closed && !decided;
+      h += `<div class="dr${decided ? " decided" : ""}${stale ? " stale" : ""}${st.state === "posting" ? " posting" : ""}" data-row="${esc(k)}">
+        <div class="meta"><span>seq ${i.seq}</span><span>from ${esc(i.from.surface)}/${esc(i.from.tool)} ${esc(i.from.session)}</span><span>${esc(i.ts)}</span>${i.model_hint ? `<span title="model_hint">${esc(i.model_hint)}</span>` : ""}${i.refs.map(r => /^https?:\/\//.test(r) ? `<a class="ref" href="${esc(r)}" target="_blank" rel="noopener">${esc(trunc(r, 60))}</a>` : `<span class="ref">${esc(r)}</span>`).join("")}</div>
+        <div class="body">${esc(text || (opts.length ? "" : i.body))}</div>`;
+      if (decided) { const d = AP.decided.find(x => x.thread_id === t.thread_id && x.seq === i.seq); h += `<div class="small" style="color:#5E3A8C">decided · ${esc(d.body)} · decision seq ${d.decision_seq}</div>`; }
+      else if (stale) h += `<div class="small muted">thread closed before a decision: history (I6)</div>`;
+      else {
+        h += `<div class="opts">${opts.map(o => `<button data-opt="${esc(o.n)}" data-text="${esc(o.text)}" class="${st.armed === o.n ? "armed" : ""}">(${esc(o.n)}) ${esc(o.text)}</button>`).join("")}</div>
+        <form data-other class="${st.armed === "other" ? "armed" : ""}"><input placeholder="other: a typed steer" value="${esc(st.other)}"><button type="submit">${st.armed === "other" ? "post steer" : "other"}</button></form>`;
+        if (st.state === "posting") h += `<div class="small muted">posting…</div>`;
+        if (st.state === "refused" && st.refusal) h += `<div class="refusal">refused · ${esc(st.refusal.code)}: ${esc(st.refusal.reason)} <span class="muted">— nothing retried; log a friction with thread ${esc(t.thread_id)} seq ${i.seq}</span></div>`;
+      }
+      h += `</div>`;
+    }
+    h += `</div>`;
+  }
+  h += `</div>`;
+  if (AP.decided.length) h += `<div class="lane"><h3>Decided this page-session</h3>${AP.decided.map(d => `<div class="dr decided"><div class="meta"><span>${esc(d.thread_id)}</span><span>answers seq ${d.seq}</span><span>decision seq ${d.decision_seq}</span><span>${esc(d.ts)}</span></div><div class="body">${esc(d.body)}</div></div>`).join("")}</div>`;
+  const body = $("#apBody"); body.innerHTML = h;
+  body.querySelectorAll("[data-toggle]").forEach(el => el.onclick = () => { const id = el.dataset.toggle; if (AP.collapsed.has(id)) AP.collapsed.delete(id); else AP.collapsed.add(id); renderAppr(); });
+  body.querySelectorAll(".dr[data-row]").forEach(row => {
+    const k = row.dataset.row, [thread_id, seqS] = k.split("|"), seq = +seqS, st = rowState(k);
+    const t = AP.threads.find(x => x.thread_id === thread_id), item = t && t.items.find(i => i.seq === seq); if (!item) return;
+    row.querySelectorAll("[data-opt]").forEach(b => b.onclick = () => {
+      const n = b.dataset.opt;
+      if (st.armed === n && Date.now() - st.armedAt <= ARM_MS) { decide(t, item, n + ": " + b.dataset.text); return; }
+      st.armed = n; st.armedAt = Date.now(); st.state = st.state === "refused" ? "pending" : st.state; renderAppr();
+      setTimeout(() => { if (st.armed === n && Date.now() - st.armedAt >= ARM_MS) { st.armed = ""; renderAppr(); } }, ARM_MS + 50);
+    });
+    const f = row.querySelector("form[data-other]"); if (!f) return;
+    const inp = f.querySelector("input"); inp.oninput = () => { st.other = inp.value; if (st.armed === "other") { st.armed = ""; f.classList.remove("armed"); f.querySelector("button").textContent = "other"; } };
+    f.onsubmit = ev => {
+      ev.preventDefault(); const text = inp.value.trim(); if (!text) { toast("Type the steer first"); return; }
+      if (st.armed === "other" && Date.now() - st.armedAt <= ARM_MS) { decide(t, item, "other: " + text); return; }
+      st.other = text; st.armed = "other"; st.armedAt = Date.now(); st.state = st.state === "refused" ? "pending" : st.state; renderAppr();
+      const el2 = $("#apBody").querySelector(`.dr[data-row="${CSS.escape(k)}"] form input`); if (el2) el2.focus();
+      setTimeout(() => { if (st.armed === "other" && Date.now() - st.armedAt >= ARM_MS) { st.armed = ""; renderAppr(); } }, ARM_MS + 50);
+    };
+  });
+}
+async function decide(t, item, body){
+  const k = rowKey(t.thread_id, item.seq), st = rowState(k);
+  if (st.state === "posting") return;
+  st.state = "posting"; st.armed = ""; st.refusal = null; renderAppr();
+  const r = await callV4(CONF.hubPageUrl, "v4.hub.post", { thread_id: t.thread_id, kind: "decision", answers: item.seq, to: item.from.session || "*", body, refs: item.refs.length ? JSON.stringify(item.refs) : "" });
+  if (r.outcome === "ok") {
+    st.state = "decided"; st.decisionSeq = r.result.seq == null ? null : +r.result.seq;
+    AP.decided.unshift({ thread_id: t.thread_id, seq: item.seq, body, decision_seq: st.decisionSeq, ts: new Date().toISOString() });
+    if (AP.count != null && AP.count > 0) AP.count--;
+    renderAppr(); toast(`Decision posted on ${t.thread_id} (seq ${st.decisionSeq == null ? "?" : st.decisionSeq})`);
+    refreshAppr();   // the panel refreshes after every settle
+  } else { st.state = "refused"; st.refusal = r.refusal || { code: "refused", reason: "refused" }; renderAppr(); toast("Decision refused: " + st.refusal.reason, true); }
+}
+function openAppr(on){
+  AP.open = on == null ? !AP.open : !!on; $("#app").classList.toggle("appr", AP.open); $("#bAppr").classList.toggle("on", AP.open);
+  if (AP.open) refreshAppr(); else renderAppr();
+}
+$("#bAppr").onclick = () => openAppr();
+$("#apClose").onclick = () => openAppr(false);
+$("#apRefresh").onclick = () => refreshAppr();
+$("#apThread").onchange = e => { AP.filterThread = e.target.value; renderAppr(); };
+$("#apFrom").onchange = e => { AP.filterFrom = e.target.value; renderAppr(); };
+
 /* ============================== boot ============================== */
 function renderAll(){ renderPalette(); renderBoard(); renderInspector(); renderAnalysis(); $("#bDraft").textContent = S.draft.title || DRAFT || "—"; setSync(); }
 async function start(){
@@ -1786,7 +1986,8 @@ async function start(){
   catch (e) { syncErr = e.message; toast(e.message, true); setSync(); showDrafts(); }
 }
 window.DT = { get S(){ return S; }, get R(){ return R; }, get SEQ(){ return SEQ; }, get LOG(){ return LOG; }, get OUTBOX(){ return OUTBOX; }, get POLL(){ return POLL; }, get POLL_FROM(){ return POLL_FROM; },
-  get LAYER(){ return LAYER; }, get DM(){ return DM; }, get PF(){ return PF; }, pollDue, emit, openDraft, step, rebuild, setLayer, isDataNode, layoutFlow, fieldMapOps, toggleExpand, tickFlow };
+  get LAYER(){ return LAYER; }, get DM(){ return DM; }, get PF(){ return PF; }, get AP(){ return AP; }, get CONF(){ return CONF; }, PAGE_SID, pollDue, emit, openDraft, step, rebuild, setLayer, isDataNode, layoutFlow, fieldMapOps, toggleExpand, tickFlow,
+  callV4, refreshAppr, openAppr, parseOptions, parseRefs };
 start();
 </script>
 </body></html>

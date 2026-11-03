@@ -1,5 +1,27 @@
 # Changelog
 
+## 3.9.0 — ca_v4/inc/D19-approvals-lane-build
+
+- **Drafting Table** (`TB:drafting-table` v1.3.0, CA_V4 design `dmw1122kroij7` seq 64-108): **Approvals panel**. A header
+  control with a count badge opens a panel over the board with two lanes. **Exchanges** (D19.4): open
+  `decision_request`s across open hub threads, read with `v4.hub.pending {to operator, open_only true, limit 40}` through
+  the CA_V4 Hub page entry (config `hub_page_url`, default `webhook/ca-v4-hub-page`); one group per thread, newest first,
+  collapsible, with filters by thread and by asking session; each row shows seq, asking session, ts, refs and the body,
+  with body lines `(n) …` rendered as option buttons (recommended first) and an `other` field for a typed steer; one click
+  arms, a second within 5 s posts `v4.hub.post {kind decision, answers: seq, to: the asking session, body "<n>: <text>"
+  | "other: <steer>", refs}`; states pending → posting → decided (decided list of this page-session, badge decrements,
+  panel re-reads) or refused (the refusal `{code, reason}` stays on the row, nothing retried); rows on a closed thread
+  are stale; the empty state names the threads scanned and the time of the read. **Proposals**: a visible stub until the
+  Doc Store has a page entry (config `doc_page_url`, empty; D22); the badge therefore counts exchanges only and the summary
+  strip shows the proposals figures as not read. **Transport**: every V4 call is one `ca.payload/1` envelope with the page
+  principal `{surface page, tool drafting-table, tool_session_id = the page session}` and `session_ref` = that id, sent
+  with `credentials: include` and no viewer key; a refusal is rendered, never thrown or retried. Nothing V4 touches the
+  V3 drafting endpoint. Harness `test/drafting-table/exchanges.js` (29 checks) over fixtures `hub-pending.json`,
+  `hub-post-ok.json`, `hub-refused.json`.
+
+### Fixed
+- none
+
 ## 3.8.1 — ca_v4/inc/code-setup-20261103
 
 - **Governance**: `scripts/check-change.mjs` gains a second lane. Branches `v4/<slug>` and `lab/<slug>` are CA_V4

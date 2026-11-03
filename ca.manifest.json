@@ -5,7 +5,7 @@
   "key": "repo:komposing/tool-bench",
   "name": "tool-bench",
   "title": "Tool Bench",
-  "version": "3.8.1",
+  "version": "3.9.0",
   "purpose": "Single-file host for small HTML tools that front CA_V3 flows: shared config injection, sandboxed runs, tool contracts naming the CA_V3 objects each tool depends on.",
   "owner": "Nick",
   "lifecycle": "active",
@@ -267,6 +267,11 @@
       "version": "3.8.1",
       "change": "ca_v4/inc/code-setup-20261103",
       "note": "V4 lane in the commit gate (Increment/Session trailers on v4|lab branches; governance.v4), CA_V4 pointer block in CLAUDE.md, .mcp.json for the CA_V4 Doc MCP. No page change."
+    },
+    {
+      "version": "3.9.0",
+      "change": "ca_v4/inc/D19-approvals-lane-build",
+      "note": "Drafting Table 1.3.0: Approvals panel with the CA_V4 exchanges lane (open decision_requests across hub threads, decided from the page through the Hub page entry with a ca.payload/1 page principal) and a proposals stub; config hub_page_url / doc_page_url."
     }
   ]
 }

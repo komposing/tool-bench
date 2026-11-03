@@ -1,0 +1,14 @@
+{
+  "protocol": "ca.payload/1",
+  "outcome": "refused",
+  "key": "v4.hub.post",
+  "run_id": "v4hub-fixture-refused",
+  "result": {},
+  "errors": [
+    { "param": "params.kind", "value": "decision", "reason": "the page entry posts decision only (D20)", "code": "not_allowed" }
+  ],
+  "warnings": [],
+  "conformance": { "mode": "enforced", "on_fail": "refuse" },
+  "session_ref": "page-fixture",
+  "principal": { "id": "page", "surface": "page", "tool": "drafting-table", "tool_session_id": "page-fixture" }
+}
