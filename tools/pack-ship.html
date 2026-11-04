@@ -6,17 +6,18 @@
   "format": "toolbench.tool/1",
   "id": "TB:pack-ship",
   "name": "Pack & Ship",
-  "description": "Pack and ship a paid Discogs order from one screen (ca.pack_ship/1, C841): paid orders with item and parcel status from discogs.orders.list; Print runs print.queue.add and prints a two-page 4x6 document (packing slip, Parcel2Go label fetched at print time, never stored).",
+  "description": "Pack and ship paid Discogs orders (ca.pack_ship/1, C841): a table drawn only from pack.orders.stages (six stage icons and texts), row buttons from each order's actions list with reasons, run by the engine front door from std pack_stages page; one Refresh starts pack.refresh and polls runs.status; Print composes the 4x6 document. No buyer data.",
   "category": "CA_V3",
-  "tags": ["discogs", "parcel2go", "shipping", "print", "ca.pack_ship/1"],
-  "version": "1.1.0",
-  "contract": { "config_keys": ["packship"], "requires": ["wf:Pqjdoot0EPzoQxj0", "cap:discogs.orders.list", "cap:print.queue.add", "cap:label.fetch", "cap:label.bytes"] },
+  "tags": ["discogs", "parcel2go", "shipping", "print", "ca.pack_ship/1", "ca.pack_page/1"],
+  "version": "2.0.0",
+  "contract": { "config_keys": ["packship"], "requires": ["wf:Pqjdoot0EPzoQxj0", "std:pack_stages", "cap:pack.orders.stages", "cap:pack.refresh", "cap:runs.status", "cap:print.queue.add", "cap:label.bytes"] },
   "sandbox": { "scripts": true, "forms": false, "modals": true, "popups": true, "downloads": true, "sameOrigin": false },
   "config_schema": {
     "namespace": "packship",
     "fields": [
       { "path": "url", "label": "Pack & Ship endpoint", "type": "url", "required": true, "default": "https://komposing.app.n8n.cloud/webhook/ca-v3-pack-ship" },
       { "path": "headers.X-Api-Key", "label": "Viewer key (X-Api-Key)", "type": "secret", "required": false, "secret": true, "help": "CA_V3 viewer key. Leave empty to use the key saved for the CA_V3 Viewer (cav3)." },
+      { "path": "window_days", "label": "Days shown", "type": "number", "default": 14, "help": "1 to 60 (pack.orders.stages window_days)" },
       { "path": "copies", "label": "Label copies", "type": "number", "default": 1, "help": "1 to 3" },
       { "path": "auto_print", "label": "Open the print dialog after Print", "type": "boolean", "default": true }
     ]
@@ -25,47 +26,57 @@
 </script>
 <style>
 :root{--bg:#FBFAF7;--panel:#F3F1EC;--line:#DEDAD1;--ink:#12161A;--ink2:#5B6670;--ink3:#8A939B;--acc:#1E66D0;--warn:#C77700;--bad:#C0392B;--ok:#2E7D32;
+  --s-orange:#E07B00;--s-yellow:#E8C21C;--s-green:#2E9D48;--s-grey:#A3A9AE;
   --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;--sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font:13px/1.4 var(--sans)}
 button{font:inherit;cursor:pointer;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:4px;padding:4px 10px}
-button:hover{border-color:var(--ink3)} button.pri{background:var(--acc);color:#fff;border-color:var(--acc)} button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+button:hover{border-color:var(--ink3)} button.pri{background:var(--acc);color:#fff;border-color:var(--acc)}
 button:disabled{opacity:.45;cursor:default}
 input,select{font:inherit;border:1px solid var(--line);border-radius:4px;padding:3px 6px;background:#fff;color:var(--ink)}
 code,.mono{font-family:var(--mono);font-size:11.5px}
 h3{font:600 10px/1 var(--mono);letter-spacing:.18em;text-transform:uppercase;color:var(--ink2);margin:0 0 8px}
-#app{display:grid;height:100%;grid-template-rows:42px 1fr;grid-template-columns:1fr 420px;grid-template-areas:"top top" "list prev"}
-#top{grid-area:top;display:flex;align-items:center;gap:8px;padding:0 12px;border-bottom:1px solid var(--line);background:#fff;white-space:nowrap;overflow-x:auto}
+#app{display:grid;height:100%;grid-template-rows:auto 1fr;grid-template-columns:1fr 400px;grid-template-areas:"top top" "list prev"}
+#top{grid-area:top;display:flex;align-items:center;gap:8px;padding:6px 12px;border-bottom:1px solid var(--line);background:#fff;flex-wrap:wrap}
 #top .brand{font:600 11px var(--mono);letter-spacing:.2em;text-transform:uppercase}
 #top .sep{flex:1}
 #sync{display:inline-flex;align-items:center;gap:5px;font:11px var(--mono);color:var(--ink2)}
 #sync i{width:8px;height:8px;border-radius:50%;background:var(--ink3);display:inline-block}
 #sync.ok i{background:var(--ok)} #sync.busy i{background:var(--warn)} #sync.err i{background:var(--bad)}
+#last{font:11px var(--mono);color:var(--ink3)}
 #list{grid-area:list;overflow:auto;padding:12px}
 #prev{grid-area:prev;border-left:1px solid var(--line);background:var(--panel);display:flex;flex-direction:column;min-height:0}
 #prev .bar{display:flex;gap:6px;align-items:center;padding:8px 10px;border-bottom:1px solid var(--line)}
 #prev iframe{flex:1;border:0;background:#fff;width:100%}
 table{border-collapse:collapse;width:100%;background:#fff}
-th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
-th{font:600 10px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--ink2);background:var(--panel)}
-tr.sel td{background:#EEF4FD}
-.b{display:inline-block;padding:1px 7px;border-radius:10px;font:11px var(--mono);border:1px solid var(--line);background:#fff}
-.b.booked{color:var(--ok);border-color:var(--ok)} .b.draft{color:var(--warn);border-color:var(--warn)} .b.none{color:var(--ink3)}
+th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{font:600 10px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--ink2);background:var(--panel);position:sticky;top:0;z-index:1}
+tr.sel td{background:#EEF4FD} td.mono{white-space:nowrap}
+.st{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:74px}
+.dot{width:14px;height:14px;border-radius:50%;display:inline-block;border:1px solid rgba(0,0,0,.12)}
+.st .t{font-size:11px;color:var(--ink2);line-height:1.25;max-width:120px}
+.acts{display:flex;flex-direction:column;gap:6px;min-width:160px}
+.act .why{font-size:11px;color:var(--ink3);margin-top:2px;max-width:220px}
+.inp{display:flex;gap:4px;margin-top:4px} .inp input{flex:1;min-width:0}
+.cnt{font:10px var(--mono);color:var(--ink3)}
 .small{font-size:11.5px;color:var(--ink2)}
+.links a{display:block;font:11px var(--mono);word-break:break-all;color:var(--acc)}
 #toast{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:7px 12px;border-radius:6px;display:none;max-width:80%;z-index:9}
 #toast.bad{background:var(--bad)}
-#cfg{display:none;position:absolute;top:44px;right:12px;background:#fff;border:1px solid var(--line);border-radius:6px;padding:10px;width:360px;box-shadow:0 6px 24px rgba(0,0,0,.12);z-index:5}
+#cfg{display:none;position:absolute;top:44px;right:12px;background:#fff;border:1px solid var(--line);border-radius:6px;padding:10px;width:360px;max-width:calc(100% - 24px);box-shadow:0 6px 24px rgba(0,0,0,.12);z-index:5}
 #cfg .row{display:flex;gap:6px;align-items:center;margin:4px 0} #cfg .lbl{width:70px;color:var(--ink2)} #cfg input{flex:1}
-@media (max-width:860px){#app{grid-template-columns:1fr;grid-template-rows:42px 1fr 45%;grid-template-areas:"top" "list" "prev"} #prev{border-left:0;border-top:1px solid var(--line)}}
+@media (max-width:900px){#app{grid-template-columns:1fr;grid-template-rows:auto 1fr 40%;grid-template-areas:"top" "list" "prev"} #prev{border-left:0;border-top:1px solid var(--line)}}
 </style></head>
 <body><div id="app">
 <div id="top">
   <span class="brand">Pack &amp; Ship</span>
-  <select id="status"><option value="paid">paid, unshipped</option><option value="shipped">shipped</option><option value="all">all</option></select>
-  <button id="refresh">Refresh</button>
-  <label class="small">copies <input id="copies" type="number" min="1" max="3" value="1" style="width:48px"></label>
+  <label class="small">days <input id="days" type="number" min="1" max="60" value="14" style="width:52px"></label>
+  <button id="reload" title="read the stages again (no sync)">Reload</button>
+  <button id="refresh" class="pri" title="run pack.refresh: orders, items, messages, health, then parcels">Refresh</button>
+  <label class="small">copies <input id="copies" type="number" min="1" max="3" value="1" style="width:44px"></label>
   <span class="sep"></span>
   <span id="count" class="small"></span>
+  <span id="last"></span>
   <span id="sync"><i></i><span id="syncT">idle</span></span>
   <button id="gear" title="settings">⚙</button>
 </div>
@@ -78,35 +89,42 @@ tr.sel td{background:#EEF4FD}
 </div>
 <div id="list"><p class="small">Loading orders…</p></div>
 <div id="prev">
-  <div class="bar"><h3 style="margin:0">Print preview</h3><span class="sep" style="flex:1"></span><button id="printBtn" disabled>Print</button><button id="labelBtn" disabled title="open the label on its own (PDF labels)">Label</button></div>
+  <div class="bar"><h3 style="margin:0">Print preview</h3><span style="flex:1"></span><button id="printBtn" disabled>Print</button><button id="labelBtn" disabled title="open the label on its own (PDF labels)">Label</button></div>
   <iframe id="doc" title="print document"></iframe>
 </div>
 </div>
 <div id="toast"></div>
 <script>
-/* Pack & Ship (ca.pack_ship/1) — Tool Bench page for C841-s3.
-   Reads orders with discogs.orders.list, prints with print.queue.add. The engine webhook forwards every
-   call through Spine v3, so each page action is a traced CA_V3 run. The label is fetched inside n8n at
-   print time and embedded by URL only; nothing is stored on the page or in CA_V3. */
+/* Pack & Ship v2 (ca.pack_ship/1, ca.pack_page/1) — Tool Bench page for C841-s7.
+   The page renders only what the engine returns: stage columns, states and icons from pack.orders.stages (stage_defs, states,
+   orders[].stages), row buttons from orders[].actions (key, enabled, reason, inputs). It holds no action logic: a button posts
+   {op: action, params: {order_ref, action, inputs}} and the engine front door re-reads the order and runs what std pack_stages
+   page allows. Refresh posts op refresh; the reply names the poll op and its budget. Replies carry no buyer data. */
 const TC = window.TOOL_CONFIG || {}, TM = window.TOOL_META || null;
 const getPath = (o, p) => p.split(".").reduce((a, k) => (a && typeof a === "object") ? a[k] : undefined, o);
 const PC = TC.packship || {};
+const clampInt = (v, lo, hi, d) => { const n = Math.round(+v); return Number.isFinite(n) && n >= lo && n <= hi ? n : d; };
+const bound = (v, lo, hi, d) => { const n = Math.round(+v); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : d; };
 const CONF = {
   url: PC.url || "https://komposing.app.n8n.cloud/webhook/ca-v3-pack-ship",
   key: getPath(PC, "headers.X-Api-Key") || getPath(TC, "cav3.dashboard.headers.X-Api-Key") || "",
   keyFrom: getPath(PC, "headers.X-Api-Key") ? "packship" : (getPath(TC, "cav3.dashboard.headers.X-Api-Key") ? "cav3" : ""),
-  copies: Math.min(3, Math.max(1, +PC.copies || 1)),
+  days: clampInt(PC.window_days, 1, 60, 14),
+  copies: clampInt(PC.copies, 1, 3, 1),
   autoPrint: PC.auto_print == null ? true : !!PC.auto_print
 };
 const $ = (s, r = document) => r.querySelector(s);
 const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const isObj = v => v && typeof v === "object" && !Array.isArray(v);
 const trunc = (s, n) => { s = String(s == null ? "" : s); return s.length > n ? s.slice(0, n - 1) + "…" : s; };
-function toast(msg, bad){ const t = $("#toast"); t.textContent = msg; t.className = bad ? "bad" : ""; t.style.display = "block"; clearTimeout(toast.h); toast.h = setTimeout(() => t.style.display = "none", bad ? 7000 : 2600); }
+const cap1 = s => String(s || "").replace(/[_.]/g, " ").replace(/^./, c => c.toUpperCase());
+function toast(msg, bad){ const t = $("#toast"); t.textContent = msg; t.className = bad ? "bad" : ""; t.style.display = "block"; clearTimeout(toast.h); toast.h = setTimeout(() => t.style.display = "none", bad ? 7000 : 3200); }
 function setSync(cls, text){ const s = $("#sync"); s.className = cls; $("#syncT").textContent = text; }
+const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 /* ============================== transport ============================== */
-async function call(op, params){
+// Every reply is {status, outcome, message, ...}. A refusal is returned (never thrown) when soft is set, so callers can show it.
+async function call(op, params, soft){
   if (!CONF.key) throw new Error("No viewer key: set it in Tool Bench Settings (Pack & Ship or CA_V3 Viewer) or in ⚙");
   let res;
   try {
@@ -116,6 +134,7 @@ async function call(op, params){
   const txt = await res.text();
   let j; try { j = JSON.parse(txt); } catch (e) { throw new Error(`HTTP ${res.status}: ${trunc(txt, 140) || "empty response"}`); }
   if (Array.isArray(j)) j = j[0] || {};
+  if (soft) return j;
   const d = isObj(j.data) ? j.data : j;
   if (!res.ok || j.status === "error" || (j.outcome && j.outcome !== "ok")) {
     const why = (d.errors || []).map(e => `${e.param}: ${e.reason}`).join("; ") || d.message || j.message || `HTTP ${res.status}`;
@@ -124,53 +143,95 @@ async function call(op, params){
   return d;
 }
 
-/* ============================== orders ============================== */
-let ORDERS = [], SEL = "", JOB = null;
-async function loadOrders(){
+/* ============================== stages table ============================== */
+let VIEW = { stage_defs: [], states: {}, orders: [], last_sync: {} }, SEL = "", JOB = null, BUSY_ACT = "";
+const ICON = { orange: "var(--s-orange)", yellow: "var(--s-yellow)", green: "var(--s-green)", grey: "var(--s-grey)", gray: "var(--s-grey)" };
+const iconColor = state => { const n = String(((VIEW.states || {})[state] || {}).icon || ""); return ICON[n] || (/^[a-z]+$|^#[0-9a-f]{3,8}$/i.test(n) ? n : "var(--s-grey)"); };
+async function loadStages(){
   setSync("busy", "loading");
   try {
-    const d = await call("orders_list", { status: $("#status").value, limit: 100 });
-    ORDERS = Array.isArray(d.orders) ? d.orders : [];
-    $("#count").textContent = `${ORDERS.length}${d.truncated ? "+" : ""} orders` + (d.notes && d.notes.length ? " · " + d.notes.join("; ") : "");
-    renderOrders(); setSync("ok", "ok " + new Date().toLocaleTimeString());
+    const d = await call("orders_stages", { window_days: clampInt($("#days").value, 1, 60, CONF.days) });
+    VIEW = { stage_defs: Array.isArray(d.stage_defs) ? d.stage_defs : [], states: isObj(d.states) ? d.states : {}, orders: Array.isArray(d.orders) ? d.orders : [], last_sync: isObj(d.last_sync) ? d.last_sync : {} };
+    $("#count").textContent = `${VIEW.orders.length}${d.truncated ? "+" : ""} orders` + (Array.isArray(d.notes) && d.notes.length ? " · " + d.notes.join("; ") : "");
+    const ls = Object.entries(VIEW.last_sync).filter(([, v]) => v).map(([k, v]) => `${k} ${new Date(v).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}`);
+    $("#last").textContent = ls.length ? "synced " + ls.join(" · ") : "";
+    renderOrders(); if (!REFRESH.running) setSync("ok", "ok " + new Date().toLocaleTimeString("en-GB"));
   } catch (e) { setSync("err", "error"); $("#list").innerHTML = `<p class="small">${esc(e.message)}</p>`; toast(e.message, true); }
 }
-function renderOrders(){
-  if (!ORDERS.length) { $("#list").innerHTML = `<p class="small">No orders for this filter.</p>`; return; }
-  $("#list").innerHTML = `<table><thead><tr><th>order</th><th>date</th><th>status</th><th>items</th><th>parcel</th><th></th></tr></thead><tbody>` +
-    ORDERS.map(o => `<tr data-id="${esc(o.order_id)}" class="${o.order_id === SEL ? "sel" : ""}">
-      <td class="mono">${esc(o.order_id)}</td><td>${esc(String(o.order_date).slice(0, 10))}</td><td>${esc(o.status)}</td>
-      <td>${o.collected}/${o.items}</td>
-      <td><span class="b ${esc(o.parcel)}">${esc(o.parcel)}</span>${o.tracking ? ` <span class="small mono">${esc(o.tracking)}</span>` : ""}</td>
-      <td><button class="pri" data-print="${esc(o.order_id)}" ${o.label_ready ? "" : "disabled title='no booked parcel yet'"}>Print</button></td></tr>`).join("") + `</tbody></table>`;
+// An action's inputs come from a page control of the same name (copies) or from an input drawn on the row (custom_text).
+const PAGE_INPUT = { copies: () => clampInt($("#copies").value, 1, 3, 1) };
+function actionHtml(o, a){
+  const id = `${o.order_ref}|${a.key}`;
+  const busy = BUSY_ACT === id;
+  const rowInputs = (Array.isArray(a.inputs) ? a.inputs : []).filter(n => !PAGE_INPUT[n]);
+  const btn = `<button class="${a.enabled ? "pri" : ""}" data-act="${esc(a.key)}" data-ref="${esc(o.order_ref)}" ${a.enabled && !busy ? "" : "disabled"} title="${esc(a.reason || "")}">${busy ? "…" : esc(cap1(a.key))}</button>`;
+  const inp = a.enabled ? rowInputs.map(n => `<div class="inp"><input data-inp="${esc(n)}" data-for="${esc(id)}" maxlength="160" placeholder="${esc(cap1(n))} (optional)"><span class="cnt" data-cnt="${esc(id)}|${esc(n)}">0/160</span></div>`).join("") : "";
+  return `<div class="act">${btn}<div class="why">${esc(a.reason || "")}</div>${inp}<div class="links" data-links="${esc(id)}"></div></div>`;
 }
+function renderOrders(){
+  const defs = VIEW.stage_defs;
+  if (!VIEW.orders.length) { $("#list").innerHTML = `<p class="small">No orders in the window.</p>`; return; }
+  const head = `<tr><th>order</th><th>status</th>${defs.map(s => `<th>${esc(s.label || s.key)}</th>`).join("")}<th>actions</th></tr>`;
+  const rows = VIEW.orders.map(o => {
+    const byKey = {}; (o.stages || []).forEach(s => byKey[s.key] = s);
+    const cells = defs.map(sd => { const s = byKey[sd.key] || { state: "later", text: "" };
+      return `<td><div class="st" title="${esc((sd.label || sd.key) + ": " + s.state)}"><span class="dot" style="background:${iconColor(s.state)}" aria-label="${esc(s.state)}"></span><span class="t">${esc(s.text || "")}</span></div></td>`; }).join("");
+    const acts = (o.actions || []).map(a => actionHtml(o, a)).join("");
+    return `<tr data-id="${esc(o.order_ref)}" class="${o.order_ref === SEL ? "sel" : ""}"><td class="mono">${esc(o.order_ref)}<div class="small">${esc(String(o.order_date || "").slice(0, 10))}</div></td><td>${esc(o.status)}</td>${cells}<td><div class="acts">${acts}</div></td></tr>`;
+  }).join("");
+  $("#list").innerHTML = `<table><thead>${head}</thead><tbody>${rows}</tbody></table>`;
+}
+$("#list").addEventListener("input", e => { const i = e.target.closest("input[data-inp]"); if (!i) return; const c = $(`[data-cnt="${CSS.escape(i.dataset.for + "|" + i.dataset.inp)}"]`); if (c) c.textContent = `${i.value.length}/160`; });
 $("#list").addEventListener("click", async e => {
-  const b = e.target.closest("button[data-print]"); if (!b) return;
-  SEL = b.dataset.print; renderOrders(); await printOrder(SEL);
+  const b = e.target.closest("button[data-act]"); if (!b || b.disabled) return;
+  const ref = b.dataset.ref, key = b.dataset.act, id = `${ref}|${key}`;
+  const o = VIEW.orders.find(x => x.order_ref === ref); const a = o && (o.actions || []).find(x => x.key === key); if (!a) return;
+  const inputs = {};
+  (Array.isArray(a.inputs) ? a.inputs : []).forEach(n => {
+    if (PAGE_INPUT[n]) { inputs[n] = PAGE_INPUT[n](); return; }
+    const el = $(`input[data-inp="${CSS.escape(n)}"][data-for="${CSS.escape(id)}"]`); const v = el ? el.value.trim() : "";
+    if (v) inputs[n] = v;
+  });
+  SEL = ref; BUSY_ACT = id; renderOrders(); await runAction(o, a, inputs); BUSY_ACT = ""; renderOrders();
 });
-$("#refresh").onclick = loadOrders; $("#status").onchange = loadOrders;
-$("#copies").value = CONF.copies;
 
-/* ============================== print ============================== */
-async function printOrder(ref){
-  const copies = Math.min(3, Math.max(1, +$("#copies").value || 1));
-  setSync("busy", "printing " + ref); $("#printBtn").disabled = true; $("#labelBtn").disabled = true;
-  try {
-    const d = await call("print_queue_add", { order_ref: ref, copies });
-    JOB = { ref, copies, rows: d.packing_rows || [], label: d.label_url || "", job: d.job_id || "", run: d.label_run_id || "", img: "" };
-    // One print job: fetch the label bytes through the engine (label.bytes, transient) and render the PDF page to an image;
-    // fall back to an <img> of the URL (image labels) or a separate tab (PDF, render failed).
-    setSync("busy", "rendering label");
-    let mode = "tab";
-    try { const b = await call("label_bytes", { order_ref: ref }); JOB.img = await renderLabel(b.label_b64 || "", b.label_content_type || ""); if (JOB.img) mode = "rendered"; }
-    catch (e) { toast("label render: " + e.message + " (printing label separately)", true); }
-    if (mode === "tab" && await probeImage(JOB.label)) { JOB.img = JOB.label; mode = "image"; }
-    $("#doc").srcdoc = buildDoc(JOB, mode !== "tab");
-    $("#printBtn").disabled = false; $("#labelBtn").disabled = !JOB.label;
-    setSync("ok", "job " + trunc(JOB.job, 18));
-    toast(`${JOB.rows.length} packing row(s); label ${mode === "tab" ? "opens separately (PDF)" : "in the same document"}`);
-    if (CONF.autoPrint) { setTimeout(doPrint, 400); if (mode === "tab" && JOB.label) window.open(JOB.label, "_blank", "noopener"); }
-  } catch (e) { setSync("err", "error"); toast(e.message, true); }
+/* ============================== row actions ============================== */
+// The reply is read by shape, not by action: print data (packing_rows, label_b64) composes the print document; rows with a
+// payment_url become links; anything else is a notice that the cap ran (for example a review card sent to Telegram).
+async function runAction(o, a, inputs){
+  setSync("busy", `${a.key} ${o.order_ref}`);
+  let r;
+  try { r = await call("action", { order_ref: o.order_ref, action: a.key, inputs }, true); }
+  catch (e) { setSync("err", "error"); toast(e.message, true); return; }
+  if (r.status !== "ok") { setSync("err", r.outcome || "refused"); toast(`${a.key}: ${r.outcome || "refused"} · ${r.message || ""}`, true); if (r.outcome === "action_disabled") loadStages(); return; }
+  const steps = Array.isArray(r.steps) ? r.steps : [];
+  const data = Object.assign({}, ...steps.map(s => isObj(s.data) ? s.data : {}));
+  if (Array.isArray(data.packing_rows) || data.label_b64) { await composePrint(o.order_ref, data, inputs.copies); return; }
+  const rows = steps.flatMap(s => (isObj(s.data) && Array.isArray(s.data.rows)) ? s.data.rows : []);
+  const box = $(`[data-links="${CSS.escape(o.order_ref + "|" + a.key)}"]`);
+  if (rows.length) {
+    const html = rows.map(x => x.payment_url ? `<a href="${esc(x.payment_url)}" target="_blank" rel="noopener">${esc(trunc(x.payment_url, 60))}</a>` : `<span class="small">${esc(Object.values(x).join(" · "))}</span>`).join("");
+    LINKS[o.order_ref + "|" + a.key] = html; if (box) box.innerHTML = html;
+  } else if (steps.length && steps.every(s => isObj(s.data) && Array.isArray(s.data.rows))) toast(`${a.key}: nothing for ${o.order_ref}`);
+  setSync("ok", `${a.key} ok`);
+  toast(`${cap1(a.key)} ${o.order_ref}: ${steps.map(s => s.cap).join(" then ")} ok${a.then && !steps.some(s => s.cap === a.then) ? ` · ${a.then} follows on its own approval card` : ""}`);
+}
+const LINKS = {};
+const _render = renderOrders;
+renderOrders = function(){ _render(); Object.entries(LINKS).forEach(([k, h]) => { const b = $(`[data-links="${CSS.escape(k)}"]`); if (b) b.innerHTML = h; }); };
+
+/* ============================== print (v1.1.0 single-print path) ============================== */
+async function composePrint(ref, d, copies){
+  JOB = { ref, copies: clampInt(copies || d.copies, 1, 3, 1), rows: d.packing_rows || [], label: d.label_url || "", job: d.job_id || "", run: d.label_run_id || "", img: "" };
+  let mode = "tab";
+  try { JOB.img = await renderLabel(d.label_b64 || "", d.label_content_type || ""); if (JOB.img) mode = "rendered"; }
+  catch (e) { toast("label render: " + e.message + " (printing label separately)", true); }
+  if (mode === "tab" && await probeImage(JOB.label)) { JOB.img = JOB.label; mode = "image"; }
+  $("#doc").srcdoc = buildDoc(JOB, mode !== "tab");
+  $("#printBtn").disabled = false; $("#labelBtn").disabled = !JOB.label;
+  setSync("ok", "job " + trunc(JOB.job, 18));
+  toast(`${JOB.rows.length} packing row(s); label ${mode === "tab" ? "opens separately (PDF)" : "in the same document"}`);
+  if (CONF.autoPrint) { setTimeout(doPrint, 400); if (mode === "tab" && JOB.label) window.open(JOB.label, "_blank", "noopener"); }
 }
 const PDFJS = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs", PDFJS_WORKER = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs";
 let pdfjsP = null;
@@ -194,7 +255,6 @@ function probeImage(url){ return new Promise(res => { if (!url) return res(false
 function doPrint(){ const w = $("#doc").contentWindow; if (!w) return; try { w.postMessage({ type: "packship:print" }, "*"); } catch (e) { toast("print blocked: " + e.message, true); } }
 $("#printBtn").onclick = doPrint;
 $("#labelBtn").onclick = () => { if (JOB && JOB.label) window.open(JOB.label, "_blank", "noopener"); };
-
 function buildDoc(j, withLabel){
   const rows = j.rows.map((r, i) => `<tr><td class="n">${i + 1}</td><td class="loc">${esc(r.location || "—")}</td>
     <td><b>${esc(r.artist)}</b> — ${esc(r.title)}<br><span class="s">${esc([r.format, r.label, r.catno].filter(Boolean).join(" · "))} · ${esc(r.media_condition)}/${esc(r.sleeve_condition)}</span></td><td class="box">☐</td></tr>`).join("");
@@ -219,6 +279,41 @@ function buildDoc(j, withLabel){
   </style></head><body>${slip}${label}<script>addEventListener("message", e => { if (e.data && e.data.type === "packship:print") { focus(); print(); } });<\/script></body></html>`;
 }
 
+/* ============================== refresh (pack.refresh, polled) ============================== */
+// The engine refuses a start while a sync chain sharing steps runs (outcome busy) and answers started with run_id and poll
+// {op, every_ms, max_ms}. The page polls that op until the run is done, the budget runs out or the tab is closed.
+const REFRESH = { running: false, run: "", poll: null };
+function setRefresh(running, label){ REFRESH.running = running; const b = $("#refresh"); b.disabled = running; b.textContent = running ? (label || "Running…") : "Refresh"; }
+async function checkBusy(){
+  try { const r = await call("run_status", {}, true); if (r.status === "ok" && isObj(r.data) && r.data.busy === true) { setRefresh(true, "Sync running"); setSync("busy", "sync chain running"); return true; } }
+  catch (e) { /* the button stays usable; the start itself is guarded */ }
+  if (!REFRESH.run) setRefresh(false); return false;
+}
+async function waitNotBusy(every, max){ const t0 = Date.now(); while (Date.now() - t0 < max) { await sleep(every); if (!(await checkBusy())) return true; } return false; }
+$("#refresh").onclick = async () => {
+  setRefresh(true, "Starting…"); setSync("busy", "starting refresh");
+  let r;
+  try { r = await call("refresh", {}, true); } catch (e) { setRefresh(false); setSync("err", "error"); toast(e.message, true); return; }
+  const poll = isObj(r.poll) ? r.poll : {}; const every = bound(poll.every_ms, 1000, 60000, 5000), max = bound(poll.max_ms, 10000, 3600000, 600000);
+  if (r.outcome === "busy") { toast("Another sync chain is running; Refresh waits for it", true); setRefresh(true, "Sync running"); setSync("busy", "sync chain running"); if (await waitNotBusy(every, max)) loadStages(); return; }
+  if (r.status !== "ok" || r.outcome !== "started" || !r.run_id) { setRefresh(false); setSync("err", r.outcome || "refused"); toast(`refresh ${r.outcome || "refused"}: ${r.message || ""}`, true); return; }
+  REFRESH.run = r.run_id; REFRESH.poll = poll;
+  const t0 = Date.now(); let last = null;
+  while (Date.now() - t0 < max) {
+    await sleep(every);
+    let s; try { s = await call(String(poll.op || "run_status"), { run_ref: REFRESH.run }, true); } catch (e) { setSync("err", "poll error"); continue; }
+    const run = isObj(s.data) ? s.data.run : null; if (!run) continue; last = run;
+    const step = run.steps && run.steps.length ? run.steps[run.steps.length - 1].key : "";
+    setRefresh(true, `Running ${Math.round((Date.now() - t0) / 1000)} s`); setSync("busy", `refresh ${run.state}${run.steps_done ? ` · step ${run.steps_done}${step ? " " + step : ""}` : ""}`);
+    if (run.state === "done") break;
+  }
+  REFRESH.run = ""; setRefresh(false);
+  if (last && last.state === "done") { toast(`Refresh ${last.outcome}: ${last.steps_done} steps in ${Math.round(last.duration_ms / 1000)} s`, last.outcome !== "ok"); await loadStages(); }
+  else { setSync("err", "refresh unconfirmed"); toast("Refresh not confirmed within the poll budget; Reload when it lands", true); }
+};
+$("#reload").onclick = loadStages; $("#days").onchange = loadStages;
+$("#days").value = CONF.days; $("#copies").value = CONF.copies;
+
 /* ============================== settings ============================== */
 $("#gear").onclick = () => { const c = $("#cfg"); c.style.display = c.style.display === "block" ? "none" : "block"; $("#cUrl").value = CONF.url; $("#cKey").value = "";
   $("#cNote").textContent = TM ? `Saved in Tool Bench settings (namespace packship); the tool reloads. Endpoint ${CONF.url}; key ${CONF.key ? "from " + CONF.keyFrom : "missing: set it in Tool Bench Settings"}.` : "Standalone: values are kept in memory for this page only."; };
@@ -227,8 +322,8 @@ $("#cSave").onclick = () => {
   const url = $("#cUrl").value.trim(), key = $("#cKey").value.trim();
   if (url) CONF.url = url; if (key) CONF.key = key;
   if (TM && window.parent !== window) { const set = { url: CONF.url }; if (key) set["headers.X-Api-Key"] = key; window.parent.postMessage({ type: "toolbench:config:set", namespace: "packship", values: set }, "*"); }
-  $("#cfg").style.display = "none"; loadOrders();
+  $("#cfg").style.display = "none"; loadStages(); checkBusy();
 };
-if (!CONF.key) { setSync("err", "no key"); $("#list").innerHTML = `<p class="small">No viewer key. ${TM ? "Set <b>Viewer key</b> for Pack &amp; Ship (or the CA_V3 Viewer) in Tool Bench Settings." : "Open ⚙ and enter the endpoint and key."}</p>`; }
-else loadOrders();
+if (!CONF.key) { setSync("err", "no key"); $("#refresh").disabled = true; $("#list").innerHTML = `<p class="small">No viewer key. ${TM ? "Set <b>Viewer key</b> for Pack &amp; Ship (or the CA_V3 Viewer) in Tool Bench Settings." : "Open ⚙ and enter the endpoint and key."}</p>`; }
+else { loadStages(); checkBusy(); }
 </script></body></html>
