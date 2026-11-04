@@ -1,5 +1,24 @@
 # Changelog
 
+## 3.10.0 — C1059
+
+- **Pack & Ship v2** (`TB:pack-ship` v2.0.0, C841-s7, T544; doc `pack_ship/design`, std `pack_stages` v3): the page renders only
+  what `pack.orders.stages` returns. Columns are the read's `stage_defs`; each cell is the stage's icon (colour from the read's
+  `states`: none orange, partial yellow, done green, later grey) and its text. Row buttons are each order's `actions`
+  (`key`, `enabled`, `reason`, `inputs`): a disabled action shows its reason; an input named by the action comes from a page
+  control of the same name (`copies`) or a row field (`custom_text`, 160 characters). A button posts `{op: action,
+  params: {order_ref, action, inputs}}`; the engine front door re-reads the order, runs the action's cap and its `then` only
+  when std `pack_stages` `page.action_caps` lists them, keeps params to each cap's registry contract and cuts the reply to the
+  listed fields, so the page holds no action logic and no buyer data. Replies are read by shape: print data composes the
+  two-page 4x6 document (the v1.1.0 single-print path: `print.queue.add` then `label.bytes`, pdf.js render, postMessage print);
+  rows with a checkout link become links; anything else is a notice (for example the review card sent to Telegram, whose
+  send stays on its own approval card). **Refresh** posts op `refresh`: the front door asks `runs.status` whether a sync chain
+  sharing steps is running (busy: the button waits), else starts `pack.refresh` without waiting and returns `run_id` and
+  `poll {op, every_ms, max_ms}`; the page polls until the run is done, then reloads the stages. Settings add `window_days`.
+
+### Fixed
+- none
+
 ## 3.9.0 — ca_v4/inc/D19-approvals-lane-build
 
 - **Drafting Table** (`TB:drafting-table` v1.3.0, CA_V4 design `dmw1122kroij7` seq 64-108): **Approvals panel**. A header
