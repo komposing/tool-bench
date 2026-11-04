@@ -1,0 +1,102 @@
+[
+  {
+    "name": "fold is on by default",
+    "ok": true
+  },
+  {
+    "name": "anchored notes are hidden while folded",
+    "ok": true,
+    "detail": "note:note1"
+  },
+  {
+    "name": "free note stays on the board",
+    "ok": true
+  },
+  {
+    "name": "edge touching a hidden note is hidden",
+    "ok": true
+  },
+  {
+    "name": "other edges still drawn",
+    "ok": true
+  },
+  {
+    "name": "host bubble counts comments plus anchored notes",
+    "ok": true,
+    "detail": "{\"n\":\"4\",\"open\":false,\"tip\":\"2 comments (1 open) · 2 notes — click to expand\",\"dot\":true}"
+  },
+  {
+    "name": "bubble marks an open comment and names the breakdown",
+    "ok": true,
+    "detail": "2 comments (1 open) · 2 notes — click to expand"
+  },
+  {
+    "name": "a host with notes only still gets a bubble",
+    "ok": true,
+    "detail": "{\"n\":\"1\",\"open\":false,\"tip\":\"1 note — click to expand\",\"dot\":false}"
+  },
+  {
+    "name": "reasoning bubbles stay hidden for a folded host",
+    "ok": true
+  },
+  {
+    "name": "bubble click expands the host: its notes return",
+    "ok": true,
+    "detail": "note:na1,note:na2,note:note1"
+  },
+  {
+    "name": "expanded host keeps the count in an open-ring bubble",
+    "ok": true,
+    "detail": "{\"n\":\"4\",\"open\":true,\"tip\":\"2 comments (1 open) · 2 notes — click to fold\",\"dot\":false}"
+  },
+  {
+    "name": "anchor lines drawn for the expanded host",
+    "ok": true
+  },
+  {
+    "name": "edge from the revealed note is back",
+    "ok": true
+  },
+  {
+    "name": "reasoning bubbles show for the expanded host",
+    "ok": true
+  },
+  {
+    "name": "bubble click does not change the selection",
+    "ok": true
+  },
+  {
+    "name": "second click folds the host again",
+    "ok": true
+  },
+  {
+    "name": "inspector shows fold state and the anchored notes",
+    "ok": true,
+    "detail": "NODE n1 LABEL CLASS actor (shared) constraint (shared) goal (shared) goal outcome (shared) principle (shared) undefined "
+  },
+  {
+    "name": "inspector toggle expands the host",
+    "ok": true
+  },
+  {
+    "name": "goto on a hidden note expands its host and selects the note",
+    "ok": true
+  },
+  {
+    "name": "Fold off shows every note and edge",
+    "ok": true
+  },
+  {
+    "name": "Fold off: bubbles stay as counts without a fold hint",
+    "ok": true
+  },
+  {
+    "name": "fit ignores hidden notes",
+    "ok": true
+  },
+  {
+    "name": "no page errors",
+    "ok": true,
+    "detail": ""
+  }
+]

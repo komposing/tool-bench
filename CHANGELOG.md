@@ -1,5 +1,20 @@
 # Changelog
 
+## 3.11.0 — ca_v4/inc/uilab-fold-bubbles
+
+- **Drafting Table** (`TB:drafting-table` v1.4.0): **Fold**. Comments (thread entries) and linked references (notes
+  anchored to an object) collapse into the object that hosts them. A folded host shows one circular count bubble
+  (comments + anchored notes; a red dot when a comment is open; the tooltip gives the breakdown); the anchored notes,
+  their anchor lines, any edge touching them and the inline reasoning bubbles are off the board while folded, so
+  relationship lines no longer cross note boxes. Clicking the bubble expands that host (the bubble becomes an open ring
+  and keeps the count); a second click folds it. The header **Fold** toggle (on by default) switches the behaviour off
+  for the whole board. Fit and marquee selection ignore hidden notes; a goto on a hidden note expands its host first.
+  The inspector shows the fold state with a toggle and lists the host's anchored notes. Fold state is page view state
+  (like data-model expansion): no new op, nothing written to the draft. Harness `test/drafting-table/fold.js` (23 checks).
+
+### Fixed
+- none
+
 ## 3.10.0 — C1059
 
 - **Pack & Ship v2** (`TB:pack-ship` v2.0.0, C841-s7, T544; doc `pack_ship/design`, std `pack_stages` v3): the page renders only
