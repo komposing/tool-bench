@@ -6,10 +6,10 @@
   "format": "toolbench.tool/1",
   "id": "TB:drafting-table",
   "name": "Drafting Table",
-  "description": "Paired concept-modelling board (ca.draft/1): palette, board, inspector, analysis and finder over the CA_V3 Drafting Engine; the op log is the draft, replayed live on the std poll budget. Layers: global, data model, process flow. Approvals (CA_V4): exchanges lane (open decisions on hub threads, decided through the Hub page entry, ca.payload/1) and a proposals stub.",
+  "description": "Paired concept-modelling board (ca.draft/1): palette, board, inspector, analysis, finder over the CA_V3 Drafting Engine; the op log is the draft, replayed live on the std poll budget. Layers: global, data model, process flow. Fold: comments and notes fold into a count bubble. Approvals (CA_V4): exchanges lane (open decisions on hub threads, decided via the Hub page entry) and a proposals stub.",
   "category": "CA_V3",
   "tags": ["drafting", "design", "paired", "ca.draft/1", "ca.payload/1", "ca_v4"],
-  "version": "1.3.0",
+  "version": "1.4.0",
   "contract": { "config_keys": ["drafting"], "requires": ["wf:VkS7B5UucVMrNwWm", "std:drafting"] },
   "sandbox": { "scripts": true, "forms": false, "modals": false, "popups": false, "downloads": false, "sameOrigin": false },
   "config_schema": {
@@ -76,6 +76,9 @@ h3{font:600 10px/1 var(--mono);letter-spacing:.18em;text-transform:uppercase;col
 .note rect.nb{fill:#FFF6C9;stroke:#E2C64A;rx:3} .note.sel rect.nb{stroke:var(--acc);stroke-width:2.5}
 .chip rect.cb{rx:11;stroke-width:1.4} .chip.sel rect.cb{stroke:var(--acc)!important;stroke-width:3}
 .badge circle{stroke:#fff;stroke-width:1.5}
+.fold{cursor:pointer} .fold circle.c{stroke:#fff;stroke-width:1.5} .fold.open circle.c{fill:#fff;stroke-width:1.8} .fold text{pointer-events:none}
+.fold:hover circle.c{stroke:#FF8F00;stroke-width:2}
+.foldline{stroke:#E2C64A;stroke-dasharray:3 3;fill:none}
 .bub rect{fill:#fff;stroke:var(--line);rx:5}
 .tag{font:10px var(--mono)!important;fill:#B85C00}
 .marq{fill:rgba(30,102,208,.08);stroke:var(--acc);stroke-dasharray:4 3}
@@ -197,6 +200,7 @@ h3{font:600 10px/1 var(--mono);letter-spacing:.18em;text-transform:uppercase;col
     <button class="mobtoggle" data-m="pal">Palette</button>
     <button class="mobtoggle" data-m="right">Inspect</button>
     <button class="mobtoggle" data-m="find">Find</button>
+    <button id="tFold" class="on" title="Fold comments and anchored notes into their host behind a count bubble (click a bubble to open one host)">Fold</button>
     <button id="tReason" title="Inline thread bubbles">Show reasoning</button>
     <button id="tFollow" title="Move the camera to the agent's latest op">Follow agent</button>
     <button id="bFit" title="Fit the board">Fit</button>
@@ -405,6 +409,9 @@ let ACTIVE_AN = "";        // analysis shown in the analysis pane
 let INSP = null;           // ref shown in the inspector (null = draft)
 let CAM = { x: 80, y: 60, k: 1 };
 let FLAGS = { reasoning: false, follow: false };
+/* Fold (1.4.0): comments (thread entries) and linked references (notes anchored to an object) collapse into their host.
+   View-only page state like DM: `all` is the header toggle (on by default), `open` the hosts a bubble click expanded. */
+const FOLD = { all: true, open: new Set() };
 let RECENT = new Map();    // rk -> {author, at}
 let lastPoll = 0, lastOk = 0, syncErr = "", busy = false, lastEdit = 0;
 let lastChange = 0, idleStep = 0, replayBusy = false, HELD = [];   // poll budget state (C944)
@@ -763,13 +770,22 @@ const toScreen = (x, y) => ({ x: x * CAM.k + CAM.x, y: y * CAM.k + CAM.y });
 const DRAG = { pos: {} };
 const selected = ref => SEL.some(r => rk(r) === rk(ref));
 function recentTag(ref){ const r = RECENT.get(rk(ref)); return r && Date.now() - r.at < 4000 ? r : null; }
+/* fold helpers: what an object hosts, whether it is folded, and the count bubble that stands in for the folded items */
+function anchoredNotes(ref){ return Object.values(R.notes).filter(n => n.anchor && sameObj(n.anchor, ref)); }
+function folded(ref){ return FOLD.all && !FOLD.open.has(rk(ref)); }
+function noteHidden(n){ return !!(n.anchor && folded(n.anchor) && objOf(n.anchor)); }
+function toggleFold(ref){ const k = rk(ref); if (FOLD.open.has(k)) FOLD.open.delete(k); else FOLD.open.add(k); renderBoard(); if (INSP && rk(INSP) === k) renderInspector(); }
 function badge(ref, x, y){
-  const t = threadOf(ref); if (!t.length) return "";
-  const open = t.filter(x => x.status !== "resolved").length;
-  return `<g class="badge" transform="translate(${x},${y})"><circle r="9" fill="${open ? "#C77700" : "#8A939B"}"/><text text-anchor="middle" y="3.5" font-size="10" fill="#fff">${t.length}</text>${open ? `<circle cx="7" cy="-7" r="3" fill="#C0392B"/>` : ""}</g>`;
+  const t = threadOf(ref), notes = anchoredNotes(ref), total = t.length + notes.length; if (!total) return "";
+  const open = t.filter(x => x.status !== "resolved").length, isOpen = !folded(ref);
+  const fill = open ? "#C77700" : "#8A939B";
+  const tip = [t.length ? `${t.length} comment${t.length === 1 ? "" : "s"}${open ? ` (${open} open)` : ""}` : "", notes.length ? `${notes.length} note${notes.length === 1 ? "" : "s"}` : ""].filter(Boolean).join(" · ")
+    + (FOLD.all ? (isOpen ? " — click to fold" : " — click to expand") : "");
+  const r = total > 99 ? 11 : total > 9 ? 10 : 9;
+  return `<g class="fold${isOpen ? " open" : ""}" data-fold="${esc(rk(ref))}" transform="translate(${x},${y})"><title>${esc(tip)}</title><circle class="c" r="${r}" fill="${fill}" stroke="${isOpen ? fill : "#fff"}"/><text text-anchor="middle" y="3.5" font-size="${total > 99 ? 8.5 : 10}" fill="${isOpen ? fill : "#fff"}" font-weight="600">${total > 999 ? "999+" : total}</text>${open && !isOpen ? `<circle cx="${r - 2}" cy="${2 - r}" r="3" fill="#C0392B"/>` : ""}</g>`;
 }
 function bubbles(ref, x, y){
-  if (!FLAGS.reasoning) return "";
+  if (!FLAGS.reasoning || folded(ref)) return "";
   const t = threadOf(ref).slice(-3); if (!t.length) return "";
   return t.map((en, i) => `<g class="bub" data-ref="thread_entry:${esc(en.id)}" transform="translate(${x},${y + i * 22})"><rect width="210" height="19"${en.status === "resolved" ? ' opacity=".55"' : ""}/>
     <text x="6" y="13" font-size="10.5" fill="#5B6670">${esc(trunc((en.kind || "") + " · " + (en.author || "") + ": " + (en.text || ""), 40))}</text></g>`).join("");
@@ -795,6 +811,7 @@ function renderBoard(){
   // edges (edges about edges need the target edge's midpoint, which boxOf resolves)
   for (const e of Object.values(R.edges)) {
     if (show && !show({ type: "edge", id: e.id })) continue;
+    if ([e.from, e.to].some(r => r && r.type === "note" && R.notes[r.id] && noteHidden(R.notes[r.id]))) continue;
     const p = edgePts(e); if (!p) continue;
     const ref = { type: "edge", id: e.id }, ec = ecOf(e.edge_class_id) || ROOT_EDGE, st = ecStyle(e.edge_class_id);
     const stroke = st.stroke || "#9E9E9E", dash = st.dash ? ' stroke-dasharray="6 4"' : "";
@@ -821,9 +838,9 @@ function renderBoard(){
   }
   // notes
   for (const n of Object.values(R.notes)) {
-    const ref = { type: "note", id: n.id }; if (show && !show(ref)) continue; const b = boxOf(ref); if (!b) continue;
+    const ref = { type: "note", id: n.id }; if (show && !show(ref)) continue; if (noteHidden(n)) continue; const b = boxOf(ref); if (!b) continue;
     let anchor = "";
-    if (n.anchor) { const ab = boxOf(n.anchor); if (ab) { const c = centre(ab); anchor = `<path d="M${b.x + b.w / 2},${b.y + b.h / 2}L${c.x},${c.y}" stroke="#E2C64A" stroke-dasharray="3 3" fill="none"/>`; } }
+    if (n.anchor) { const ab = boxOf(n.anchor); if (ab) { const c = centre(ab); anchor = `<path class="foldline" d="M${b.x + b.w / 2},${b.y + b.h / 2}L${c.x},${c.y}"/>`; } }
     const lines = String(n.text || "(empty note)").split(/\n/).flatMap(l => l.match(/.{1,24}(\s|$)|.{1,24}/g) || [""]).slice(0, 4);
     out.push(`<g class="${cls(ref, n, "note")}" data-ref="note:${esc(n.id)}">${anchor}<rect class="nb" x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}"/>
       ${lines.map((l, i) => `<text x="${b.x + 8}" y="${b.y + 16 + i * 13}" font-size="11" fill="#5A4A00">${esc(l)}</text>`).join("")}${badge(ref, b.x + b.w - 4, b.y + 2)}${tagText(ref, b.x, b.y - 4)}</g>`);
@@ -855,7 +872,7 @@ function applyCam(){ $("#world").setAttribute("transform", `translate(${CAM.x},$
 function allBoxes(){
   const bs = [], show = layerVisible();
   for (const id in R.nodes) if (!show || show({ type: "node", id })) bs.push(boxOf({ type: "node", id }));
-  for (const id in R.notes) if (!show || show({ type: "note", id })) bs.push(boxOf({ type: "note", id }));
+  for (const id in R.notes) if ((!show || show({ type: "note", id })) && !noteHidden(R.notes[id])) bs.push(boxOf({ type: "note", id }));
   for (const id in R.groups) if (!show || show({ type: "group", id })) bs.push(groupBox(R.groups[id]));
   if (LAYER === "process") for (const b of PF.boxes) bs.push(b);
   return bs.filter(Boolean);
@@ -911,6 +928,8 @@ svg.addEventListener("pointerdown", ev => {
   }
   const xb = ev.target.closest("[data-expand]");
   if (xb) { ev.preventDefault(); toggleExpand(xb.dataset.expand); return; }
+  const fb = ev.target.closest("[data-fold]");
+  if (fb) { ev.preventDefault(); toggleFold(parseRk(fb.dataset.fold)); return; }
   const col = ev.target.closest("[data-col]");
   if (col) {   // data model layer: a column row; click selects it, dragging maps it onto a column of another expanded node
     ev.preventDefault();
@@ -989,7 +1008,7 @@ svg.addEventListener("pointerup", ev => {
   } else if (m.kind === "marquee" && m.rect) {
     const inR = b => b && b.x >= m.rect.x && b.y >= m.rect.y && b.x + b.w <= m.rect.x + m.rect.w && b.y + b.h <= m.rect.y + m.rect.h;
     const show = layerVisible();
-    SEL = Object.keys(R.nodes).map(id => ({ type: "node", id })).concat(Object.keys(R.notes).map(id => ({ type: "note", id }))).filter(r => (!show || show(r)) && inR(boxOf(r)));
+    SEL = Object.keys(R.nodes).map(id => ({ type: "node", id })).concat(Object.keys(R.notes).map(id => ({ type: "note", id }))).filter(r => (!show || show(r)) && !(r.type === "note" && noteHidden(R.notes[r.id])) && inR(boxOf(r)));
     renderBoard();
   }
 });
@@ -1300,9 +1319,15 @@ function bindAttrs(root, own, onChange, onPromote){
     if (!k) return; const a = cur(); a[k] = v; onChange(a, k);
   };
 }
+function foldHtml(ref){
+  const notes = anchoredNotes(ref), t = threadOf(ref); if (!notes.length && !t.length) return "";
+  const f = folded(ref);
+  return `<div class="row small"><span class="lbl">folded</span><span class="pill">${f ? "yes" : "no"}</span>${FOLD.all ? `<button class="link" data-foldtoggle="${esc(rk(ref))}">${f ? "expand on board" : "fold on board"}</button>` : `<span class="muted">fold is off</span>`}</div>
+    ${notes.length ? `<div class="sec"><h3>Anchored notes <span class="pill">${notes.length}</span></h3><div class="chips">${notes.map(n => `<span class="mchip" data-ref="note:${esc(n.id)}" data-goto="note:${esc(n.id)}">${esc(trunc(n.text || "(empty note)", 30))}</span>`).join("")}</div></div>` : ""}`;
+}
 function threadHtml(ref){
   const t = threadOf(ref);
-  return `<div class="sec"><h3>Thread <span class="pill">${t.length}</span></h3>
+  return foldHtml(ref) + `<div class="sec"><h3>Thread <span class="pill">${t.length}</span></h3>
     ${t.map(en => `<div class="ent${en.status === "resolved" ? " resolved" : ""}" data-ref="thread_entry:${esc(en.id)}" data-card="${cardAttr(refCard({ type: "thread_entry", id: en.id }))}">
       <div class="meta"><span class="pill">${esc(en.kind || "entry")}</span><span>${esc(en.author || "")}</span><span>${esc(en.status || "")}</span>
       ${en.status !== "resolved" ? `<button class="link" data-resolve="${esc(en.id)}">resolve</button>` : ""}</div><div>${esc(en.text || "")}</div></div>`).join("")}
@@ -1310,6 +1335,7 @@ function threadHtml(ref){
       <input data-ttext placeholder="add to the thread"><button data-tadd>Add</button></div></div>`;
 }
 function bindThread(root, ref){
+  root.querySelectorAll("[data-foldtoggle]").forEach(b => b.onclick = () => toggleFold(parseRk(b.dataset.foldtoggle)));
   root.querySelectorAll("[data-resolve]").forEach(b => b.onclick = () => emit({ op: "thread.resolve", payload: { id: b.dataset.resolve, status: "resolved" } }));
   const add = root.querySelector("[data-tadd]"); if (!add) return;
   const go = () => { const text = root.querySelector("[data-ttext]").value.trim(); if (!text) return;
@@ -1325,7 +1351,7 @@ function edgesHtml(ref){
       <button class="link" data-goto="${esc(rk(other))}">${esc(trunc(nameOf(other), 30))}</button>${e._ghost ? '<span class="pill warn">proposed</span>' : ""}</div>`;
   }).join("") || `<div class="small muted">None. Drag from a node's ○ handle to any object, edge midpoint or attribute row.</div>`}</div>`;
 }
-function bindGoto(root){ root.querySelectorAll("[data-goto]").forEach(b => b.onclick = () => { const r = parseRk(b.dataset.goto); SEL = [r]; INSP = r; if (r.type === "analysis") ACTIVE_AN = r.id; renderAll(); followTo(r); }); }
+function bindGoto(root){ root.querySelectorAll("[data-goto]").forEach(b => b.onclick = () => { const r = parseRk(b.dataset.goto); if (r.type === "note" && R.notes[r.id] && noteHidden(R.notes[r.id])) FOLD.open.add(rk(R.notes[r.id].anchor)); SEL = [r]; INSP = r; if (r.type === "analysis") ACTIVE_AN = r.id; renderAll(); followTo(r); }); }
 function classSelect(cur, edge){
   const all = edge ? edgeClassNames() : Object.values(Object.assign({ undefined: ROOT_CLASS }, PALETTE.classes, S.classes));
   return all.sort((a, b) => (a.name || "").localeCompare(b.name || "")).map(c => `<option value="${esc(c.id)}"${c.id === cur ? " selected" : ""}>${esc(c.name || c.id)}${(edge ? isLocalEdgeClass(c.id) : isLocalClass(c.id)) ? "" : " (shared)"}</option>`).join("");
@@ -1584,6 +1610,7 @@ splitter("#hb", "y", "--bh", 60, 420, true);
 $$("[data-c]").forEach(b => b.onclick = () => { $("#app").classList.toggle(b.dataset.c); b.classList.toggle("on"); setTimeout(renderBoard, 0); });
 function openMobile(which){ if (innerWidth > 820) return; const app = $("#app"); ["pal", "right", "find"].forEach(x => app.classList.toggle("m-" + x, x === which)); $$(".mobtoggle").forEach(b => b.classList.toggle("on", b.dataset.m === which)); }
 $$(".mobtoggle").forEach(b => b.onclick = () => { const app = $("#app"), on = app.classList.contains("m-" + b.dataset.m); ["pal", "right", "find"].forEach(x => app.classList.remove("m-" + x)); $$(".mobtoggle").forEach(x => x.classList.remove("on")); if (!on) openMobile(b.dataset.m); });
+$("#tFold").onclick = e => { FOLD.all = !FOLD.all; e.target.classList.toggle("on", FOLD.all); renderBoard(); renderInspector(); };
 $("#tReason").onclick = e => { FLAGS.reasoning = !FLAGS.reasoning; e.target.classList.toggle("on", FLAGS.reasoning); renderBoard(); };
 $("#tFollow").onclick = e => { FLAGS.follow = !FLAGS.follow; e.target.classList.toggle("on", FLAGS.follow); if (FLAGS.follow && S.last && /^agent:/.test(S.last.author || "")) followTo(S.last.ref); };
 addEventListener("resize", () => renderBoard());
@@ -1985,7 +2012,7 @@ async function start(){
   try { if (CONF.draft) await openDraft(CONF.draft); else showDrafts(); }
   catch (e) { syncErr = e.message; toast(e.message, true); setSync(); showDrafts(); }
 }
-window.DT = { get S(){ return S; }, get R(){ return R; }, get SEQ(){ return SEQ; }, get LOG(){ return LOG; }, get OUTBOX(){ return OUTBOX; }, get POLL(){ return POLL; }, get POLL_FROM(){ return POLL_FROM; },
+window.DT = { FOLD, get SEL(){ return SEL; }, get S(){ return S; }, get R(){ return R; }, get SEQ(){ return SEQ; }, get LOG(){ return LOG; }, get OUTBOX(){ return OUTBOX; }, get POLL(){ return POLL; }, get POLL_FROM(){ return POLL_FROM; },
   get LAYER(){ return LAYER; }, get DM(){ return DM; }, get PF(){ return PF; }, get AP(){ return AP; }, get CONF(){ return CONF; }, PAGE_SID, pollDue, emit, openDraft, step, rebuild, setLayer, isDataNode, layoutFlow, fieldMapOps, toggleExpand, tickFlow,
   callV4, refreshAppr, openAppr, parseOptions, parseRefs };
 start();
