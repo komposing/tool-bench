@@ -5,7 +5,7 @@
   "key": "repo:komposing/tool-bench",
   "name": "tool-bench",
   "title": "Tool Bench",
-  "version": "3.10.0",
+  "version": "3.11.0",
   "purpose": "Single-file host for small HTML tools that front CA_V3 flows: shared config injection, sandboxed runs, tool contracts naming the CA_V3 objects each tool depends on.",
   "owner": "Nick",
   "lifecycle": "active",
@@ -289,6 +289,11 @@
       "version": "3.10.0",
       "change": "C1059",
       "note": "Pack & Ship v2 (TB:pack-ship 2.0.0, C841-s7 T544): table only from pack.orders.stages (six stage icons), Refresh runs pack.refresh and polls runs.status (waits while a sync chain runs), row buttons from the actions list run by the engine front door (std pack_stages page); v1.1.0 print path kept."
+    },
+    {
+      "version": "3.11.0",
+      "change": "C1141",
+      "note": "Pack & Ship 2.1.0 (TB:pack-ship, C841-s10 T643): row context line (buyer, post code, country, total+currency, items, customs badge; ca.pack_row_context/2), country/badge quick filter, compact buttons with reason tooltips (fixes U1078), rows in memory only."
     }
   ]
 }

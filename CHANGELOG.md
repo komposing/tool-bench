@@ -1,5 +1,23 @@
 # Changelog
 
+## 3.11.0 — C1141
+
+- **Pack & Ship 2.1.0** (`TB:pack-ship` v2.1.0, C841-s10, T643; std `pack_stages` v7 `row_context`, ca.pack_row_context/2;
+  design `file:1RHuv5PvsCHGcuxY7RTWUe_FRdSPr0YtH`): each order gets a **context line** under its row from the order's
+  `context`: buyer username and full post code (joined by the engine page front door only, never through Spine), country,
+  total with its currency (`Intl.NumberFormat` per row), item count and a **customs badge** chip (NI, JE, GG, international;
+  `?` when the destination is unresolved; none for mainland GB and the Isle of Man). Any other context field the standard
+  adds is shown as `name: value` without a page change. A **quick filter** above the table (All, each country in the loaded
+  rows, each badge present, with counts) narrows the rendered list in memory and keeps its selection across Reload when it
+  still matches. **Compact actions**: an order's buttons sit in one wrapped row with an icon and a short label; the reason
+  is a tooltip (the wrapper's `title` for hover, also over a disabled button; keyboard focus or a tap shows it as a callout;
+  `aria-label` on the button) instead of a line on the page, so order cards are about 27% shorter on the harness fixture
+  even with the new context line (309 to 225 px for three orders). Rows live in module variables only: no localStorage,
+  sessionStorage, IndexedDB or Cache API (harness checks the page and the file). Harness: 42 checks.
+
+### Fixed
+- U1078: the action column stacked each button with its reason, so few orders fit in view; buttons are now one compact row with the reason as a tooltip.
+
 ## 3.10.0 — C1059
 
 - **Pack & Ship v2** (`TB:pack-ship` v2.0.0, C841-s7, T544; doc `pack_ship/design`, std `pack_stages` v3): the page renders only
