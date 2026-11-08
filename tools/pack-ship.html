@@ -6,10 +6,10 @@
   "format": "toolbench.tool/1",
   "id": "TB:pack-ship",
   "name": "Pack & Ship",
-  "description": "Pack and ship paid Discogs orders (ca.pack_ship/1, C841): a table drawn only from pack.orders.stages (six stage icons and texts), row buttons from each order's actions list with reasons, run by the engine front door from std pack_stages page; one Refresh starts pack.refresh and polls runs.status; Print composes the 4x6 document. No buyer data.",
+  "description": "Pack and ship paid Discogs orders (ca.pack_ship/1, C841): table only from pack.orders.stages (stage icons), a row context line (buyer, post code, country, total, items, customs badge; ca.pack_row_context/2) with a country/badge quick filter, compact row buttons with reason tooltips run by the engine front door; Refresh runs pack.refresh; Print composes the 4x6 document. Rows in memory only.",
   "category": "CA_V3",
-  "tags": ["discogs", "parcel2go", "shipping", "print", "ca.pack_ship/1", "ca.pack_page/1"],
-  "version": "2.0.0",
+  "tags": ["discogs", "parcel2go", "shipping", "print", "ca.pack_ship/1", "ca.pack_page/1", "ca.pack_row_context/2"],
+  "version": "2.1.0",
   "contract": { "config_keys": ["packship"], "requires": ["wf:Pqjdoot0EPzoQxj0", "std:pack_stages", "cap:pack.orders.stages", "cap:pack.refresh", "cap:runs.status", "cap:print.queue.add", "cap:label.bytes"] },
   "sandbox": { "scripts": true, "forms": false, "modals": true, "popups": true, "downloads": true, "sameOrigin": false },
   "config_schema": {
@@ -55,9 +55,21 @@ tr.sel td{background:#EEF4FD} td.mono{white-space:nowrap}
 .st{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:74px}
 .dot{width:14px;height:14px;border-radius:50%;display:inline-block;border:1px solid rgba(0,0,0,.12)}
 .st .t{font-size:11px;color:var(--ink2);line-height:1.25;max-width:120px}
-.acts{display:flex;flex-direction:column;gap:6px;min-width:160px}
-.act .why{font-size:11px;color:var(--ink3);margin-top:2px;max-width:220px}
-.inp{display:flex;gap:4px;margin-top:4px} .inp input{flex:1;min-width:0}
+.acts{display:flex;flex-wrap:wrap;gap:4px;min-width:120px;max-width:280px}
+.ab{position:relative;display:inline-flex;border-radius:4px;outline:none}
+.ab button{padding:2px 7px;font-size:12px;white-space:nowrap} .ab button:disabled{pointer-events:none}
+.ab:focus-visible,.ab:focus-within{box-shadow:0 0 0 2px var(--acc)}
+.ab[data-tip]:focus::after,.ab[data-tip]:focus-within::after{content:attr(data-tip);position:absolute;right:0;top:calc(100% + 4px);z-index:3;background:var(--ink);color:#fff;font-size:11px;line-height:1.3;padding:5px 7px;border-radius:4px;width:max-content;max-width:240px;white-space:normal;pointer-events:none}
+.inp,.links{flex-basis:100%} .inp{display:flex;gap:4px} .inp input{flex:1;min-width:0;padding:2px 5px;font-size:12px}
+tr.hasctx td{border-bottom:0;padding-bottom:2px} tr.cx td{padding:0 8px 6px} tr.cx.sel td{background:#EEF4FD}
+.ctx{display:flex;flex-wrap:wrap;align-items:center;gap:2px 6px;font-size:11.5px;color:var(--ink2);position:sticky;left:8px;max-width:calc(100vw - 48px)}
+.ctx .u{font-weight:600;color:var(--ink)} .ctx .pc{font-family:var(--mono);font-size:11px;color:var(--ink)} .ctx .sp{color:var(--ink3)}
+.chip{display:inline-block;padding:0 5px;border-radius:3px;font:600 10px/16px var(--mono);border:1px solid var(--line);background:#fff;color:var(--ink2)}
+.chip.c-NI,.chip.c-JE,.chip.c-GG{background:#FFF4E0;border-color:var(--warn);color:#8A5200}
+.chip.c-international{background:#EEF4FD;border-color:var(--acc);color:var(--acc)} .chip.c-q{background:#FDECEA;border-color:var(--bad);color:var(--bad)}
+#filters{display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin:0 0 8px}
+#filters button{padding:1px 9px;font-size:11.5px;border-radius:12px} #filters button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+#filters .n{color:var(--ink3);margin-left:3px} #filters button.on .n{color:#cfd5da}
 .cnt{font:10px var(--mono);color:var(--ink3)}
 .small{font-size:11.5px;color:var(--ink2)}
 .links a{display:block;font:11px var(--mono);word-break:break-all;color:var(--acc)}
@@ -99,7 +111,13 @@ tr.sel td{background:#EEF4FD} td.mono{white-space:nowrap}
    The page renders only what the engine returns: stage columns, states and icons from pack.orders.stages (stage_defs, states,
    orders[].stages), row buttons from orders[].actions (key, enabled, reason, inputs). It holds no action logic: a button posts
    {op: action, params: {order_ref, action, inputs}} and the engine front door re-reads the order and runs what std pack_stages
-   page allows. Refresh posts op refresh; the reply names the poll op and its budget. Replies carry no buyer data. */
+   page allows. Refresh posts op refresh; the reply names the poll op and its budget.
+   2.1.0 (C841-s10, C1141): each order's context (std pack_stages row_context, ca.pack_row_context/2) is drawn as a line under
+   the row: buyer username and full post code (joined by the engine page front door only), country, total with its currency,
+   item count and the customs badge; any other context field is shown as name: value. A quick filter (All, each country in
+   the loaded rows, each badge) narrows the rendered list in memory. Action buttons are compact, one wrapped row per order,
+   and their reason is a tooltip (hover title; keyboard focus or a tap shows it), not a line on the page. Rows live in
+   module variables only: nothing is written to localStorage, sessionStorage, IndexedDB or the Cache API. */
 const TC = window.TOOL_CONFIG || {}, TM = window.TOOL_META || null;
 const getPath = (o, p) => p.split(".").reduce((a, k) => (a && typeof a === "object") ? a[k] : undefined, o);
 const PC = TC.packship || {};
@@ -152,7 +170,10 @@ async function loadStages(){
   try {
     const d = await call("orders_stages", { window_days: clampInt($("#days").value, 1, 60, CONF.days) });
     VIEW = { stage_defs: Array.isArray(d.stage_defs) ? d.stage_defs : [], states: isObj(d.states) ? d.states : {}, orders: Array.isArray(d.orders) ? d.orders : [], last_sync: isObj(d.last_sync) ? d.last_sync : {} };
-    $("#count").textContent = `${VIEW.orders.length}${d.truncated ? "+" : ""} orders` + (Array.isArray(d.notes) && d.notes.length ? " · " + d.notes.join("; ") : "");
+    const rc = isObj(d.row_context) ? d.row_context : {};
+    NOTES = [].concat(Array.isArray(d.notes) ? d.notes : [], Array.isArray(rc.notes) ? rc.notes : [], Array.isArray(rc.overlay_notes) ? rc.overlay_notes : []);
+    TRUNC = !!d.truncated;
+    if (FILTER.kind && !VIEW.orders.some(o => ctxOf(o)[FILTER.kind] === FILTER.value)) FILTER = { kind: "", value: "" };
     const ls = Object.entries(VIEW.last_sync).filter(([, v]) => v).map(([k, v]) => `${k} ${new Date(v).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}`);
     $("#last").textContent = ls.length ? "synced " + ls.join(" · ") : "";
     renderOrders(); if (!REFRESH.running) setSync("ok", "ok " + new Date().toLocaleTimeString("en-GB"));
@@ -160,29 +181,76 @@ async function loadStages(){
 }
 // An action's inputs come from a page control of the same name (copies) or from an input drawn on the row (custom_text).
 const PAGE_INPUT = { copies: () => clampInt($("#copies").value, 1, 3, 1) };
+// Compact button: icon + short label; the reason is the wrapper's title (hover, also over a disabled button) and its data-tip
+// (shown on keyboard focus or a tap: the wrapper takes focus because a disabled button lets the pointer through).
+const ACT_ICON = { label: "🏷", message: "✉️", craft: "🤖", manual: "✍️", status: "🔄", shipped: "📦", follow_up: "🚩" };
 function actionHtml(o, a){
   const id = `${o.order_ref}|${a.key}`;
   const busy = BUSY_ACT === id;
   const rowInputs = (Array.isArray(a.inputs) ? a.inputs : []).filter(n => !PAGE_INPUT[n]);
-  const btn = `<button class="${a.enabled ? "pri" : ""}" data-act="${esc(a.key)}" data-ref="${esc(o.order_ref)}" ${a.enabled && !busy ? "" : "disabled"} title="${esc(a.reason || "")}">${busy ? "…" : esc(cap1(a.key))}</button>`;
-  const inp = a.enabled ? rowInputs.map(n => `<div class="inp"><input data-inp="${esc(n)}" data-for="${esc(id)}" maxlength="160" placeholder="${esc(cap1(n))} (optional)"><span class="cnt" data-cnt="${esc(id)}|${esc(n)}">0/160</span></div>`).join("") : "";
-  return `<div class="act">${btn}<div class="why">${esc(a.reason || "")}</div>${inp}<div class="links" data-links="${esc(id)}"></div></div>`;
+  const name = cap1(a.key), why = String(a.reason || ""), tip = `${name}${a.enabled ? "" : " (not available)"}: ${why}`;
+  const btn = `<span class="ab" tabindex="0" title="${esc(tip)}" data-tip="${esc(tip)}"><button class="${a.enabled ? "pri" : ""}" data-act="${esc(a.key)}" data-ref="${esc(o.order_ref)}" ${a.enabled && !busy ? "" : "disabled"} aria-label="${esc(tip)}">${busy ? "…" : esc((ACT_ICON[a.key] ? ACT_ICON[a.key] + " " : "") + name)}</button></span>`;
+  const inp = a.enabled ? rowInputs.map(n => `<div class="inp"><input data-inp="${esc(n)}" data-for="${esc(id)}" maxlength="160" placeholder="${esc(name)}: ${esc(cap1(n))} (optional)" aria-label="${esc(name)}: ${esc(cap1(n))}"><span class="cnt" data-cnt="${esc(id)}|${esc(n)}">0/160</span></div>`).join("") : "";
+  return { btn, extra: `${inp}<div class="links" data-links="${esc(id)}"></div>` };
+}
+
+/* ============================== row context and quick filter ============================== */
+// The context object is whatever the engine returns for the order (std pack_stages row_context fields plus, on this page
+// only, the overlay buyer fields). Known fields get their own format; any other field is shown as name: value, so a field
+// added in the standard appears without a page change.
+let FILTER = { kind: "", value: "" }, NOTES = [], TRUNC = false;
+const ctxOf = o => isObj(o.context) ? o.context : {};
+const KNOWN = ["buyer_username", "buyer_postcode", "country", "order_total", "currency", "item_count", "customs_badge"];
+const BADGES = ["NI", "JE", "GG", "international", "?"];
+const badgeCls = b => "c-" + (b === "?" ? "q" : String(b).replace(/[^A-Za-z0-9_-]/g, ""));
+const filled = v => v !== undefined && v !== null && String(v) !== "";
+function money(v, cur){
+  if (!filled(v) || !Number.isFinite(+v)) return "";
+  if (cur) { try { return new Intl.NumberFormat("en-GB", { style: "currency", currency: String(cur) }).format(+v); } catch (e) { return (+v).toFixed(2) + " " + cur; } }
+  return (+v).toFixed(2);
+}
+function ctxHtml(o){
+  const c = ctxOf(o), parts = [];
+  if (filled(c.buyer_username)) parts.push(`<span class="u" title="buyer">${esc(c.buyer_username)}</span>`);
+  if (filled(c.buyer_postcode)) parts.push(`<span class="pc" title="post code">${esc(c.buyer_postcode)}</span>`);
+  if (filled(c.country)) parts.push(`<span title="country">${esc(c.country)}</span>`);
+  const m = money(c.order_total, c.currency); if (m) parts.push(`<span title="order total">${esc(m)}</span>`);
+  if (filled(c.item_count)) parts.push(`<span title="items">${esc(c.item_count)} item${+c.item_count === 1 ? "" : "s"}</span>`);
+  if (filled(c.customs_badge)) parts.push(`<span class="chip ${badgeCls(c.customs_badge)}" title="${c.customs_badge === "?" ? "destination not resolved" : "customs paperwork expected"}">${esc(c.customs_badge)}</span>`);
+  Object.keys(c).filter(k => !KNOWN.includes(k) && filled(c[k]) && typeof c[k] !== "object").forEach(k => parts.push(`<span class="small">${esc(cap1(k))}: ${esc(c[k])}</span>`));
+  return parts.length ? `<div class="ctx">${parts.join('<span class="sp">·</span>')}</div>` : "";
+}
+const visible = o => !FILTER.kind || ctxOf(o)[FILTER.kind] === FILTER.value;
+function filterHtml(){
+  const count = (k, v) => VIEW.orders.filter(o => ctxOf(o)[k] === v).length;
+  const countries = [...new Set(VIEW.orders.map(o => ctxOf(o).country).filter(filled))].sort();
+  const badges = BADGES.filter(b => count("customs_badge", b));
+  if (!countries.length && !badges.length) return "";
+  const b = (k, v, label, extra) => `<button data-fk="${esc(k)}" data-fv="${esc(v)}" class="${FILTER.kind === k && FILTER.value === v ? "on" : ""}" aria-pressed="${FILTER.kind === k && FILTER.value === v}">${label}${k ? `<span class="n">${count(k, v)}</span>` : ""}</button>`;
+  return `<div id="filters" role="group" aria-label="quick filter">${b("", "", "All")}${countries.map(c => b("country", c, esc(c))).join("")}${badges.map(x => b("customs_badge", x, `<span class="chip ${badgeCls(x)}">${esc(x)}</span>`)).join("")}</div>`;
 }
 function renderOrders(){
   const defs = VIEW.stage_defs;
+  const shown = VIEW.orders.filter(visible);
+  $("#count").textContent = (FILTER.kind ? `${shown.length} of ` : "") + `${VIEW.orders.length}${TRUNC ? "+" : ""} orders` + (NOTES.length ? " · " + NOTES.join("; ") : "");
   if (!VIEW.orders.length) { $("#list").innerHTML = `<p class="small">No orders in the window.</p>`; return; }
   const head = `<tr><th>order</th><th>status</th>${defs.map(s => `<th>${esc(s.label || s.key)}</th>`).join("")}<th>actions</th></tr>`;
-  const rows = VIEW.orders.map(o => {
+  const rows = shown.map(o => {
     const byKey = {}; (o.stages || []).forEach(s => byKey[s.key] = s);
     const cells = defs.map(sd => { const s = byKey[sd.key] || { state: "later", text: "" };
       return `<td><div class="st" title="${esc((sd.label || sd.key) + ": " + s.state)}"><span class="dot" style="background:${iconColor(s.state)}" aria-label="${esc(s.state)}"></span><span class="t">${esc(s.text || "")}</span></div></td>`; }).join("");
-    const acts = (o.actions || []).map(a => actionHtml(o, a)).join("");
-    return `<tr data-id="${esc(o.order_ref)}" class="${o.order_ref === SEL ? "sel" : ""}"><td class="mono">${esc(o.order_ref)}<div class="small">${esc(String(o.order_date || "").slice(0, 10))}</div></td><td>${esc(o.status)}</td>${cells}<td><div class="acts">${acts}</div></td></tr>`;
+    const parts = (o.actions || []).map(a => actionHtml(o, a));
+    const acts = parts.map(p => p.btn).join("") + parts.map(p => p.extra).join("");
+    const ctx = ctxHtml(o), sel = o.order_ref === SEL ? "sel" : "";
+    return `<tr data-id="${esc(o.order_ref)}" class="${sel}${ctx ? " hasctx" : ""}"><td class="mono">${esc(o.order_ref)}<div class="small">${esc(String(o.order_date || "").slice(0, 10))}</div></td><td>${esc(o.status)}</td>${cells}<td><div class="acts">${acts}</div></td></tr>`
+      + (ctx ? `<tr class="cx ${sel}" data-ctx="${esc(o.order_ref)}"><td colspan="${defs.length + 3}">${ctx}</td></tr>` : "");
   }).join("");
-  $("#list").innerHTML = `<table><thead>${head}</thead><tbody>${rows}</tbody></table>`;
+  $("#list").innerHTML = filterHtml() + (shown.length ? `<table><thead>${head}</thead><tbody>${rows}</tbody></table>` : `<p class="small">No orders match this filter.</p>`);
 }
 $("#list").addEventListener("input", e => { const i = e.target.closest("input[data-inp]"); if (!i) return; const c = $(`[data-cnt="${CSS.escape(i.dataset.for + "|" + i.dataset.inp)}"]`); if (c) c.textContent = `${i.value.length}/160`; });
 $("#list").addEventListener("click", async e => {
+  const fb = e.target.closest("button[data-fk]");
+  if (fb) { FILTER = { kind: fb.dataset.fk, value: fb.dataset.fk ? fb.dataset.fv : "" }; renderOrders(); return; }
   const b = e.target.closest("button[data-act]"); if (!b || b.disabled) return;
   const ref = b.dataset.ref, key = b.dataset.act, id = `${ref}|${key}`;
   const o = VIEW.orders.find(x => x.order_ref === ref); const a = o && (o.actions || []).find(x => x.key === key); if (!a) return;

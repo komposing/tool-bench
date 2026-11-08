@@ -1,8 +1,10 @@
-// Pack & Ship v2 page harness (C1059, C841-s7): runs TB:pack-ship 2.0.0 inside the built bench against a stand-in for the
+// Pack & Ship page harness (C1059, C841-s7; 2.1.0 C1141, C841-s10): runs TB:pack-ship 2.1.0 inside the built bench against a stand-in for the
 // ca-v3-pack-ship front door. Synthetic orders only (no live data). Proves: the table is drawn from the stage read alone
 // (columns from stage_defs, icon colours from states), buttons follow the actions list (disabled ones show their reason, no
 // request), inputs are sent as the action names them, Refresh starts, polls and reloads, a busy guard holds the button, and a
-// print reply composes the document. Runs the tool file standalone with the TOOL_CONFIG the bench injects.
+// print reply composes the document. 2.1.0: the row context line (buyer, post code, country, total with currency, items,
+// badge; unknown fields as name: value), the country/badge quick filter, compact buttons whose reason is a tooltip (hover title,
+// focus or tap), and no rows in browser storage. Runs the tool file standalone with the TOOL_CONFIG the bench injects.
 //   NODE_PATH=$(npm root -g) node test/pack-ship/page.js     (after node scripts/build.mjs)
 const { chromium } = require("playwright");
 const path = require("path");
@@ -10,15 +12,20 @@ const URL = "https://komposing.app.n8n.cloud/webhook/ca-v3-pack-ship";
 const CORS = { "access-control-allow-origin": "*", "access-control-allow-headers": "*", "access-control-allow-methods": "POST, OPTIONS", "content-type": "application/json" };
 const PNG = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
 const st = (h, c, l, d, t) => [["health", h], ["collection", c], ["label", l], ["packed", "later"], ["dropped_off", d], ["tracking", t]].map(([key, state]) => ({ key, state, text: key + " " + state }));
+const CTX = {
+  "1111111-1": { country: "United Kingdom", order_total: 7.8, currency: "GBP", item_count: 2, customs_badge: "NI", buyer_username: "testbuyer1", buyer_postcode: "BT28 2RN" },
+  "1111111-2": { country: "Italy", order_total: 30, currency: "EUR", item_count: 1, customs_badge: "international", buyer_username: "testbuyer2", buyer_postcode: "00184", gift_wrap: "yes" }
+};
 const READ = { status: "ok", outcome: "ok", data: { outcome: "ok", count: 3, truncated: false,
+  row_context: { protocol: "ca.pack_row_context/2", fields: ["country", "order_total", "currency", "item_count", "customs_badge"], notes: [], overlay: ["buyer_username", "buyer_postcode"], overlay_notes: [] },
   stage_defs: [["health", "Order health"], ["collection", "Collection"], ["label", "Label"], ["packed", "Packed"], ["dropped_off", "Dropped off"], ["tracking", "Tracking"]].map(([key, label]) => ({ key, label })),
   states: { none: { icon: "orange" }, partial: { icon: "yellow" }, done: { icon: "green" }, later: { icon: "grey" } },
   last_sync: { orders: "2026-11-04T09:51:32.763Z" },
   orders: [
-    { order_ref: "1111111-1", order_date: "2026-11-01", status: "In Progress", stages: st("done", "done", "done", "none", "done"),
+    { order_ref: "1111111-1", order_date: "2026-11-01", status: "In Progress", context: CTX["1111111-1"], stages: st("done", "done", "done", "none", "done"),
       actions: [{ key: "label", cap: "print.queue.add", then: "label.bytes", enabled: true, reason: "booked: print packing list and label", inputs: ["copies"], state: "done" },
                 { key: "message", cap: "discogs.orders.lifecycle", then: "discogs.orders.message.send", enabled: true, reason: "label_booked message due", inputs: ["custom_text"], state: "done" }] },
-    { order_ref: "1111111-2", order_date: "2026-11-02", status: "Payment Received", stages: st("partial", "partial", "partial", "none", "none"),
+    { order_ref: "1111111-2", order_date: "2026-11-02", status: "Payment Received", context: CTX["1111111-2"], stages: st("partial", "partial", "partial", "none", "none"),
       actions: [{ key: "label", cap: "parcel2go.drafts.list", enabled: true, reason: "draft: open the checkout link", state: "partial" },
                 { key: "message", cap: "discogs.orders.lifecycle", enabled: false, reason: "no buyer message due, or already logged", state: "none" }] },
     { order_ref: "1111111-3", order_date: "2026-11-03", status: "Shipped", stages: st("none", "later", "none", "none", "none"),
@@ -73,11 +80,38 @@ const ok = (name, v) => { checks.push([name, !!v]); console.log((v ? "ok   " : "
   const dots = await fr.$$eval("tbody tr:first-child .dot", d => d.map(x => getComputedStyle(x).backgroundColor));
   ok("six icons per row", dots.length === 6);
   ok("icon colours from states (done green, none orange, later grey)", dots[0] === "rgb(46, 157, 72)" && dots[4] === "rgb(224, 123, 0)" && dots[3] === "rgb(163, 169, 174)");
-  const ydot = await fr.$eval("tbody tr:nth-child(2) .dot", x => getComputedStyle(x).backgroundColor);
+  const ydot = await fr.$eval('tbody tr[data-id="1111111-2"] .dot', x => getComputedStyle(x).backgroundColor);
   ok("partial yellow", ydot === "rgb(232, 194, 28)");
   ok("stage text shown", (await fr.$eval("tbody tr:first-child .st .t", x => x.textContent)) === "health done");
-  const dis = await fr.$eval('button[data-ref="1111111-3"][data-act="label"]', b => ({ d: b.disabled, why: b.parentElement.querySelector(".why").textContent }));
-  ok("disabled action shows its reason", dis.d && dis.why === "shipped without a Parcel2Go line");
+  const dis = await fr.$eval('button[data-ref="1111111-3"][data-act="label"]', b => ({ d: b.disabled, title: b.parentElement.title, tip: b.parentElement.dataset.tip, aria: b.getAttribute("aria-label") }));
+  ok("disabled action carries its reason as tooltip (title, data-tip, aria-label)", dis.d && [dis.title, dis.tip, dis.aria].every(t => t.includes("shipped without a Parcel2Go line")));
+  ok("no reason lines on the page", (await fr.$$(".why")).length === 0);
+  await f.locator('.ab:has(button[data-ref="1111111-3"][data-act="label"])').focus();
+  const tipShown = await fr.$eval('.ab:has(button[data-ref="1111111-3"][data-act="label"])', e => getComputedStyle(e, "::after").content);
+  ok("focus (tap or keyboard) shows the reason", tipShown.includes("shipped without a Parcel2Go line"));
+  await f.locator('.ab:has(button[data-ref="1111111-3"][data-act="label"])').click(); await p.waitForTimeout(100);
+  ok("tap on a disabled button focuses its tooltip", await fr.$eval('.ab:has(button[data-ref="1111111-3"][data-act="label"])', e => e === document.activeElement));
+  ok("buttons of one order sit in one row", await fr.$eval('tr[data-id="1111111-2"] .acts', a => { const t = [...a.querySelectorAll(".ab")].map(x => x.getBoundingClientRect().top); return t.length === 2 && Math.abs(t[0] - t[1]) < 2; }));
+  // row context line
+  const cx1 = await fr.$eval('tr.cx[data-ctx="1111111-1"]', r => r.textContent);
+  ok("context line: username, full post code, country, total with currency, items, badge", ["testbuyer1", "BT28 2RN", "United Kingdom", "£7.80", "2 items", "NI"].every(x => cx1.includes(x)));
+  const cx2 = await fr.$eval('tr.cx[data-ctx="1111111-2"]', r => r.textContent);
+  ok("currency formatted per row (EUR)", cx2.includes("€30.00") && cx2.includes("1 item") && !cx2.includes("1 items"));
+  ok("unknown context field shown as name: value", cx2.includes("Gift wrap: yes"));
+  ok("NI badge chip", await fr.$eval('tr.cx[data-ctx="1111111-1"] .chip', c => c.textContent === "NI" && c.classList.contains("c-NI")));
+  ok("no context line when the order has none", (await fr.$$('tr.cx[data-ctx="1111111-3"]')).length === 0);
+  // quick filter
+  const fl = await fr.$$eval("#filters button", b => b.map(x => x.textContent));
+  ok("filter: All, each country, each badge present", JSON.stringify(fl) === JSON.stringify(["All", "Italy1", "United Kingdom1", "NI1", "international1"]));
+  await f.locator('#filters button[data-fk="country"][data-fv="Italy"]').click(); await p.waitForTimeout(100);
+  ok("country filter narrows the list", JSON.stringify(await fr.$$eval("tbody tr[data-id]", r => r.map(x => x.dataset.id))) === JSON.stringify(["1111111-2"]));
+  ok("count shows n of m", (await fr.$eval("#count", c => c.textContent)).startsWith("1 of 3 orders"));
+  await f.locator("#reload").click(); await p.waitForTimeout(500);
+  ok("filter kept across Reload", JSON.stringify(await fr.$$eval("tbody tr[data-id]", r => r.map(x => x.dataset.id))) === JSON.stringify(["1111111-2"]));
+  await f.locator('#filters button[data-fk="customs_badge"][data-fv="NI"]').click(); await p.waitForTimeout(100);
+  ok("badge filter narrows the list", JSON.stringify(await fr.$$eval("tbody tr[data-id]", r => r.map(x => x.dataset.id))) === JSON.stringify(["1111111-1"]));
+  await f.locator('#filters button[data-fk=""]').click(); await p.waitForTimeout(100);
+  ok("All restores the list", (await fr.$$("tbody tr[data-id]")).length === 3);
   const n0 = sent.length; await fr.$eval('button[data-ref="1111111-3"][data-act="label"]', b => b.click()); await p.waitForTimeout(200);
   ok("disabled action sends nothing", sent.length === n0);
   ok("custom_text field only on the action naming it", (await fr.$$('input[data-inp="custom_text"]')).length === 1 && (await fr.$$('input[data-inp="copies"]')).length === 0);
@@ -113,6 +147,10 @@ const ok = (name, v) => { checks.push([name, !!v]); console.log((v ? "ok   " : "
   busy = false; await p.waitForTimeout(2500);
   ok("button released when the chain ends", !(await fr.$eval("#refresh", b => b.disabled)));
   ok("only page ops sent", sent.every(b => ["orders_stages", "run_status", "refresh", "action"].includes(b.op)));
+  const store = await p.evaluate(async () => ({ ls: localStorage.length, ss: sessionStorage.length, idb: indexedDB.databases ? (await indexedDB.databases()).length : 0, caches: (self.caches ? (await caches.keys()).length : 0) }));
+  ok("no rows in localStorage, sessionStorage, IndexedDB or Cache API", store.ls === 0 && store.ss === 0 && store.idb === 0 && store.caches === 0);
+  const src = require("fs").readFileSync(path.resolve(__dirname, "../../tools/pack-ship.html"), "utf8");
+  ok("tool file uses no browser storage API", !/localStorage|sessionStorage|indexedDB|caches\.open/.test(src.replace(/\/\*[\s\S]*?\*\//g, "")));
   ok("no page errors", errs.length === 0); if (errs.length) console.log(errs);
   await p.screenshot({ path: path.join(__dirname, "page.png") });
   await p.setViewportSize({ width: 390, height: 844 }); await p.waitForTimeout(300);
