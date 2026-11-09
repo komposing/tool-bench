@@ -1,5 +1,19 @@
 # Changelog
 
+## 3.12.0 — C1146
+
+- **Pack & Ship 2.2.0** (`TB:pack-ship` v2.2.0, T666; std `pack_stages` v8; decisions `pack-ux2`): each order is its own
+  `tbody`, alternate orders shaded and a 2px divider between orders, so an order's row and its context line read as one
+  block. The **order number links** to `links.order` from the reply (the Discogs order page; new tab, `noopener`; plain
+  text when the order has no link). Button text comes from the action's std `label` when given (Print / Reprint), the icon
+  and tooltip as before. An action with `confirm: true` needs a **second tap within 4 s**: the first tap turns the button to
+  "Tap again to reprint" and sends nothing. After a print the page **re-reads the stages**, so the Packed column shows
+  "printed <time>" and the button turns to Reprint; a print that stored its job but could not set the printed mark says so
+  (`marked`, `hook_notes`). Harness: 51 checks.
+
+### Fixed
+- none
+
 ## 3.11.0 — C1141
 
 - **Pack & Ship 2.1.0** (`TB:pack-ship` v2.1.0, C841-s10, T643; std `pack_stages` v7 `row_context`, ca.pack_row_context/2;

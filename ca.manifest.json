@@ -5,7 +5,7 @@
   "key": "repo:komposing/tool-bench",
   "name": "tool-bench",
   "title": "Tool Bench",
-  "version": "3.11.0",
+  "version": "3.12.0",
   "purpose": "Single-file host for small HTML tools that front CA_V3 flows: shared config injection, sandboxed runs, tool contracts naming the CA_V3 objects each tool depends on.",
   "owner": "Nick",
   "lifecycle": "active",
@@ -294,6 +294,11 @@
       "version": "3.11.0",
       "change": "C1141",
       "note": "Pack & Ship 2.1.0 (TB:pack-ship, C841-s10 T643): row context line (buyer, post code, country, total+currency, items, customs badge; ca.pack_row_context/2), country/badge quick filter, compact buttons with reason tooltips (fixes U1078), rows in memory only."
+    },
+    {
+      "version": "3.12.0",
+      "change": "C1146",
+      "note": "Pack & Ship 2.2.0 (TB:pack-ship, T666): orders shaded apart with a 2px divider, order number links to the Discogs order, button text from std labels, Reprint needs a second tap within 4 s, a print re-reads the stages so Packed shows printed."
     }
   ]
 }
