@@ -3,14 +3,17 @@
 //   node scripts/publish-releases.mjs [--dry-run]
 // Runs in the release workflow after tagging, with GH_TOKEN set. For each release whose tag has
 // no GitHub Release yet, it creates one titled "<title> <version>", with the CHANGELOG section at
-// that tag as notes and the entry file at that tag attached as manifest.distribution.asset.
-// Releases are only ever added (I6): an existing release is left exactly as it is. The current
-// version is marked latest, so releases/latest/download/<asset> always serves the newest build.
+// that tag as notes and the entry file at that tag attached twice: as manifest.distribution.asset
+// (the stable name) and as its versioned name (ca.repo/1 v5, distribution.versioned, C1163).
+// Releases are only ever added to (I6): an existing release keeps every asset it has; the only
+// thing ever added to one is its missing versioned copy, uploaded byte for byte from its own
+// published stable asset. The current version is marked latest, so
+// releases/latest/download/<asset> always serves the newest build.
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdtempSync, renameSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { readJson } from "./lib.mjs";
+import { readJson, versionedName } from "./lib.mjs";
 
 const dry = process.argv.includes("--dry-run");
 const run = (cmd, args, opts = {}) => execFileSync(cmd, args, { encoding: "utf8", ...opts }).trim();
@@ -18,14 +21,30 @@ const quiet = (cmd, args) => { try { return run(cmd, args, { stdio: ["ignore", "
 
 const m = readJson("ca.manifest.json");
 const dist = m.distribution;
-if (!dist || dist.channel !== "github_release" || !dist.asset) { console.error("manifest.distribution {channel: github_release, asset} missing"); process.exit(1); }
+if (!dist || dist.channel !== "github_release" || !dist.asset || !dist.versioned) { console.error("manifest.distribution {channel: github_release, asset, versioned} missing"); process.exit(1); }
 
 const work = mkdtempSync(join(tmpdir(), "tb-release-"));
-const made = [], kept = [];
+const made = [], kept = [], copied = [];
 for (const r of m.releases) {
   const tag = "v" + r.version;
   if (!quiet("git", ["rev-parse", "-q", "--verify", `refs/tags/${tag}`])) { console.error(`${tag}: no tag yet`); process.exit(1); }
-  if (quiet("gh", ["release", "view", tag, "--json", "tagName"])) { kept.push(tag); continue; }
+  const vname = versionedName(dist.versioned, dist.asset, r.version);
+  const view = quiet("gh", ["release", "view", tag, "--json", "tagName,assets"]);
+  if (view) {
+    // existing release: add only its missing versioned copy, from its own published stable asset
+    const names = (JSON.parse(view).assets || []).map(a => a.name);
+    if (names.includes(vname)) { kept.push(tag); continue; }
+    if (!names.includes(dist.asset)) { console.error(`${tag}: no ${dist.asset} on the release; versioned copy skipped`); kept.push(tag); continue; }
+    const dir = mkdtempSync(join(work, "copy-"));
+    if (!dry) {
+      run("gh", ["release", "download", tag, "--pattern", dist.asset, "--dir", dir]);
+      // the asset name is the file's own name (gh's #label only sets the display label), so rename first
+      renameSync(join(dir, dist.asset), join(dir, vname));
+      run("gh", ["release", "upload", tag, join(dir, vname)]);
+    }
+    copied.push(`${tag}:${vname}`);
+    continue;
+  }
 
   // the file that was the build at that tag: its manifest's entry, else the v1 single file
   let entry = "tool-bench.html";
@@ -44,7 +63,9 @@ for (const r of m.releases) {
   writeFileSync(notesFile, notes + "\n");
 
   const latest = r.version === m.version ? "--latest" : "--latest=false";
-  if (!dry) run("gh", ["release", "create", tag, `${asset}#${dist.asset}`, "--verify-tag", "--title", `${m.title || m.name} ${r.version}`, "--notes-file", notesFile, latest]);
+  const vasset = join(work, vname);
+  writeFileSync(vasset, body + "\n");
+  if (!dry) run("gh", ["release", "create", tag, `${asset}#${dist.asset}`, vasset, "--verify-tag", "--title", `${m.title || m.name} ${r.version}`, "--notes-file", notesFile, latest]);
   made.push(tag);
 }
-console.log(`releases ${dry ? "to publish" : "published"}: ${made.join(", ") || "none"}; already published: ${kept.join(", ") || "none"}`);
+console.log(`releases ${dry ? "to publish" : "published"}: ${made.join(", ") || "none"}; versioned copies ${dry ? "to add" : "added"}: ${copied.join(", ") || "none"}; complete: ${kept.join(", ") || "none"}`);
