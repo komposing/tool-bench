@@ -1,5 +1,17 @@
 # Changelog
 
+## 3.15.0 — C1220
+
+- **Pack & Ship 2.4.0** (`TB:pack-ship` v2.4.0, T689): labels with **extra pages print in full**. The label PDF was
+  rendered from its first page only; now every page is rendered (300 dpi, in order) and each copy carries all of them, in
+  Print and in the run on shown orders. The preview names each page (packing slip, label page n of N, copy) and a tap
+  **leaves that page out** of the print (shown faded, hidden when printing); a second tap brings it back, and the last
+  printed page ends the document so no blank page follows. The print dialog's own page range still works. The toast
+  counts the label pages. Harness: a synthetic 3-page PDF label, pdf.js served locally; 78/78.
+
+### Fixed
+- none
+
 ## 3.14.0 — C1194
 
 - **Pack & Ship 2.3.0** (`TB:pack-ship` v2.3.0, T681; decisions `c1194-filters`): a **row filter** above the table built

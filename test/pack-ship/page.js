@@ -1,4 +1,4 @@
-// Pack & Ship page harness (C1059, C841-s7; 2.1.0 C1141, C841-s10; 2.2.0 C1146; 2.3.0 C1194): runs TB:pack-ship 2.3.0 inside the built bench against a stand-in for the
+// Pack & Ship page harness (C1059, C841-s7; 2.1.0 C1141, C841-s10; 2.2.0 C1146; 2.3.0 C1194; 2.4.0 C1220): runs TB:pack-ship 2.4.0 inside the built bench against a stand-in for the
 // ca-v3-pack-ship front door. Synthetic orders only (no live data). Proves: the table is drawn from the stage read alone
 // (columns from stage_defs, icon colours from states), buttons follow the actions list (disabled ones show their reason, no
 // request), inputs are sent as the action names them, Refresh starts, polls and reloads, a busy guard holds the button, and a
@@ -11,6 +11,22 @@ const { chromium } = require("playwright");
 const path = require("path");
 const URL = "https://komposing.app.n8n.cloud/webhook/ca-v3-pack-ship";
 const CORS = { "access-control-allow-origin": "*", "access-control-allow-headers": "*", "access-control-allow-methods": "POST, OPTIONS", "content-type": "application/json" };
+// C1220: a 3-page 4x6 PDF label built here (no live data); pdf.js is served from the local pdfjs-dist (npm i -g pdfjs-dist@4.10.38).
+function pdf3(){
+  const objs = ["<< /Type /Catalog /Pages 2 0 R >>", "<< /Type /Pages /Kids [3 0 R 5 0 R 7 0 R] /Count 3 >>"];
+  [1, 2, 3].forEach(n => { const st = `BT /F1 36 Tf 40 300 Td (PAGE ${n}) Tj ET`;
+    objs.push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 288 432] /Contents ${objs.length + 2} 0 R /Resources << /Font << /F1 9 0 R >> >> >>`);
+    objs.push(`<< /Length ${st.length} >>\nstream\n${st}\nendstream`); });
+  objs.push("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>");
+  let out = "%PDF-1.4\n"; const offs = [];
+  objs.forEach((o, i) => { offs.push(out.length); out += `${i + 1} 0 obj\n${o}\nendobj\n`; });
+  const x = out.length;
+  out += `xref\n0 ${objs.length + 1}\n0000000000 65535 f \n` + offs.map(o => String(o).padStart(10, "0") + " 00000 n \n").join("");
+  out += `trailer\n<< /Size ${objs.length + 1} /Root 1 0 R >>\nstartxref\n${x}\n%%EOF\n`;
+  return Buffer.from(out, "latin1").toString("base64");
+}
+const PDF3 = pdf3();
+let pdfLabel = false;
 const PNG = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
 const st = (h, c, l, d, t) => [["health", h], ["collection", c], ["label", l], ["packed", "later"], ["dropped_off", d], ["tracking", t]].map(([key, state]) => ({ key, state, text: key + " " + state }));
 const CTX = {
@@ -49,7 +65,7 @@ function handle(b) {
   if (b.op === "action") {
     if (p.action === "label" && p.order_ref === "1111111-1") return { status: "ok", outcome: "ok", steps: [
       { cap: "print.queue.add", status: "ok", outcome: "ok", data: { job_id: "job-1", copies: p.inputs && p.inputs.copies, packing_rows: [{ location: "A1", artist: "Artist", title: "Title", format: "LP", media_condition: "VG+", sleeve_condition: "VG" }], label_url: "" } },
-      { cap: "label.bytes", status: "ok", outcome: "ok", data: { label_b64: PNG, label_content_type: "image/png", label_bytes: 70 } }] };
+      { cap: "label.bytes", status: "ok", outcome: "ok", data: pdfLabel ? { label_b64: PDF3, label_content_type: "application/pdf", label_bytes: 900 } : { label_b64: PNG, label_content_type: "image/png", label_bytes: 70 } }] };
     if (p.action === "label" && p.order_ref === "1111111-2") return { status: "ok", outcome: "ok", steps: [{ cap: "parcel2go.drafts.list", status: "ok", outcome: "ok", data: { rows: [{ payment_url: "https://www.parcel2go.com/order/payment/abc" }], row_count: 1 } }] };
     if (p.action === "shipped") return { status: "ok", outcome: "ok", steps: [{ cap: "print.queue.add", status: "ok", outcome: "ok", data: {} }] };
     if (p.action === "message") return { status: "ok", outcome: "ok", steps: [{ cap: "discogs.orders.lifecycle", status: "ok", outcome: "ok", data: {} }] };
@@ -66,6 +82,9 @@ const ok = (name, v) => { checks.push([name, !!v]); console.log((v ? "ok   " : "
     if (req.method() === "OPTIONS") return route.fulfill({ status: 204, headers: CORS });
     await route.fulfill({ status: 200, headers: CORS, body: JSON.stringify(handle(JSON.parse(req.postData() || "{}"))) });
   });
+  const PDFJS_DIR = path.dirname(require.resolve("pdfjs-dist/build/pdf.min.mjs"));
+  await ctx.route("https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/*", route => route.fulfill({ status: 200, headers: { "access-control-allow-origin": "*", "content-type": "text/javascript" },
+    body: require("fs").readFileSync(path.join(PDFJS_DIR, route.request().url().split("/").pop())) }));
   const p = await ctx.newPage(); const errs = [];
   p.on("pageerror", e => errs.push(e.message));
   // Playwright routing does not reach fetches from the bench's sandboxed srcdoc frame (they went to the live host and got 403),
@@ -178,6 +197,31 @@ const ok = (name, v) => { checks.push([name, !!v]); console.log((v ? "ok   " : "
   ok("print document: packing slip plus 2 label pages", doc.includes("PACKING SLIP") && (doc.match(/class="pg lab"/g) || []).length === 2 && doc.includes("data:image/png;base64"));
   ok("print button enabled", !(await fr.$eval("#printBtn", b => b.disabled)));
   ok("print re-reads the stages (printed mark shows)", sent.slice(sent.indexOf(pr)).some(b => b.op === "orders_stages"));
+  // C1220: a multi-page PDF label prints every page; a page tapped in the preview is left out of the print
+  pdfLabel = true; await f.locator("#copies").fill("1");
+  await f.locator('button[data-ref="1111111-1"][data-act="label"]').click(); await p.waitForTimeout(3000);
+  const pdoc = await fr.$eval("#doc", d => d.srcdoc);
+  const whats = [...pdoc.matchAll(/class="pg lab" data-what="([^"]+)"/g)].map(m => m[1]);
+  ok("every page of a 3-page PDF label is in the document, in order", JSON.stringify(whats) === JSON.stringify(["label page 1 of 3", "label page 2 of 3", "label page 3 of 3"]));
+  ok("each label page rendered as its own image", (pdoc.match(/<img src="data:image\/png;base64/g) || []).length === 3);
+  ok("toast counts the label pages", (await fr.$eval("#toast", t => t.textContent)).includes("3 pages"));
+  const df = await (await fr.$("#doc")).contentFrame();
+  await df.locator('.pg.lab').nth(1).click(); await p.waitForTimeout(100);
+  ok("tapping a preview page marks it skipped", await df.$eval('.pg.lab:nth-of-type(3)', e => e.classList.contains("off")) && (await df.$$(".pg.off")).length === 1);
+  await p.emulateMedia({ media: "print" });
+  const shown = await df.$$eval(".pg", s => s.map(e => getComputedStyle(e).display !== "none"));
+  ok("a skipped page does not print; the others do", JSON.stringify(shown) === JSON.stringify([true, true, false, true]));
+  ok("the last printed page ends the document (no blank page)", await df.$eval("section.pg:last-of-type", e => e.classList.contains("lastv")));
+  await df.locator('.pg.lab').nth(2).click(); await p.waitForTimeout(100);
+  ok("skipping the last page moves the end to the page before", await df.$eval('.pg.lab:nth-of-type(4)', e => e.classList.contains("off")) && await df.$eval('.pg.lab:nth-of-type(2)', e => e.classList.contains("lastv")));
+  await p.emulateMedia({ media: "screen" });
+  await df.locator('.pg.lab').nth(1).click(); await df.locator('.pg.lab').nth(2).click(); await p.waitForTimeout(100);
+  ok("tapping again brings a page back", (await df.$$(".pg.off")).length === 0);
+  await f.locator("#copies").fill("2");
+  await f.locator('button[data-ref="1111111-1"][data-act="label"]').click(); await p.waitForTimeout(3000);
+  const cdoc = await fr.$eval("#doc", d => d.srcdoc);
+  ok("2 copies of a 3-page label: 6 label pages, copy by copy", (cdoc.match(/class="pg lab"/g) || []).length === 6 && cdoc.includes("label copy 2 page 3 of 3"));
+  pdfLabel = false; await f.locator("#copies").fill("1");
   // refresh: start, poll by run_ref, reload stages after done
   const reads0 = sent.filter(b => b.op === "orders_stages").length;
   await f.locator("#refresh").click(); await p.waitForTimeout(150);
