@@ -6,10 +6,10 @@
   "format": "toolbench.tool/1",
   "id": "TB:pack-ship",
   "name": "Pack & Ship",
-  "description": "Pack and ship paid Discogs orders (ca.pack_ship/1, C841): stage table from pack.orders.stages, orders shaded apart with a Discogs order link, a row filter over every stage, status and context value (chips or typed query with autocomplete) with one action run on all shown orders, compact buttons (std labels, tooltips, two-tap confirm). Rows in memory only.",
+  "description": "Pack and ship paid Discogs orders (ca.pack_ship/1): stage table from pack.orders.stages, orders shaded apart with a Discogs link, a row filter over every stage, status and context value (chips or typed query with autocomplete) with one action run on all shown orders, every label page printed (tap a preview page to skip it), compact buttons with tooltips and two-tap confirm. Rows in memory only.",
   "category": "CA_V3",
   "tags": ["discogs", "parcel2go", "shipping", "print", "ca.pack_ship/1", "ca.pack_page/1", "ca.pack_row_context/2"],
-  "version": "2.3.0",
+  "version": "2.4.0",
   "contract": { "config_keys": ["packship"], "requires": ["wf:Pqjdoot0EPzoQxj0", "std:pack_stages", "cap:pack.orders.stages", "cap:pack.refresh", "cap:runs.status", "cap:print.queue.add", "cap:label.bytes"] },
   "sandbox": { "scripts": true, "forms": false, "modals": true, "popups": true, "downloads": true, "sameOrigin": false },
   "config_schema": {
@@ -120,7 +120,7 @@ tr.hasctx td{border-bottom:0;padding-bottom:2px} tr.cx td{padding:0 8px 6px} tr.
   <div id="rows"><p class="small">Loading orders…</p></div>
 </div>
 <div id="prev">
-  <div class="bar"><h3 style="margin:0">Print preview</h3><span style="flex:1"></span><button id="printBtn" disabled>Print</button><button id="labelBtn" disabled title="open the label on its own (PDF labels)">Label</button></div>
+  <div class="bar"><h3 style="margin:0">Print preview</h3><span class="small" id="docHint" style="margin-left:8px;color:var(--ink3)">tap a page to leave it out</span><span style="flex:1"></span><button id="printBtn" disabled>Print</button><button id="labelBtn" disabled title="open the label on its own (PDF labels)">Label</button></div>
   <iframe id="doc" title="print document"></iframe>
 </div>
 </div>
@@ -438,7 +438,7 @@ async function runAction(o, a, inputs, opts){
   if (bulk) {
     const printed = Array.isArray(data.packing_rows) || data.label_b64;
     const job = printed ? await makeJob(o.order_ref, data, inputs.copies) : null;
-    const note = printed ? (data.marked === false ? "printed, not marked" : "printed") + (job && !job.img ? " (label opens separately)" : "")
+    const note = printed ? (data.marked === false ? "printed, not marked" : "printed") + (job && !job.imgs.length ? " (label opens separately)" : job && job.imgs.length > 1 ? ` (label ${job.imgs.length} pages)` : "")
       : `${steps.map(s => s.cap).join(" then ")} ok${a.then && !steps.some(s => s.cap === a.then) ? " · " + a.then + " on its own card" : ""}`;
     setSync("ok", `${a.key} ok`); return { ok: true, text: note, job };
   }
@@ -463,50 +463,56 @@ renderOrders = function(){ _render(); Object.entries(LINKS).forEach(([k, h]) => 
 
 /* ============================== print (v1.1.0 single-print path) ============================== */
 async function makeJob(ref, d, copies){
-  const j = { ref, copies: clampInt(copies || d.copies, 1, 3, 1), rows: d.packing_rows || [], label: d.label_url || "", job: d.job_id || "", run: d.label_run_id || "", img: "" };
-  try { j.img = await renderLabel(d.label_b64 || "", d.label_content_type || ""); } catch (e) { j.img = ""; }
-  if (!j.img && await probeImage(j.label)) j.img = j.label;
+  const j = { ref, copies: clampInt(copies || d.copies, 1, 3, 1), rows: d.packing_rows || [], label: d.label_url || "", job: d.job_id || "", run: d.label_run_id || "", imgs: [] };
+  try { j.imgs = await renderLabel(d.label_b64 || "", d.label_content_type || ""); } catch (e) { j.imgs = []; }
+  if (!j.imgs.length && await probeImage(j.label)) j.imgs = [j.label];
   return j;
 }
 // C1194: one print document for a bulk run, each order's slip followed by its label pages.
 async function printJobs(jobs){
   JOB = jobs[jobs.length - 1];
-  const docs = jobs.map(j => buildDoc(j, !!j.img));
+  const docs = jobs.map(j => buildDoc(j, j.imgs.length > 0));
   const body = docs.map(d => d.slice(d.indexOf("<body>") + 6, d.indexOf("<script>"))).join("");
   const first = docs[0];
   $("#doc").srcdoc = first.slice(0, first.indexOf("<body>") + 6) + body + first.slice(first.indexOf("<script>"));
   $("#printBtn").disabled = false;
-  toast(`${jobs.length} order(s) in one print document${jobs.some(j => !j.img) ? "; PDF labels open separately" : ""}`);
-  if (CONF.autoPrint) { setTimeout(doPrint, 400); jobs.filter(j => !j.img && j.label).forEach(j => window.open(j.label, "_blank", "noopener")); }
+  const pages = jobs.reduce((n, j) => n + j.imgs.length, 0);
+  toast(`${jobs.length} order(s) in one print document, ${pages} label page(s)${jobs.some(j => !j.imgs.length) ? "; PDF labels open separately" : ""}`);
+  if (CONF.autoPrint) { setTimeout(doPrint, 400); jobs.filter(j => !j.imgs.length && j.label).forEach(j => window.open(j.label, "_blank", "noopener")); }
 }
 async function composePrint(ref, d, copies){
-  JOB = { ref, copies: clampInt(copies || d.copies, 1, 3, 1), rows: d.packing_rows || [], label: d.label_url || "", job: d.job_id || "", run: d.label_run_id || "", img: "" };
+  JOB = { ref, copies: clampInt(copies || d.copies, 1, 3, 1), rows: d.packing_rows || [], label: d.label_url || "", job: d.job_id || "", run: d.label_run_id || "", imgs: [] };
   let mode = "tab";
-  try { JOB.img = await renderLabel(d.label_b64 || "", d.label_content_type || ""); if (JOB.img) mode = "rendered"; }
+  try { JOB.imgs = await renderLabel(d.label_b64 || "", d.label_content_type || ""); if (JOB.imgs.length) mode = "rendered"; }
   catch (e) { toast("label render: " + e.message + " (printing label separately)", true); }
-  if (mode === "tab" && await probeImage(JOB.label)) { JOB.img = JOB.label; mode = "image"; }
+  if (mode === "tab" && await probeImage(JOB.label)) { JOB.imgs = [JOB.label]; mode = "image"; }
   $("#doc").srcdoc = buildDoc(JOB, mode !== "tab");
   $("#printBtn").disabled = false; $("#labelBtn").disabled = !JOB.label;
   setSync("ok", "job " + trunc(JOB.job, 18));
-  toast(`${JOB.rows.length} packing row(s); label ${mode === "tab" ? "opens separately (PDF)" : "in the same document"}`);
+  toast(`${JOB.rows.length} packing row(s); label ${mode === "tab" ? "opens separately (PDF)" : `in the same document (${JOB.imgs.length} page${JOB.imgs.length === 1 ? "" : "s"})`}`);
   if (CONF.autoPrint) { setTimeout(doPrint, 400); if (mode === "tab" && JOB.label) window.open(JOB.label, "_blank", "noopener"); }
 }
 const PDFJS = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs", PDFJS_WORKER = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs";
 let pdfjsP = null;
 function pdfjs(){ if (!pdfjsP) pdfjsP = import(PDFJS).then(m => { m.GlobalWorkerOptions.workerSrc = PDFJS_WORKER; return m; }); return pdfjsP; }
 function b64bytes(b64){ const bin = atob(b64); const u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u; }
-// Render the first page of the label PDF at 300 dpi (a 4x6 label is 1200x1800) to a PNG data URL; an image label is passed through.
+// C1220 (T689): render EVERY page of the label PDF at 300 dpi (a 4x6 page is 1200x1800) to PNG data URLs, in order; carriers add
+// pages (customs forms, a second parcel, instructions). An image label is one page. The operator leaves pages out in the preview.
 async function renderLabel(b64, type){
-  if (!b64) return "";
-  if (/^image\//.test(type)) return `data:${type};base64,${b64}`;
+  if (!b64) return [];
+  if (/^image\//.test(type)) return [`data:${type};base64,${b64}`];
   const lib = await pdfjs();
   const pdf = await lib.getDocument({ data: b64bytes(b64) }).promise;
-  const page = await pdf.getPage(1);
-  const v1 = page.getViewport({ scale: 1 }); const scale = Math.min(4, 1200 / Math.min(v1.width, v1.height));
-  const vp = page.getViewport({ scale });
-  const c = document.createElement("canvas"); c.width = Math.ceil(vp.width); c.height = Math.ceil(vp.height);
-  await page.render({ canvasContext: c.getContext("2d"), viewport: vp }).promise;
-  return c.toDataURL("image/png");
+  const out = [];
+  for (let n = 1; n <= pdf.numPages; n++) {
+    const page = await pdf.getPage(n);
+    const v1 = page.getViewport({ scale: 1 }); const scale = Math.min(4, 1200 / Math.min(v1.width, v1.height));
+    const vp = page.getViewport({ scale });
+    const c = document.createElement("canvas"); c.width = Math.ceil(vp.width); c.height = Math.ceil(vp.height);
+    await page.render({ canvasContext: c.getContext("2d"), viewport: vp }).promise;
+    out.push(c.toDataURL("image/png"));
+  }
+  return out;
 }
 function probeImage(url){ return new Promise(res => { if (!url) return res(false); const im = new Image(); const t = setTimeout(() => res(false), 4000); im.onload = () => { clearTimeout(t); res(true); }; im.onerror = () => { clearTimeout(t); res(false); }; im.src = url; }); }
 // The preview frame is a distinct opaque origin inside the sandboxed bench, so the page never calls into it (U865): it posts and the document prints itself.
@@ -516,15 +522,16 @@ $("#labelBtn").onclick = () => { if (JOB && JOB.label) window.open(JOB.label, "_
 function buildDoc(j, withLabel){
   const rows = j.rows.map((r, i) => `<tr><td class="n">${i + 1}</td><td class="loc">${esc(r.location || "—")}</td>
     <td><b>${esc(r.artist)}</b> — ${esc(r.title)}<br><span class="s">${esc([r.format, r.label, r.catno].filter(Boolean).join(" · "))} · ${esc(r.media_condition)}/${esc(r.sleeve_condition)}</span></td><td class="box">☐</td></tr>`).join("");
-  const slip = `<section class="pg"><header><b>PACKING SLIP</b><span>${esc(j.ref)}</span></header>
+  const slip = `<section class="pg" data-what="packing slip"><header><b>PACKING SLIP</b><span>${esc(j.ref)}</span></header>
     <div class="meta">${new Date().toLocaleDateString("en-GB")} · ${j.rows.length} item(s) · job ${esc(trunc(j.job, 26))}</div>
     <table><thead><tr><th>#</th><th>loc</th><th>item</th><th></th></tr></thead><tbody>${rows}</tbody></table>
     <footer>Discogs ${esc(j.ref)} · packed by ______ · checked ☐</footer></section>`;
-  const label = withLabel ? Array.from({ length: j.copies }, () => `<section class="pg lab"><img src="${j.img}" alt="label"></section>`).join("")
+  const n = j.imgs.length;
+  const label = withLabel ? Array.from({ length: j.copies }, (_, c) => j.imgs.map((src, i) => `<section class="pg lab" data-what="label${j.copies > 1 ? " copy " + (c + 1) : ""} page ${i + 1} of ${n}"><img src="${src}" alt="label page ${i + 1}"></section>`).join("")).join("")
     : `<section class="pg lab"><div class="nolab">Label is a PDF: it opens in its own tab for printing.<br><span class="s">${esc(trunc(j.label, 80))}</span></div></section>`;
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(j.ref)}</title><style>
     @page{size:4in 6in;margin:0.18in} html,body{margin:0;font:10.5pt/1.25 -apple-system,"Segoe UI",Roboto,Arial,sans-serif;color:#000;background:#fff}
-    .pg{width:3.64in;min-height:5.6in;page-break-after:always;padding:0;position:relative} .pg:last-child{page-break-after:auto}
+    .pg{width:3.64in;min-height:5.6in;page-break-after:always;padding:0;position:relative} .pg:last-child,.pg.lastv{page-break-after:auto}
     header{display:flex;justify-content:space-between;align-items:baseline;border-bottom:2px solid #000;padding-bottom:3pt;font-size:12pt}
     header span{font-family:ui-monospace,Menlo,monospace;font-size:11pt}
     .meta{font-size:8.5pt;color:#333;margin:3pt 0 6pt}
@@ -533,8 +540,13 @@ function buildDoc(j, withLabel){
     .s{font-size:8pt;color:#333} footer{position:absolute;bottom:0;left:0;right:0;font-size:8pt;color:#333;border-top:1px solid #000;padding-top:3pt}
     .lab{display:flex;align-items:center;justify-content:center} .lab img{max-width:3.64in;max-height:5.6in;object-fit:contain}
     .nolab{text-align:center;font-size:9pt;color:#333;padding:20pt}
-    @media screen{body{background:#888;padding:8px} .pg{background:#fff;margin:0 auto 8px;box-shadow:0 1px 4px rgba(0,0,0,.4);padding:0.18in;min-height:6in;width:4in}}
-  </style></head><body>${slip}${label}<script>addEventListener("message", e => { if (e.data && e.data.type === "packship:print") { focus(); print(); } });<\/script></body></html>`;
+    @media screen{body{background:#888;padding:8px} .pg{background:#fff;margin:0 auto 8px;box-shadow:0 1px 4px rgba(0,0,0,.4);padding:0.18in;min-height:6in;width:4in;cursor:pointer}
+      .pg::before{content:attr(data-what) " · tap to skip";position:absolute;top:2px;right:6px;font-size:8pt;color:#666;background:rgba(255,255,255,.85);padding:0 3px}
+      .pg.off{opacity:.3} .pg.off::before{content:attr(data-what) " · skipped, tap to print";color:#C0392B;opacity:1}}
+    @media print{.pg.off{display:none!important}}
+  </style></head><body>${slip}${label}<script>addEventListener("message", e => { if (e.data && e.data.type === "packship:print") { focus(); print(); } });
+    function lastv(){ const all = document.querySelectorAll(".pg"); all.forEach(p => p.classList.remove("lastv")); const on = [...all].filter(p => !p.classList.contains("off")); if (on.length) on[on.length - 1].classList.add("lastv"); }
+    document.addEventListener("click", e => { const p = e.target.closest && e.target.closest(".pg"); if (p) { p.classList.toggle("off"); lastv(); } }); lastv();<\/script></body></html>`;
 }
 
 /* ============================== refresh (pack.refresh, polled) ============================== */

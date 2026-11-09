@@ -5,7 +5,7 @@
   "key": "repo:komposing/tool-bench",
   "name": "tool-bench",
   "title": "Tool Bench",
-  "version": "3.14.0",
+  "version": "3.15.0",
   "purpose": "Single-file host for small HTML tools that front CA_V3 flows: shared config injection, sandboxed runs, tool contracts naming the CA_V3 objects each tool depends on.",
   "owner": "Nick",
   "lifecycle": "active",
@@ -310,6 +310,11 @@
       "version": "3.14.0",
       "change": "C1194",
       "note": "Pack & Ship 2.3.0 (T681): row filter over every stage state, status, context field and runnable action, as chips or a typed query with autocomplete (AND across keys, OR within, key!: excludes); one action run on all shown orders, two taps, prints gathered in one document."
+    },
+    {
+      "version": "3.15.0",
+      "change": "C1220",
+      "note": "Pack & Ship 2.4.0 (T689): every page of a multi-page PDF label is in the print document (each copy, in order); tapping a page in the preview leaves it out of the print and tapping again brings it back."
     }
   ]
 }
