@@ -6,10 +6,10 @@
   "format": "toolbench.tool/1",
   "id": "TB:pack-ship",
   "name": "Pack & Ship",
-  "description": "Pack and ship paid Discogs orders (ca.pack_ship/1, C841): stage table from pack.orders.stages, orders shaded apart with a Discogs order link, row context line with a country/badge filter, compact buttons (std labels, reason tooltips, two-tap confirm) run by the engine front door; Refresh runs pack.refresh; Print composes the 4x6 document and marks the order printed. Rows in memory only.",
+  "description": "Pack and ship paid Discogs orders (ca.pack_ship/1, C841): stage table from pack.orders.stages, orders shaded apart with a Discogs order link, a row filter over every stage, status and context value (chips or typed query with autocomplete) with one action run on all shown orders, compact buttons (std labels, tooltips, two-tap confirm). Rows in memory only.",
   "category": "CA_V3",
   "tags": ["discogs", "parcel2go", "shipping", "print", "ca.pack_ship/1", "ca.pack_page/1", "ca.pack_row_context/2"],
-  "version": "2.2.0",
+  "version": "2.3.0",
   "contract": { "config_keys": ["packship"], "requires": ["wf:Pqjdoot0EPzoQxj0", "std:pack_stages", "cap:pack.orders.stages", "cap:pack.refresh", "cap:runs.status", "cap:print.queue.add", "cap:label.bytes"] },
   "sandbox": { "scripts": true, "forms": false, "modals": true, "popups": true, "downloads": true, "sameOrigin": false },
   "config_schema": {
@@ -70,6 +70,14 @@ tr.hasctx td{border-bottom:0;padding-bottom:2px} tr.cx td{padding:0 8px 6px} tr.
 .chip{display:inline-block;padding:0 5px;border-radius:3px;font:600 10px/16px var(--mono);border:1px solid var(--line);background:#fff;color:var(--ink2)}
 .chip.c-NI,.chip.c-JE,.chip.c-GG{background:#FFF4E0;border-color:var(--warn);color:#8A5200}
 .chip.c-international{background:#EEF4FD;border-color:var(--acc);color:var(--acc)} .chip.c-q{background:#FDECEA;border-color:var(--bad);color:var(--bad)}
+#fbar{margin:0 0 8px;position:relative} .qrow{display:flex;gap:4px} #q{flex:1;min-width:0;font-family:var(--mono);font-size:12px;padding:4px 7px}
+#sugg{position:absolute;z-index:5;left:0;top:30px;margin:0;padding:3px 0;list-style:none;background:#fff;border:1px solid var(--line);border-radius:4px;box-shadow:0 4px 14px rgba(0,0,0,.12);max-height:240px;overflow:auto;min-width:260px}
+#sugg li{padding:3px 10px;font:12px var(--mono);cursor:pointer;display:flex;justify-content:space-between;gap:12px} #sugg li.on,#sugg li:hover{background:#EEF4FD} #sugg li .h{color:var(--ink3);font-family:var(--sans)}
+#chips{display:flex;flex-wrap:wrap;gap:3px 10px;margin:6px 0 0} .dim{display:inline-flex;flex-wrap:wrap;align-items:center;gap:3px} .dim>b{font:600 9.5px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--ink2);margin-right:2px}
+#chips button,#filters button{padding:1px 8px;font-size:11.5px;border-radius:12px} #chips button.on{background:var(--ink);color:#fff;border-color:var(--ink)} #chips button.neg{background:#FDECEA;border-color:var(--bad);color:var(--bad);text-decoration:line-through}
+#chips .n{color:var(--ink3);margin-left:3px} #chips button.on .n{color:#cfd5da} #chips .dot{width:9px;height:9px;margin-right:4px;vertical-align:-1px}
+#bulk{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0 0;font-size:12px} #bulk select{font-size:12px} #bulk .res{flex-basis:100%;font:11.5px var(--mono);color:var(--ink2);max-height:120px;overflow:auto} #bulk .res .bad{color:var(--bad)} #bulk .res .ok{color:var(--ok)}
+#bulk button.arm{background:var(--warn);border-color:var(--warn);color:#fff}
 #filters{display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin:0 0 8px}
 #filters button{padding:1px 9px;font-size:11.5px;border-radius:12px} #filters button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
 #filters .n{color:var(--ink3);margin-left:3px} #filters button.on .n{color:#cfd5da}
@@ -102,7 +110,15 @@ tr.hasctx td{border-bottom:0;padding-bottom:2px} tr.cx td{padding:0 8px 6px} tr.
   <div class="row"><span class="lbl"></span><button id="cSave" class="pri">Save</button><button id="cClose">Close</button></div>
   <p id="cNote" class="small"></p>
 </div>
-<div id="list"><p class="small">Loading orders…</p></div>
+<div id="list">
+  <div id="fbar" hidden>
+    <div class="qrow"><input id="q" type="text" autocomplete="off" spellcheck="false" placeholder="filter: packed:none label:done status:&quot;In Progress&quot; follow_up!:none (Tab completes)" aria-label="filter query" aria-autocomplete="list" aria-controls="sugg"><button id="qClear" title="clear the filter">Clear</button></div>
+    <ul id="sugg" role="listbox" hidden></ul>
+    <div id="chips" role="group" aria-label="filter by value"></div>
+    <div id="bulk"></div>
+  </div>
+  <div id="rows"><p class="small">Loading orders…</p></div>
+</div>
 <div id="prev">
   <div class="bar"><h3 style="margin:0">Print preview</h3><span style="flex:1"></span><button id="printBtn" disabled>Print</button><button id="labelBtn" disabled title="open the label on its own (PDF labels)">Label</button></div>
   <iframe id="doc" title="print document"></iframe>
@@ -176,11 +192,10 @@ async function loadStages(){
     const rc = isObj(d.row_context) ? d.row_context : {};
     NOTES = [].concat(Array.isArray(d.notes) ? d.notes : [], Array.isArray(rc.notes) ? rc.notes : [], Array.isArray(rc.overlay_notes) ? rc.overlay_notes : []);
     TRUNC = !!d.truncated;
-    if (FILTER.kind && !VIEW.orders.some(o => ctxOf(o)[FILTER.kind] === FILTER.value)) FILTER = { kind: "", value: "" };
     const ls = Object.entries(VIEW.last_sync).filter(([, v]) => v).map(([k, v]) => `${k} ${new Date(v).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}`);
     $("#last").textContent = ls.length ? "synced " + ls.join(" · ") : "";
     renderOrders(); if (!REFRESH.running) setSync("ok", "ok " + new Date().toLocaleTimeString("en-GB"));
-  } catch (e) { setSync("err", "error"); $("#list").innerHTML = `<p class="small">${esc(e.message)}</p>`; toast(e.message, true); }
+  } catch (e) { setSync("err", "error"); $("#rows").innerHTML = `<p class="small">${esc(e.message)}</p>`; toast(e.message, true); }
 }
 // An action's inputs come from a page control of the same name (copies) or from an input drawn on the row (custom_text).
 const PAGE_INPUT = { copies: () => clampInt($("#copies").value, 1, 3, 1) };
@@ -203,7 +218,7 @@ function actionHtml(o, a){
 // The context object is whatever the engine returns for the order (std pack_stages row_context fields plus, on this page
 // only, the overlay buyer fields). Known fields get their own format; any other field is shown as name: value, so a field
 // added in the standard appears without a page change.
-let FILTER = { kind: "", value: "" }, NOTES = [], TRUNC = false;
+let NOTES = [], TRUNC = false;
 const ctxOf = o => isObj(o.context) ? o.context : {};
 const KNOWN = ["buyer_username", "buyer_postcode", "country", "order_total", "currency", "item_count", "customs_badge"];
 const BADGES = ["NI", "JE", "GG", "international", "?"];
@@ -225,20 +240,157 @@ function ctxHtml(o){
   Object.keys(c).filter(k => !KNOWN.includes(k) && filled(c[k]) && typeof c[k] !== "object").forEach(k => parts.push(`<span class="small">${esc(cap1(k))}: ${esc(c[k])}</span>`));
   return parts.length ? `<div class="ctx">${parts.join('<span class="sp">·</span>')}</div>` : "";
 }
-const visible = o => !FILTER.kind || ctxOf(o)[FILTER.kind] === FILTER.value;
-function filterHtml(){
-  const count = (k, v) => VIEW.orders.filter(o => ctxOf(o)[k] === v).length;
-  const countries = [...new Set(VIEW.orders.map(o => ctxOf(o).country).filter(filled))].sort();
-  const badges = BADGES.filter(b => count("customs_badge", b));
-  if (!countries.length && !badges.length) return "";
-  const b = (k, v, label, extra) => `<button data-fk="${esc(k)}" data-fv="${esc(v)}" class="${FILTER.kind === k && FILTER.value === v ? "on" : ""}" aria-pressed="${FILTER.kind === k && FILTER.value === v}">${label}${k ? `<span class="n">${count(k, v)}</span>` : ""}</button>`;
-  return `<div id="filters" role="group" aria-label="quick filter">${b("", "", "All")}${countries.map(c => b("country", c, esc(c))).join("")}${badges.map(x => b("customs_badge", x, `<span class="chip ${badgeCls(x)}">${esc(x)}</span>`)).join("")}</div>`;
+/* ============================== row filter (C1194) ============================== */
+// The filter model is derived from the stage read alone, so a stage, status or context field added in std pack_stages
+// is filterable with no page change. Keys: status, every stage_defs key (value = its state), the order's scalar context
+// fields (buyer fields excluded) and can (actions enabled on the order). One query string Q holds the filter; the chips
+// and the typed field both edit it. Grammar: terms separated by spaces; key:a,b (any of) or key!:a,b (none of); a word
+// with no key matches the order number, status or stage text. Terms AND together; values in one term OR.
+let Q = "";
+const PII = ["buyer_username", "buyer_postcode"];
+const stateOf = (o, k) => { const s = (o.stages || []).find(x => x.key === k); return s ? s.state : ""; };
+function dims(){
+  const out = [], orders = VIEW.orders, count = f => { const m = new Map(); orders.forEach(o => [].concat(f(o)).filter(filled).forEach(v => m.set(String(v), (m.get(String(v)) || 0) + 1))); return [...m.entries()].map(([v, n]) => ({ v, n })); };
+  out.push({ key: "status", label: "status", values: count(o => o.status).sort((a, b) => b.n - a.n), get: o => [o.status] });
+  VIEW.stage_defs.forEach(sd => { const order = ["none", "partial", "done", "later"];
+    out.push({ key: sd.key, label: sd.label || sd.key, stage: true, values: count(o => stateOf(o, sd.key)).sort((a, b) => order.indexOf(a.v) - order.indexOf(b.v)), get: o => [stateOf(o, sd.key)] }); });
+  // context fields whose values are words or whole numbers (amounts like order_total are not categories)
+  const cat = v => !filled(v) || (typeof v === "string") || (typeof v === "boolean") || Number.isInteger(v);
+  const ckeys = [...new Set(orders.flatMap(o => Object.keys(ctxOf(o))))].filter(k => !PII.includes(k) && orders.every(o => cat(ctxOf(o)[k])));
+  ckeys.forEach(k => { const values = count(o => ctxOf(o)[k]).sort((a, b) => b.n - a.n); if (values.length && values.length <= 30) out.push({ key: k, label: k.replace(/_/g, " "), values, get: o => [ctxOf(o)[k]] }); });
+  out.push({ key: "can", label: "can run", values: count(o => (o.actions || []).filter(a => a.enabled).map(a => a.key)).sort((a, b) => b.n - a.n), get: o => (o.actions || []).filter(a => a.enabled).map(a => a.key) });
+  return out;
 }
+function tokenize(q){ const t = []; const re = /\s*((?:[^\s"]+|"[^"]*")+)/g; let m; while ((m = re.exec(q))) t.push(m[1]); return t; }
+const unq = v => v.replace(/^"|"$/g, "");
+function parseQuery(q){
+  const terms = [], words = [], errors = [];
+  for (const tok of tokenize(q)) {
+    const m = /^([A-Za-z_][\w]*)(!?:)(.*)$/.exec(tok);
+    if (!m) { words.push(unq(tok).toLowerCase()); continue; }
+    const values = m[3].match(/"[^"]*"|[^,]+/g)?.map(v => unq(v).trim()).filter(Boolean) || [];
+    terms.push({ key: m[1], neg: m[2] === "!:", values });
+  }
+  return { terms, words, errors };
+}
+const qv = v => /[\s,"]/.test(v) ? `"${v.replace(/"/g, "")}"` : v;
+const serialize = terms => terms.filter(t => t.values.length).map(t => `${t.key}${t.neg ? "!:" : ":"}${t.values.map(qv).join(",")}`).join(" ");
+function matcher(){
+  const p = parseQuery(Q), D = new Map(dims().map(d => [d.key, d])), unknown = [];
+  const terms = p.terms.filter(t => { if (!D.has(t.key)) { unknown.push(t.key); return false; } return t.values.length; });
+  const fn = o => terms.every(t => { const got = D.get(t.key).get(o).map(x => String(x).toLowerCase()); const hit = t.values.some(v => got.includes(v.toLowerCase())); return t.neg ? !hit : hit; })
+    && p.words.every(w => [o.order_ref, o.status, ...(o.stages || []).map(s => s.text)].some(x => String(x || "").toLowerCase().includes(w)));
+  return { fn, active: terms.length + p.words.length > 0, unknown };
+}
+let MATCH = { fn: () => true, active: false, unknown: [] };
+const visible = o => MATCH.fn(o);
+function toggleChip(key, value, neg){
+  const p = parseQuery(Q); let t = p.terms.find(x => x.key === key && x.neg === !!neg);
+  if (!t) { t = { key, neg: !!neg, values: [] }; p.terms.push(t); }
+  const i = t.values.findIndex(v => v.toLowerCase() === value.toLowerCase());
+  if (i >= 0) t.values.splice(i, 1); else t.values.push(value);
+  Q = [serialize(p.terms), ...p.words].filter(Boolean).join(" ");
+  $("#q").value = Q; renderOrders();
+}
+function chipsHtml(){
+  const p = parseQuery(Q), on = (k, v, neg) => p.terms.some(t => t.key === k && t.neg === neg && t.values.some(x => x.toLowerCase() === String(v).toLowerCase()));
+  return dims().filter(d => d.values.length > 1 || on(d.key, (d.values[0] || {}).v, false) || on(d.key, (d.values[0] || {}).v, true)).map(d => `<span class="dim"><b title="${esc(d.key)}">${esc(d.label)}</b>${d.values.map(x => {
+    const pos = on(d.key, x.v, false), neg = on(d.key, x.v, true);
+    const dot = d.stage ? `<span class="dot" style="background:${iconColor(x.v)}"></span>` : "";
+    return `<button data-fk="${esc(d.key)}" data-fv="${esc(x.v)}" class="${pos ? "on" : neg ? "neg" : ""}" aria-pressed="${pos}" title="${esc(d.key)}:${esc(x.v)} · right-click or long-press to exclude">${dot}${esc(x.v)}<span class="n">${x.n}</span></button>`; }).join("")}</span>`).join("");
+}
+// autocomplete: the token at the caret is a key (suggest keys and the operators) or key: / key!: plus a partial value
+function suggestions(){
+  const el = $("#q"), pos = el.selectionStart, before = el.value.slice(0, pos), start = before.search(/\S*$/), tok = before.slice(start);
+  const D = dims(), m = /^([A-Za-z_]\w*)(!?:)(.*)$/.exec(tok);
+  if (!m) return { start, items: D.filter(d => d.key.startsWith(tok.toLowerCase()) || d.label.toLowerCase().startsWith(tok.toLowerCase())).slice(0, 14).flatMap(d => [
+    { text: d.key + ":", hint: `${d.label} is…` }, { text: d.key + "!:", hint: `${d.label} is not…` }]) };
+  const d = D.find(x => x.key === m[1]); if (!d) return { start, items: [] };
+  const parts = m[3].split(","), cur = parts.pop(), done = parts.join(",");
+  return { start, items: d.values.filter(x => x.v.toLowerCase().startsWith(unq(cur).toLowerCase())).slice(0, 20).map(x => ({ text: `${m[1]}${m[2]}${done ? done + "," : ""}${qv(x.v)}`, hint: `${x.n} order${x.n === 1 ? "" : "s"}`, value: true })) };
+}
+let SUG = { start: 0, items: [], at: 0 };
+function showSugg(){
+  SUG = Object.assign(suggestions(), { at: 0 });
+  const ul = $("#sugg");
+  if (!SUG.items.length || document.activeElement !== $("#q")) { ul.hidden = true; return; }
+  ul.innerHTML = SUG.items.map((x, i) => `<li role="option" data-i="${i}" class="${i === SUG.at ? "on" : ""}">${esc(x.text)}<span class="h">${esc(x.hint)}</span></li>`).join("");
+  ul.hidden = false;
+}
+function takeSugg(i){
+  const x = SUG.items[i]; if (!x) return false;
+  const el = $("#q"), pos = el.selectionStart, after = el.value.slice(pos).replace(/^\S*/, "");
+  const ins = x.text + (x.value ? " " : "");
+  el.value = el.value.slice(0, SUG.start) + ins + after.replace(/^\s+/, x.value ? "" : " ").trimEnd();
+  const c = SUG.start + ins.length; el.setSelectionRange(c, c);
+  Q = el.value.trim(); renderOrders(); showSugg(); return true;
+}
+let qT = 0;
+$("#q").addEventListener("input", () => { showSugg(); clearTimeout(qT); qT = setTimeout(() => { Q = $("#q").value.trim(); renderOrders(); }, 200); });
+$("#q").addEventListener("keydown", e => {
+  const ul = $("#sugg"), open = !ul.hidden && SUG.items.length;
+  if (open && (e.key === "ArrowDown" || e.key === "ArrowUp")) { e.preventDefault(); SUG.at = (SUG.at + (e.key === "ArrowDown" ? 1 : SUG.items.length - 1)) % SUG.items.length; [...ul.children].forEach((li, i) => li.classList.toggle("on", i === SUG.at)); return; }
+  if (open && (e.key === "Tab" || e.key === "Enter")) { e.preventDefault(); takeSugg(SUG.at); return; }
+  if (e.key === "Escape") { ul.hidden = true; return; }
+  if (e.key === "Enter") { Q = $("#q").value.trim(); renderOrders(); }
+});
+$("#q").addEventListener("focus", showSugg);
+$("#q").addEventListener("blur", () => setTimeout(() => { $("#sugg").hidden = true; }, 150));
+$("#sugg").addEventListener("mousedown", e => { const li = e.target.closest("li[data-i]"); if (li) { e.preventDefault(); takeSugg(+li.dataset.i); } });
+$("#qClear").onclick = () => { Q = ""; $("#q").value = ""; renderOrders(); };
+$("#chips").addEventListener("click", e => { const b = e.target.closest("button[data-fk]"); if (b) toggleChip(b.dataset.fk, b.dataset.fv, false); });
+$("#chips").addEventListener("contextmenu", e => { const b = e.target.closest("button[data-fk]"); if (b) { e.preventDefault(); toggleChip(b.dataset.fk, b.dataset.fv, true); } });
+
+/* ============================== bulk action on shown orders (C1194) ============================== */
+// One action, every shown order where it is enabled, one at a time through the same front door (op action re-reads the
+// order and runs its own entry). Two taps: the first shows the count. Print replies are gathered into one print document.
+const BULK = { key: "", armed: false, running: false, stop: false, done: 0, total: 0, results: [] };
+function bulkTargets(shown, key){ return shown.filter(o => (o.actions || []).some(a => a.key === key && a.enabled)); }
+function bulkHtml(shown){
+  const keys = [...new Set(shown.flatMap(o => (o.actions || []).filter(a => a.enabled).map(a => a.key)))];
+  if (!keys.length && !BULK.results.length) return "";
+  if (!keys.includes(BULK.key)) BULK.key = keys[0] || "";
+  const name = k => { const a = shown.flatMap(o => o.actions || []).find(x => x.key === k && x.enabled); return (a && String(a.label || "").trim()) || cap1(k); };
+  const n = BULK.key ? bulkTargets(shown, BULK.key).length : 0;
+  const opts = keys.map(k => `<option value="${esc(k)}" ${k === BULK.key ? "selected" : ""}>${esc(name(k))} (${bulkTargets(shown, k).length})</option>`).join("");
+  const btn = BULK.running ? `<button id="bStop">Stop (${BULK.done}/${BULK.total})</button>`
+    : `<button id="bRun" class="${BULK.armed ? "arm" : ""}" ${n ? "" : "disabled"}>${BULK.armed ? `Tap again: ${esc(name(BULK.key))} ${n} order${n === 1 ? "" : "s"}` : `Run on ${n} shown`}</button>`;
+  const res = BULK.results.length ? `<div class="res">${BULK.results.map(r => `<div class="${r.ok ? "ok" : "bad"}">${esc(r.ref)} · ${esc(r.text)}</div>`).join("")}</div>` : "";
+  return `<span class="small">Run</span><select id="bKey" ${BULK.running ? "disabled" : ""} aria-label="action to run on the shown orders">${opts}</select>${btn}${res}`;
+}
+let BULK_T = 0;
+$("#bulk").addEventListener("change", e => { if (e.target.id === "bKey") { BULK.key = e.target.value; BULK.armed = false; renderOrders(); } });
+$("#bulk").addEventListener("click", async e => {
+  if (e.target.id === "bStop") { BULK.stop = true; return; }
+  if (e.target.id !== "bRun") return;
+  if (!BULK.armed) { BULK.armed = true; clearTimeout(BULK_T); BULK_T = setTimeout(() => { BULK.armed = false; renderOrders(); }, 4000); renderOrders(); return; }
+  BULK.armed = false; clearTimeout(BULK_T);
+  const targets = bulkTargets(VIEW.orders.filter(visible), BULK.key);
+  Object.assign(BULK, { running: true, stop: false, done: 0, total: targets.length, results: [] }); renderOrders();
+  const jobs = [];
+  for (const o of targets) {
+    if (BULK.stop) { BULK.results.push({ ref: o.order_ref, ok: false, text: "not run (stopped)" }); continue; }
+    const a = (o.actions || []).find(x => x.key === BULK.key);
+    const inputs = {}; (Array.isArray(a.inputs) ? a.inputs : []).forEach(nm => { if (PAGE_INPUT[nm]) inputs[nm] = PAGE_INPUT[nm](); });
+    const r = await runAction(o, a, inputs, { bulk: true });
+    if (r && r.job) jobs.push(r.job);
+    BULK.results.push({ ref: o.order_ref, ok: !!(r && r.ok), text: (r && r.text) || "no reply" });
+    BULK.done += 1; renderOrders();
+  }
+  BULK.running = false;
+  if (jobs.length) await printJobs(jobs);
+  const bad = BULK.results.filter(x => !x.ok).length;
+  toast(`${cap1(BULK.key)}: ${BULK.results.length - bad} ok${bad ? `, ${bad} not` : ""}`, bad > 0);
+  loadStages();
+});
 function renderOrders(){
   const defs = VIEW.stage_defs;
+  MATCH = matcher();
   const shown = VIEW.orders.filter(visible);
-  $("#count").textContent = (FILTER.kind ? `${shown.length} of ` : "") + `${VIEW.orders.length}${TRUNC ? "+" : ""} orders` + (NOTES.length ? " · " + NOTES.join("; ") : "");
-  if (!VIEW.orders.length) { $("#list").innerHTML = `<p class="small">No orders in the window.</p>`; return; }
+  $("#count").textContent = (MATCH.active ? `${shown.length} of ` : "") + `${VIEW.orders.length}${TRUNC ? "+" : ""} orders` + (MATCH.unknown.length ? ` · unknown filter key ${MATCH.unknown.join(", ")}` : "") + (NOTES.length ? " · " + NOTES.join("; ") : "");
+  $("#fbar").hidden = !VIEW.orders.length;
+  if (!VIEW.orders.length) { $("#rows").innerHTML = `<p class="small">No orders in the window.</p>`; return; }
+  $("#chips").innerHTML = chipsHtml(); $("#bulk").innerHTML = bulkHtml(shown);
   const head = `<tr><th>order</th><th>status</th>${defs.map(s => `<th>${esc(s.label || s.key)}</th>`).join("")}<th>actions</th></tr>`;
   const rows = shown.map(o => {
     const byKey = {}; (o.stages || []).forEach(s => byKey[s.key] = s);
@@ -252,12 +404,10 @@ function renderOrders(){
     return `<tbody class="o"><tr data-id="${esc(o.order_ref)}" class="${sel}${ctx ? " hasctx" : ""}"><td class="mono">${ref}<div class="small">${esc(String(o.order_date || "").slice(0, 10))}</div></td><td>${esc(o.status)}</td>${cells}<td><div class="acts">${acts}</div></td></tr>`
       + (ctx ? `<tr class="cx ${sel}" data-ctx="${esc(o.order_ref)}"><td colspan="${defs.length + 3}">${ctx}</td></tr>` : "") + `</tbody>`;
   }).join("");
-  $("#list").innerHTML = filterHtml() + (shown.length ? `<table><thead>${head}</thead>${rows}</table>` : `<p class="small">No orders match this filter.</p>`);
+  $("#rows").innerHTML = shown.length ? `<table><thead>${head}</thead>${rows}</table>` : `<p class="small">No orders match this filter.</p>`;
 }
 $("#list").addEventListener("input", e => { const i = e.target.closest("input[data-inp]"); if (!i) return; const c = $(`[data-cnt="${CSS.escape(i.dataset.for + "|" + i.dataset.inp)}"]`); if (c) c.textContent = `${i.value.length}/160`; });
 $("#list").addEventListener("click", async e => {
-  const fb = e.target.closest("button[data-fk]");
-  if (fb) { FILTER = { kind: fb.dataset.fk, value: fb.dataset.fk ? fb.dataset.fv : "" }; renderOrders(); return; }
   const b = e.target.closest("button[data-act]"); if (!b || b.disabled) return;
   const ref = b.dataset.ref, key = b.dataset.act, id = `${ref}|${key}`;
   const o = VIEW.orders.find(x => x.order_ref === ref); const a = o && (o.actions || []).find(x => x.key === key); if (!a) return;
@@ -275,14 +425,23 @@ $("#list").addEventListener("click", async e => {
 /* ============================== row actions ============================== */
 // The reply is read by shape, not by action: print data (packing_rows, label_b64) composes the print document; rows with a
 // payment_url become links; anything else is a notice that the cap ran (for example a review card sent to Telegram).
-async function runAction(o, a, inputs){
+// C1194: opts.bulk returns {ok, text, job} and leaves toasts, printing and the re-read to the bulk runner.
+async function runAction(o, a, inputs, opts){
+  const bulk = !!(opts && opts.bulk);
   setSync("busy", `${a.key} ${o.order_ref}`);
   let r;
   try { r = await call("action", { order_ref: o.order_ref, action: a.key, inputs }, true); }
-  catch (e) { setSync("err", "error"); toast(e.message, true); return; }
-  if (r.status !== "ok") { setSync("err", r.outcome || "refused"); toast(`${a.key}: ${r.outcome || "refused"} · ${r.message || ""}`, true); if (r.outcome === "action_disabled") loadStages(); return; }
+  catch (e) { setSync("err", "error"); if (bulk) return { ok: false, text: e.message }; toast(e.message, true); return; }
+  if (r.status !== "ok") { setSync("err", r.outcome || "refused"); const why = `${r.outcome || "refused"} · ${r.message || ""}`; if (bulk) return { ok: false, text: why }; toast(`${a.key}: ${why}`, true); if (r.outcome === "action_disabled") loadStages(); return; }
   const steps = Array.isArray(r.steps) ? r.steps : [];
   const data = Object.assign({}, ...steps.map(s => isObj(s.data) ? s.data : {}));
+  if (bulk) {
+    const printed = Array.isArray(data.packing_rows) || data.label_b64;
+    const job = printed ? await makeJob(o.order_ref, data, inputs.copies) : null;
+    const note = printed ? (data.marked === false ? "printed, not marked" : "printed") + (job && !job.img ? " (label opens separately)" : "")
+      : `${steps.map(s => s.cap).join(" then ")} ok${a.then && !steps.some(s => s.cap === a.then) ? " · " + a.then + " on its own card" : ""}`;
+    setSync("ok", `${a.key} ok`); return { ok: true, text: note, job };
+  }
   if (Array.isArray(data.packing_rows) || data.label_b64) {
     await composePrint(o.order_ref, data, inputs.copies);
     // C1146: the engine marks the order printed (std print.on_done); re-read so Packed and Print/Reprint show it.
@@ -303,6 +462,23 @@ const _render = renderOrders;
 renderOrders = function(){ _render(); Object.entries(LINKS).forEach(([k, h]) => { const b = $(`[data-links="${CSS.escape(k)}"]`); if (b) b.innerHTML = h; }); };
 
 /* ============================== print (v1.1.0 single-print path) ============================== */
+async function makeJob(ref, d, copies){
+  const j = { ref, copies: clampInt(copies || d.copies, 1, 3, 1), rows: d.packing_rows || [], label: d.label_url || "", job: d.job_id || "", run: d.label_run_id || "", img: "" };
+  try { j.img = await renderLabel(d.label_b64 || "", d.label_content_type || ""); } catch (e) { j.img = ""; }
+  if (!j.img && await probeImage(j.label)) j.img = j.label;
+  return j;
+}
+// C1194: one print document for a bulk run, each order's slip followed by its label pages.
+async function printJobs(jobs){
+  JOB = jobs[jobs.length - 1];
+  const docs = jobs.map(j => buildDoc(j, !!j.img));
+  const body = docs.map(d => d.slice(d.indexOf("<body>") + 6, d.indexOf("<script>"))).join("");
+  const first = docs[0];
+  $("#doc").srcdoc = first.slice(0, first.indexOf("<body>") + 6) + body + first.slice(first.indexOf("<script>"));
+  $("#printBtn").disabled = false;
+  toast(`${jobs.length} order(s) in one print document${jobs.some(j => !j.img) ? "; PDF labels open separately" : ""}`);
+  if (CONF.autoPrint) { setTimeout(doPrint, 400); jobs.filter(j => !j.img && j.label).forEach(j => window.open(j.label, "_blank", "noopener")); }
+}
 async function composePrint(ref, d, copies){
   JOB = { ref, copies: clampInt(copies || d.copies, 1, 3, 1), rows: d.packing_rows || [], label: d.label_url || "", job: d.job_id || "", run: d.label_run_id || "", img: "" };
   let mode = "tab";
@@ -406,6 +582,6 @@ $("#cSave").onclick = () => {
   if (TM && window.parent !== window) { const set = { url: CONF.url }; if (key) set["headers.X-Api-Key"] = key; window.parent.postMessage({ type: "toolbench:config:set", namespace: "packship", values: set }, "*"); }
   $("#cfg").style.display = "none"; loadStages(); checkBusy();
 };
-if (!CONF.key) { setSync("err", "no key"); $("#refresh").disabled = true; $("#list").innerHTML = `<p class="small">No viewer key. ${TM ? "Set <b>Viewer key</b> for Pack &amp; Ship (or the CA_V3 Viewer) in Tool Bench Settings." : "Open ⚙ and enter the endpoint and key."}</p>`; }
+if (!CONF.key) { setSync("err", "no key"); $("#refresh").disabled = true; $("#rows").innerHTML = `<p class="small">No viewer key. ${TM ? "Set <b>Viewer key</b> for Pack &amp; Ship (or the CA_V3 Viewer) in Tool Bench Settings." : "Open ⚙ and enter the endpoint and key."}</p>`; }
 else { loadStages(); checkBusy(); }
 </script></body></html>

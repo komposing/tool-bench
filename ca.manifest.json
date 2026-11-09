@@ -5,7 +5,7 @@
   "key": "repo:komposing/tool-bench",
   "name": "tool-bench",
   "title": "Tool Bench",
-  "version": "3.13.0",
+  "version": "3.14.0",
   "purpose": "Single-file host for small HTML tools that front CA_V3 flows: shared config injection, sandboxed runs, tool contracts naming the CA_V3 objects each tool depends on.",
   "owner": "Nick",
   "lifecycle": "active",
@@ -305,6 +305,11 @@
       "version": "3.13.0",
       "change": "C1163",
       "note": "ca.repo/1 v5: every Release carries tool-bench-v<version>.html beside tool-bench.html (latest link unchanged); the release workflow adds the versioned copy to past Releases, byte for byte; the build refuses a pattern without the version."
+    },
+    {
+      "version": "3.14.0",
+      "change": "C1194",
+      "note": "Pack & Ship 2.3.0 (T681): row filter over every stage state, status, context field and runnable action, as chips or a typed query with autocomplete (AND across keys, OR within, key!: excludes); one action run on all shown orders, two taps, prints gathered in one document."
     }
   ]
 }

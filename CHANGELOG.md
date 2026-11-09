@@ -1,5 +1,23 @@
 # Changelog
 
+## 3.14.0 — C1194
+
+- **Pack & Ship 2.3.0** (`TB:pack-ship` v2.3.0, T681; decisions `c1194-filters`): a **row filter** above the table built
+  from the stage read alone: order status, every stage in `stage_defs` (by state, with its colour dot), the order's
+  category context fields (country, currency, item count, customs badge; buyer fields and amounts left out) and
+  `can` (actions enabled on the order). Each shows only the values present in the loaded rows, with counts, so a stage
+  or context field added in std `pack_stages` is filterable with no page change. One query drives it: tap a chip (right
+  click excludes) or type it, e.g. `label:done packed:none country:Italy,"United Kingdom" follow_up!:none`; keys AND
+  together, values within a key OR, a word with no key matches the order number, status or stage text, and an unknown
+  key is named, not applied. The field autocompletes keys (with `:` is and `!:` is not) and then the values present
+  with counts (arrow keys, Tab or Enter). **Run on shown**: pick one action and run it on every shown order where it is
+  enabled, one at a time through the same front door, with a count confirm (second tap within 4 s), a Stop button,
+  per-order results, one print document for every order printed in the run, and a re-read at the end. Actions that
+  write to Discogs still go to their own approval cards. Replaces the country/badge quick filter. Harness: 69 checks.
+
+### Fixed
+- none
+
 ## 3.13.0 — C1163
 
 - **Versioned release files** (ca.repo/1 v5, T673; decisions `c1163-asset-names`): `distribution.versioned`
