@@ -92,6 +92,7 @@
       "required": [
         "channel",
         "asset",
+        "versioned",
         "latest",
         "record"
       ],
@@ -103,6 +104,12 @@
           "type": "string",
           "pattern": "^[A-Za-z0-9._-]+$",
           "maxLength": 80
+        },
+        "versioned": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._{}-]*\\{version\\}[A-Za-z0-9._{}-]*$",
+          "maxLength": 80,
+          "description": "ca.repo/1 v5: the versioned asset name published beside the stable one; placeholders {stem} (asset name without its extension), {version}, {ext} (with its dot)"
         },
         "latest": {
           "type": "string",

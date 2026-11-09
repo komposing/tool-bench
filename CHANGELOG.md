@@ -1,5 +1,19 @@
 # Changelog
 
+## 3.13.0 — C1163
+
+- **Versioned release files** (ca.repo/1 v5, T673; decisions `c1163-asset-names`): `distribution.versioned`
+  (`{stem}-v{version}{ext}`) names a second copy of the asset, so each GitHub Release carries
+  `tool-bench-v<version>.html` beside `tool-bench.html`. The stable name stays, so
+  `releases/latest/download/tool-bench.html` keeps serving the newest build; the release record's download link now
+  points at the versioned file, so a saved copy says which build it is. The release workflow adds the missing versioned
+  copy to every past Release, downloaded from that Release's own `tool-bench.html` and uploaded unchanged (nothing is
+  replaced or removed). The build refuses a pattern whose name lacks the version, drops the extension or equals the
+  stable name.
+
+### Fixed
+- none
+
 ## 3.12.0 — C1146
 
 - **Pack & Ship 2.2.0** (`TB:pack-ship` v2.2.0, T666; std `pack_stages` v8; decisions `pack-ux2`): each order is its own

@@ -7,7 +7,7 @@
 // (the union of every repo tool's contract.requires, read from each tool file's block). That keeps what CA_V3 reads about
 // this repo's dependencies derived from the tools themselves (I7).
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
-import { readJson, validate, sha256, KEY_RE, readToolBlock, parseFixed, checkConfigSchema } from "./lib.mjs";
+import { readJson, validate, sha256, KEY_RE, readToolBlock, parseFixed, checkConfigSchema, checkVersioned } from "./lib.mjs";
 
 const CHECK = process.argv.includes("--check");
 const fail = msgs => { console.error(msgs.map(m => "  - " + m).join("\n")); process.exit(1); };
@@ -63,6 +63,7 @@ const nextManifest = structuredClone(manifest);
 nextManifest.depends.tools = [...byKey.entries()].sort((a, b) => a[0].localeCompare(b[0]))
   .map(([key, by]) => ({ key, by: by.sort() }));
 errors.push(...validate(schema, nextManifest).map(e => "ca.manifest.json " + e));
+errors.push(...checkVersioned(nextManifest.distribution, nextManifest.version).map(e => "ca.manifest.json " + e));
 const lastRelease = nextManifest.releases[nextManifest.releases.length - 1];
 if (lastRelease.version !== nextManifest.version) errors.push(`ca.manifest.json: last releases entry is ${lastRelease.version}, version is ${nextManifest.version}`);
 if (!template.includes('"@@TB_BUNDLE@@"')) errors.push("src/bench.html: bundle marker missing");

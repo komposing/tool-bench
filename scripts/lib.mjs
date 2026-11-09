@@ -130,3 +130,23 @@ export function checkConfigSchema(cs, configKeys) {
   }
   return errors;
 }
+
+// ca.repo/1 v5 (C1163): the versioned name of an asset, from manifest.distribution.versioned.
+// {stem} is the asset name without its extension, {ext} the extension with its dot, {version} the release version.
+export function versionedName(pattern, asset, version) {
+  const dot = asset.lastIndexOf(".");
+  const stem = dot > 0 ? asset.slice(0, dot) : asset, ext = dot > 0 ? asset.slice(dot) : "";
+  return String(pattern).replaceAll("{stem}", stem).replaceAll("{ext}", ext).replaceAll("{version}", version);
+}
+// What the schema dialect can't say: the versioned name keeps the asset's extension, differs from it and is a plain file name.
+export function checkVersioned(dist, version) {
+  const errors = [];
+  if (!dist || !dist.versioned) return ["distribution.versioned missing (ca.repo/1 v5)"];
+  const n = versionedName(dist.versioned, dist.asset, version);
+  const dot = dist.asset.lastIndexOf("."), ext = dot > 0 ? dist.asset.slice(dot) : "";
+  if (!/^[A-Za-z0-9._-]+$/.test(n)) errors.push(`distribution.versioned gives ${n}: not a plain file name`);
+  if (!n.includes(version)) errors.push(`distribution.versioned gives ${n}: the version is not in the name`);
+  if (ext && !n.endsWith(ext)) errors.push(`distribution.versioned gives ${n}: does not keep the ${ext} extension`);
+  if (n === dist.asset) errors.push(`distribution.versioned gives the stable name ${n}`);
+  return errors;
+}
