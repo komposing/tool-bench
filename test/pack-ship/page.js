@@ -1,4 +1,4 @@
-// Pack & Ship page harness (C1059, C841-s7; 2.1.0 C1141, C841-s10; 2.2.0 C1146): runs TB:pack-ship 2.2.0 inside the built bench against a stand-in for the
+// Pack & Ship page harness (C1059, C841-s7; 2.1.0 C1141, C841-s10; 2.2.0 C1146; 2.3.0 C1194): runs TB:pack-ship 2.3.0 inside the built bench against a stand-in for the
 // ca-v3-pack-ship front door. Synthetic orders only (no live data). Proves: the table is drawn from the stage read alone
 // (columns from stage_defs, icon colours from states), buttons follow the actions list (disabled ones show their reason, no
 // request), inputs are sent as the action names them, Refresh starts, polls and reloads, a busy guard holds the button, and a
@@ -103,18 +103,42 @@ const ok = (name, v) => { checks.push([name, !!v]); console.log((v ? "ok   " : "
   ok("unknown context field shown as name: value", cx2.includes("Gift wrap: yes"));
   ok("NI badge chip", await fr.$eval('tr.cx[data-ctx="1111111-1"] .chip', c => c.textContent === "NI" && c.classList.contains("c-NI")));
   ok("no context line when the order has none", (await fr.$$('tr.cx[data-ctx="1111111-3"]')).length === 0);
-  // quick filter
-  const fl = await fr.$$eval("#filters button", b => b.map(x => x.textContent));
-  ok("filter: All, each country, each badge present", JSON.stringify(fl) === JSON.stringify(["All", "Italy1", "United Kingdom1", "NI1", "international1"]));
-  await f.locator('#filters button[data-fk="country"][data-fv="Italy"]').click(); await p.waitForTimeout(100);
-  ok("country filter narrows the list", JSON.stringify(await fr.$$eval("tbody tr[data-id]", r => r.map(x => x.dataset.id))) === JSON.stringify(["1111111-2"]));
+  // C1194 row filter: dimensions from the reply, chips and typed query in step, AND across keys, OR within
+  const dimsSeen = await fr.$$eval("#chips .dim > b", b => b.map(x => x.getAttribute("title")));
+  ok("filter dimensions: status, every stage with more than one state, category context fields (no buyer, no amounts), can", ["status", "health", "collection", "label", "tracking", "country", "currency", "item_count", "customs_badge", "can"].every(k => dimsSeen.includes(k)) && !dimsSeen.includes("buyer_username") && !dimsSeen.includes("order_total") && !dimsSeen.includes("dropped_off"));
+  const rowsNow = async () => JSON.stringify(await fr.$$eval("tbody tr[data-id]", r => r.map(x => x.dataset.id)));
+  await f.locator('#chips button[data-fk="country"][data-fv="Italy"]').click(); await p.waitForTimeout(100);
+  ok("country chip narrows the list", (await rowsNow()) === JSON.stringify(["1111111-2"]));
+  ok("chip writes the query", (await fr.$eval("#q", i => i.value)) === "country:Italy");
   ok("count shows n of m", (await fr.$eval("#count", c => c.textContent)).startsWith("1 of 3 orders"));
   await f.locator("#reload").click(); await p.waitForTimeout(500);
-  ok("filter kept across Reload", JSON.stringify(await fr.$$eval("tbody tr[data-id]", r => r.map(x => x.dataset.id))) === JSON.stringify(["1111111-2"]));
-  await f.locator('#filters button[data-fk="customs_badge"][data-fv="NI"]').click(); await p.waitForTimeout(100);
-  ok("badge filter narrows the list", JSON.stringify(await fr.$$eval("tbody tr[data-id]", r => r.map(x => x.dataset.id))) === JSON.stringify(["1111111-1"]));
-  await f.locator('#filters button[data-fk=""]').click(); await p.waitForTimeout(100);
-  ok("All restores the list", (await fr.$$("tbody tr[data-id]")).length === 3);
+  ok("filter kept across Reload", (await rowsNow()) === JSON.stringify(["1111111-2"]));
+  await f.locator('#chips button[data-fk="country"][data-fv="United Kingdom"]').click(); await p.waitForTimeout(100);
+  ok("two values of one key: OR", (await rowsNow()) === JSON.stringify(["1111111-1", "1111111-2"]) && (await fr.$eval("#q", i => i.value)) === 'country:Italy,"United Kingdom"');
+  await f.locator('#chips button[data-fk="label"][data-fv="done"]').click(); await p.waitForTimeout(100);
+  ok("a second key: AND", (await rowsNow()) === JSON.stringify(["1111111-1"]));
+  await f.locator("#qClear").click(); await p.waitForTimeout(100);
+  ok("Clear restores the list", (await fr.$$("tbody tr[data-id]")).length === 3 && (await fr.$eval("#q", i => i.value)) === "");
+  await f.locator('#chips button[data-fk="label"][data-fv="none"]').click({ button: "right" }); await p.waitForTimeout(100);
+  ok("right-click excludes a value (key!:)", (await rowsNow()) === JSON.stringify(["1111111-1", "1111111-2"]) && (await fr.$eval("#q", i => i.value)) === "label!:none");
+  await f.locator("#qClear").click();
+  await f.locator("#q").fill("customs_badge:NI"); await p.waitForTimeout(350);
+  ok("typed query filters", (await rowsNow()) === JSON.stringify(["1111111-1"]));
+  ok("typed query lights its chip", await fr.$eval('#chips button[data-fk="customs_badge"][data-fv="NI"]', b => b.classList.contains("on")));
+  await f.locator("#q").fill("1111111-3"); await p.waitForTimeout(350);
+  ok("a word with no key matches the order number", (await rowsNow()) === JSON.stringify(["1111111-3"]));
+  await f.locator("#q").fill("colour:red"); await p.waitForTimeout(350);
+  ok("unknown key is named, not applied", (await fr.$eval("#count", c => c.textContent)).includes("unknown filter key colour") && (await fr.$$("tbody tr[data-id]")).length === 3);
+  await f.locator("#q").fill(""); await f.locator("#q").type("pac"); await p.waitForTimeout(100);
+  const sg1 = await fr.$$eval("#sugg li", l => l.map(x => x.firstChild.textContent));
+  ok("autocomplete offers keys with is / is not", sg1.includes("packed:") && sg1.includes("packed!:"));
+  await f.locator("#q").press("Tab"); await p.waitForTimeout(100);
+  ok("Tab completes the key", (await fr.$eval("#q", i => i.value)) === "packed:");
+  const sg2 = await fr.$$eval("#sugg li", l => l.map(x => x.textContent));
+  ok("then offers the values present with counts", sg2.length === 1 && sg2[0].startsWith("packed:later") && sg2[0].includes("3 orders"));
+  await f.locator("#q").press("Enter"); await p.waitForTimeout(350);
+  ok("Enter takes the value and applies it", (await fr.$eval("#q", i => i.value)).trim() === "packed:later" && (await fr.$$("tbody tr[data-id]")).length === 3);
+  await f.locator("#qClear").click(); await p.waitForTimeout(100);
   const n0 = sent.length; await fr.$eval('button[data-ref="1111111-3"][data-act="label"]', b => b.click()); await p.waitForTimeout(200);
   ok("disabled action sends nothing", sent.length === n0);
   ok("custom_text field only on the action naming it", (await fr.$$('input[data-inp="custom_text"]')).length === 1 && (await fr.$$('input[data-inp="copies"]')).length === 0);
@@ -167,6 +191,23 @@ const ok = (name, v) => { checks.push([name, !!v]); console.log((v ? "ok   " : "
   ok("busy guard holds the button", (await fr.$eval("#refresh", b => b.disabled && b.textContent)) === "Sync running");
   busy = false; await p.waitForTimeout(2500);
   ok("button released when the chain ends", !(await fr.$eval("#refresh", b => b.disabled)));
+  // C1194 bulk: one action on every shown order where it is enabled, two taps, sequential, one print document
+  await f.locator("#q").fill("can:label"); await p.waitForTimeout(350);
+  ok("can:<action> filters orders where it is enabled", (await rowsNow()) === JSON.stringify(["1111111-1", "1111111-2"]));
+  await f.locator("#bKey").selectOption("label"); await p.waitForTimeout(100);
+  ok("bulk names the count of shown orders it can run on", (await fr.$eval("#bRun", b => b.textContent)) === "Run on 2 shown");
+  const nb = sent.filter(b => b.op === "action").length;
+  await f.locator("#bRun").click(); await p.waitForTimeout(150);
+  ok("first tap only asks, with the count", (await fr.$eval("#bRun", b => b.textContent)) === "Tap again: Label 2 orders" && sent.filter(b => b.op === "action").length === nb);
+  await f.locator("#bRun").click(); await p.waitForTimeout(2500);
+  const bl = sent.filter(b => b.op === "action").slice(nb);
+  ok("second tap runs the action once per shown order, in order", bl.length === 2 && bl[0].params.order_ref === "1111111-1" && bl[1].params.order_ref === "1111111-2" && bl.every(b => b.params.action === "label"));
+  const res = await fr.$$eval("#bulk .res div", d => d.map(x => x.className + " " + x.textContent));
+  ok("per-order results shown", res.length === 2 && res[0].startsWith("ok 1111111-1 · printed") && res[1].startsWith("ok 1111111-2 · parcel2go.drafts.list ok"));
+  const bdoc = await fr.$eval("#doc", d => d.srcdoc);
+  ok("printed orders gathered in one document", (bdoc.match(/PACKING SLIP/g) || []).length === 1 && bdoc.includes("1111111-1"));
+  ok("stages re-read after the run", sent.slice(-3).some(b => b.op === "orders_stages"));
+  await f.locator("#qClear").click(); await p.waitForTimeout(100);
   ok("only page ops sent", sent.every(b => ["orders_stages", "run_status", "refresh", "action"].includes(b.op)));
   const store = await p.evaluate(async () => ({ ls: localStorage.length, ss: sessionStorage.length, idb: indexedDB.databases ? (await indexedDB.databases()).length : 0, caches: (self.caches ? (await caches.keys()).length : 0) }));
   ok("no rows in localStorage, sessionStorage, IndexedDB or Cache API", store.ls === 0 && store.ss === 0 && store.idb === 0 && store.caches === 0);
