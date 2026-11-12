@@ -1,5 +1,18 @@
 # Changelog
 
+## 3.16.0 — C1448
+
+- **Pack & Ship 2.5.0** (`TB:pack-ship` v2.5.0, T763): the page **holds no window**. `orders_stages` is sent without
+  `window_days`, so the `pack.orders.stages` contract default applies (30 since C1364), and the days box shows the window
+  the reply names. A number typed there is sent for that load only. The `packship.window_days` setting is removed and a
+  stored value (Tool Bench wrote the old default 14 on any settings save) is no longer read; it is kept, not deleted.
+- **Stage lines** (`ca.pack_stage_lines/1`): any stage that declares `lines` in std `pack_stages` returns them as
+  `[{text, href}]` and the page draws them under the stage status; `href` is linked only when it is `https://`. The Label
+  stage lists each booked line's tracking number linked to its tracking URL. Harness: synthetic references; 84/84.
+
+### Fixed
+- none
+
 ## 3.15.0 — C1220
 
 - **Pack & Ship 2.4.0** (`TB:pack-ship` v2.4.0, T689): labels with **extra pages print in full**. The label PDF was
