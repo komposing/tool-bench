@@ -1,4 +1,4 @@
-// Pack & Ship page harness (C1059, C841-s7; 2.1.0 C1141, C841-s10; 2.2.0 C1146; 2.3.0 C1194; 2.4.0 C1220): runs TB:pack-ship 2.4.0 inside the built bench against a stand-in for the
+// Pack & Ship page harness (C1059, C841-s7; 2.1.0 C1141, C841-s10; 2.2.0 C1146; 2.3.0 C1194; 2.4.0 C1220; 2.5.0 C1448): runs TB:pack-ship 2.5.0 inside the built bench against a stand-in for the
 // ca-v3-pack-ship front door. Synthetic orders only (no live data). Proves: the table is drawn from the stage read alone
 // (columns from stage_defs, icon colours from states), buttons follow the actions list (disabled ones show their reason, no
 // request), inputs are sent as the action names them, Refresh starts, polls and reloads, a busy guard holds the button, and a
@@ -33,13 +33,15 @@ const CTX = {
   "1111111-1": { country: "United Kingdom", order_total: 7.8, currency: "GBP", item_count: 2, customs_badge: "NI", buyer_username: "testbuyer1", buyer_postcode: "BT28 2RN" },
   "1111111-2": { country: "Italy", order_total: 30, currency: "EUR", item_count: 1, customs_badge: "international", buyer_username: "testbuyer2", buyer_postcode: "00184", gift_wrap: "yes" }
 };
-const READ = { status: "ok", outcome: "ok", data: { outcome: "ok", count: 3, truncated: false,
+// C1448: the stand-in answers the window the engine used (30 by default, else the one asked) and stage lines on the Label stage.
+const LINES = [{ text: "TEST0000001GB", href: "https://example.test/track/TEST0000001GB" }, { text: "TEST0000002GB", href: "" }, { text: "TEST0000003GB", href: "javascript:alert(1)" }];
+const READ = { status: "ok", outcome: "ok", data: { outcome: "ok", count: 3, truncated: false, window_days: 30,
   row_context: { protocol: "ca.pack_row_context/2", fields: ["country", "order_total", "currency", "item_count", "customs_badge"], notes: [], overlay: ["buyer_username", "buyer_postcode"], overlay_notes: [] },
   stage_defs: [["health", "Order health"], ["collection", "Collection"], ["label", "Label"], ["packed", "Packed"], ["dropped_off", "Dropped off"], ["tracking", "Tracking"]].map(([key, label]) => ({ key, label })),
   states: { none: { icon: "orange" }, partial: { icon: "yellow" }, done: { icon: "green" }, later: { icon: "grey" } },
   last_sync: { orders: "2026-11-04T09:51:32.763Z" },
   orders: [
-    { order_ref: "1111111-1", order_date: "2026-11-01", status: "In Progress", links: { order: "https://www.discogs.com/sell/order/1111111-1" }, context: CTX["1111111-1"], stages: st("done", "done", "done", "none", "done"),
+    { order_ref: "1111111-1", order_date: "2026-11-01", status: "In Progress", links: { order: "https://www.discogs.com/sell/order/1111111-1" }, context: CTX["1111111-1"], stages: st("done", "done", "done", "none", "done").map(x => x.key === "label" ? Object.assign({}, x, { lines: LINES }) : x),
       actions: [{ key: "label", cap: "print.queue.add", then: "label.bytes", enabled: true, reason: "booked: print packing list and label", inputs: ["copies"], state: "done" },
                 { key: "message", cap: "discogs.orders.lifecycle", then: "discogs.orders.message.send", enabled: true, reason: "label_booked message due", inputs: ["custom_text"], state: "done" }] },
     { order_ref: "1111111-2", order_date: "2026-11-02", status: "Payment Received", context: CTX["1111111-2"], stages: st("partial", "partial", "partial", "none", "none"),
@@ -54,7 +56,7 @@ let busy = false, polls = 0;
 function handle(b) {
   sent.push(b);
   const p = b.params || {};
-  if (b.op === "orders_stages") return READ;
+  if (b.op === "orders_stages") return Object.assign({}, READ, { data: Object.assign({}, READ.data, { window_days: p.window_days || 30 }) });
   if (b.op === "run_status") {
     if (!p.run_ref) return { status: "ok", outcome: "ok", data: { busy, busy_runs: busy ? [{ parent_run_id: "x", steps_done: 2 }] : [] } };
     polls++;
@@ -95,7 +97,18 @@ const ok = (name, v) => { checks.push([name, !!v]); console.log((v ? "ok   " : "
   const fr = p.mainFrame();
   const f = p;
   ok("page reads with the cav3 key fallback", sent.some(b => b.op === "orders_stages"));
-  ok("stage read asks window_days 14", sent.find(b => b.op === "orders_stages").params.window_days === 14);
+  // C1448: a stored packship.window_days (14, as an old settings save left it) is ignored; the page sends no window
+  ok("stage read sends no window_days (contract default applies; stored 14 ignored)", !("window_days" in sent.find(b => b.op === "orders_stages").params));
+  ok("days box blank, placeholder shows the window the reply names", await p.$eval("#days", i => i.value === "" && i.placeholder === "30"));
+  const lbl = await p.$$eval('tr[data-id="1111111-1"] td:nth-child(5) .ln > *', l => l.map(x => ({ tag: x.tagName, text: x.textContent, href: x.getAttribute("href") })));
+  ok("Label cell lists the stage lines under its status", lbl.length === 3 && lbl.map(x => x.text).join() === "TEST0000001GB,TEST0000002GB,TEST0000003GB");
+  ok("tracking line links to its https URL only", lbl[0].tag === "A" && lbl[0].href === "https://example.test/track/TEST0000001GB" && lbl[1].tag === "SPAN" && lbl[2].tag === "SPAN");
+  ok("no lines drawn for a stage without them", (await p.$$('tr[data-id="1111111-2"] .ln')).length === 0);
+  await p.fill("#days", "45"); await p.dispatchEvent("#days", "change"); await p.waitForTimeout(400);
+  const reads = () => sent.filter(x => x.op === "orders_stages");
+  ok("a typed window is sent for that load", reads()[reads().length - 1].params.window_days === 45 && await p.$eval("#days", i => i.value === "" && i.placeholder === "45"));
+  await p.click("#reload"); await p.waitForTimeout(400);
+  ok("the next load goes back to the contract default", !("window_days" in reads()[reads().length - 1].params) && await p.$eval("#days", i => i.placeholder === "30"));
   ok("busy check on load", sent.some(b => b.op === "run_status" && !b.params.run_ref));
   const heads = await fr.$$eval("thead th", t => t.map(x => x.textContent));
   ok("columns from stage_defs", JSON.stringify(heads) === JSON.stringify(["order", "status", "Order health", "Collection", "Label", "Packed", "Dropped off", "Tracking", "actions"]));

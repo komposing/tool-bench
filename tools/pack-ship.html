@@ -6,10 +6,10 @@
   "format": "toolbench.tool/1",
   "id": "TB:pack-ship",
   "name": "Pack & Ship",
-  "description": "Pack and ship paid Discogs orders (ca.pack_ship/1): stage table from pack.orders.stages, orders shaded apart with a Discogs link, a row filter over every stage, status and context value (chips or typed query with autocomplete) with one action run on all shown orders, every label page printed (tap a preview page to skip it), compact buttons with tooltips and two-tap confirm. Rows in memory only.",
+  "description": "Pack and ship paid Discogs orders (ca.pack_ship/1): stage table from pack.orders.stages over its contract-default window (a typed number for one load), stage lines under a status (tracking refs under Label), Discogs order links, a row filter with one action run on all shown orders, every label page printed (tap a page to skip it), two-tap confirm. Rows in memory only.",
   "category": "CA_V3",
-  "tags": ["discogs", "parcel2go", "shipping", "print", "ca.pack_ship/1", "ca.pack_page/1", "ca.pack_row_context/2"],
-  "version": "2.4.0",
+  "tags": ["discogs", "parcel2go", "shipping", "print", "ca.pack_ship/1", "ca.pack_page/1", "ca.pack_row_context/2", "ca.pack_stage_lines/1"],
+  "version": "2.5.0",
   "contract": { "config_keys": ["packship"], "requires": ["wf:Pqjdoot0EPzoQxj0", "std:pack_stages", "cap:pack.orders.stages", "cap:pack.refresh", "cap:runs.status", "cap:print.queue.add", "cap:label.bytes"] },
   "sandbox": { "scripts": true, "forms": false, "modals": true, "popups": true, "downloads": true, "sameOrigin": false },
   "config_schema": {
@@ -17,7 +17,6 @@
     "fields": [
       { "path": "url", "label": "Pack & Ship endpoint", "type": "url", "required": true, "default": "https://komposing.app.n8n.cloud/webhook/ca-v3-pack-ship" },
       { "path": "headers.X-Api-Key", "label": "Viewer key (X-Api-Key)", "type": "secret", "required": false, "secret": true, "help": "CA_V3 viewer key. Leave empty to use the key saved for the CA_V3 Viewer (cav3)." },
-      { "path": "window_days", "label": "Days shown", "type": "number", "default": 14, "help": "1 to 60 (pack.orders.stages window_days)" },
       { "path": "copies", "label": "Label copies", "type": "number", "default": 1, "help": "1 to 3" },
       { "path": "auto_print", "label": "Open the print dialog after Print", "type": "boolean", "default": true }
     ]
@@ -58,6 +57,7 @@ a.oref{color:var(--acc);text-decoration:none;border-bottom:1px dotted var(--acc)
 .st{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:74px}
 .dot{width:14px;height:14px;border-radius:50%;display:inline-block;border:1px solid rgba(0,0,0,.12)}
 .st .t{font-size:11px;color:var(--ink2);line-height:1.25;max-width:120px}
+.st .ln{display:flex;flex-direction:column;gap:1px;max-width:140px} .st .ln a,.st .ln span{font:11px var(--mono);color:var(--acc);word-break:break-all} .st .ln span{color:var(--ink2)}
 .acts{display:flex;flex-wrap:wrap;gap:4px;min-width:120px;max-width:280px}
 .ab{position:relative;display:inline-flex;border-radius:4px;outline:none}
 .ab button{padding:2px 7px;font-size:12px;white-space:nowrap} .ab button:disabled{pointer-events:none}
@@ -93,7 +93,7 @@ tr.hasctx td{border-bottom:0;padding-bottom:2px} tr.cx td{padding:0 8px 6px} tr.
 <body><div id="app">
 <div id="top">
   <span class="brand">Pack &amp; Ship</span>
-  <label class="small">days <input id="days" type="number" min="1" max="60" value="14" style="width:52px"></label>
+  <label class="small">days <input id="days" type="number" min="1" max="60" value="" placeholder="…" title="blank: the engine's default window (pack.orders.stages contract); a number here applies to this load only" style="width:52px"></label>
   <button id="reload" title="read the stages again (no sync)">Reload</button>
   <button id="refresh" class="pri" title="run pack.refresh: orders, items, messages, health, then parcels">Refresh</button>
   <label class="small">copies <input id="copies" type="number" min="1" max="3" value="1" style="width:44px"></label>
@@ -136,7 +136,12 @@ tr.hasctx td{border-bottom:0;padding-bottom:2px} tr.cx td{padding:0 8px 6px} tr.
    item count and the customs badge; any other context field is shown as name: value. A quick filter (All, each country in
    the loaded rows, each badge) narrows the rendered list in memory. Action buttons are compact, one wrapped row per order,
    and their reason is a tooltip (hover title; keyboard focus or a tap shows it), not a line on the page. Rows live in
-   module variables only: nothing is written to localStorage, sessionStorage, IndexedDB or the Cache API. */
+   module variables only: nothing is written to localStorage, sessionStorage, IndexedDB or the Cache API.
+   2.5.0 (C1448, T763): the page holds no window: orders_stages is sent without window_days so the pack.orders.stages contract
+   default applies (30 since C1364), and the days box shows the window the reply names; a number typed there is sent for that
+   load only. The old packship.window_days setting is no longer read (a stored value is kept, never deleted). Stage lines
+   (ca.pack_stage_lines/1): any stage that declares lines in std pack_stages returns [{text, href}], drawn under its status
+   (the Label stage: tracking number linked to the tracking URL). */
 const TC = window.TOOL_CONFIG || {}, TM = window.TOOL_META || null;
 const getPath = (o, p) => p.split(".").reduce((a, k) => (a && typeof a === "object") ? a[k] : undefined, o);
 const PC = TC.packship || {};
@@ -146,7 +151,6 @@ const CONF = {
   url: PC.url || "https://komposing.app.n8n.cloud/webhook/ca-v3-pack-ship",
   key: getPath(PC, "headers.X-Api-Key") || getPath(TC, "cav3.dashboard.headers.X-Api-Key") || "",
   keyFrom: getPath(PC, "headers.X-Api-Key") ? "packship" : (getPath(TC, "cav3.dashboard.headers.X-Api-Key") ? "cav3" : ""),
-  days: clampInt(PC.window_days, 1, 60, 14),
   copies: clampInt(PC.copies, 1, 3, 1),
   autoPrint: PC.auto_print == null ? true : !!PC.auto_print
 };
@@ -187,7 +191,10 @@ const iconColor = state => { const n = String(((VIEW.states || {})[state] || {})
 async function loadStages(){
   setSync("busy", "loading");
   try {
-    const d = await call("orders_stages", { window_days: clampInt($("#days").value, 1, 60, CONF.days) });
+    // C1448: the window is the contract default (std, registry) unless the operator types a number for this load; the page holds none.
+    const typed = clampInt($("#days").value, 1, 60, 0), d = await call("orders_stages", typed ? { window_days: typed } : {});
+    if (typed) $("#days").value = ""; $("#days").placeholder = filled(d.window_days) ? String(d.window_days) : "…";
+    $("#days").title = `last ${filled(d.window_days) ? d.window_days : "?"} days (${typed ? "typed for this load" : "engine default"}); type a number to read another window once`;
     VIEW = { stage_defs: Array.isArray(d.stage_defs) ? d.stage_defs : [], states: isObj(d.states) ? d.states : {}, orders: Array.isArray(d.orders) ? d.orders : [], last_sync: isObj(d.last_sync) ? d.last_sync : {} };
     const rc = isObj(d.row_context) ? d.row_context : {};
     NOTES = [].concat(Array.isArray(d.notes) ? d.notes : [], Array.isArray(rc.notes) ? rc.notes : [], Array.isArray(rc.overlay_notes) ? rc.overlay_notes : []);
@@ -383,6 +390,12 @@ $("#bulk").addEventListener("click", async e => {
   toast(`${cap1(BULK.key)}: ${BULK.results.length - bad} ok${bad ? `, ${bad} not` : ""}`, bad > 0);
   loadStages();
 });
+// C1448 (ca.pack_stage_lines/1): a stage that declares lines in std pack_stages returns them as [{text, href}] (the Label stage:
+// each booked line's tracking number, linked to its tracking URL). Drawn under the stage status for any stage; https links only.
+function linesHtml(s){
+  const L = (Array.isArray(s.lines) ? s.lines : []).filter(l => isObj(l) && filled(l.text));
+  return L.length ? `<span class="ln">${L.map(l => /^https:\/\//.test(String(l.href || "")) ? `<a href="${esc(l.href)}" target="_blank" rel="noopener" title="open tracking">${esc(l.text)}</a>` : `<span>${esc(l.text)}</span>`).join("")}</span>` : "";
+}
 function renderOrders(){
   const defs = VIEW.stage_defs;
   MATCH = matcher();
@@ -395,7 +408,7 @@ function renderOrders(){
   const rows = shown.map(o => {
     const byKey = {}; (o.stages || []).forEach(s => byKey[s.key] = s);
     const cells = defs.map(sd => { const s = byKey[sd.key] || { state: "later", text: "" };
-      return `<td><div class="st" title="${esc((sd.label || sd.key) + ": " + s.state)}"><span class="dot" style="background:${iconColor(s.state)}" aria-label="${esc(s.state)}"></span><span class="t">${esc(s.text || "")}</span></div></td>`; }).join("");
+      return `<td><div class="st" title="${esc((sd.label || sd.key) + ": " + s.state)}"><span class="dot" style="background:${iconColor(s.state)}" aria-label="${esc(s.state)}"></span><span class="t">${esc(s.text || "")}</span>${linesHtml(s)}</div></td>`; }).join("");
     const parts = (o.actions || []).map(a => actionHtml(o, a));
     const acts = parts.map(p => p.btn).join("") + parts.map(p => p.extra).join("");
     const ctx = ctxHtml(o), sel = o.order_ref === SEL ? "sel" : "";
@@ -582,7 +595,7 @@ $("#refresh").onclick = async () => {
   else { setSync("err", "refresh unconfirmed"); toast("Refresh not confirmed within the poll budget; Reload when it lands", true); }
 };
 $("#reload").onclick = loadStages; $("#days").onchange = loadStages;
-$("#days").value = CONF.days; $("#copies").value = CONF.copies;
+$("#copies").value = CONF.copies;
 
 /* ============================== settings ============================== */
 $("#gear").onclick = () => { const c = $("#cfg"); c.style.display = c.style.display === "block" ? "none" : "block"; $("#cUrl").value = CONF.url; $("#cKey").value = "";
