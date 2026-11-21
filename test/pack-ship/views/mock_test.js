@@ -9,7 +9,7 @@ const run = (body, nodes) => { const $ = (n) => { const d = nodes[n]; return { f
 const plan = (req) => run(fs.readFileSync(require('path').join(__dirname, 'readplan.js'), 'utf8'), { 'Pack Views Call': [req], 'Load Tabs Std': stdRows, 'Load Refs': refRows })[0].json;
 const assert = require('assert');
 const p1 = plan({ op: 'tabs' }); assert.strictEqual(p1.any, false);
-const p2 = plan({ op: 'stats' }); assert(p2.any && p2.need.D && p2.need.P, JSON.stringify(p2.errs)); assert(p2.urls.D.includes("ranges='Discogs_Orders%20'") || p2.urls.D.includes('%27Discogs_Orders%20%27'), p2.urls.D); assert.strictEqual(p2.run_keys.length, 7); assert(p2.run_keys.includes('discogs.orders.picking'), JSON.stringify(p2.run_keys));
+const p2 = plan({ op: 'stats' }); assert(p2.any && p2.need.D && p2.need.P, JSON.stringify(p2.errs)); assert(p2.urls.D.includes("ranges='Discogs_Orders%20'") || p2.urls.D.includes('%27Discogs_Orders%20%27'), p2.urls.D); assert.strictEqual(p2.run_keys.length, 8); assert(p2.run_keys.includes('discogs.orders.picking'), JSON.stringify(p2.run_keys));
 const p3 = plan({ op: 'consignors' }); assert(p3.any && p3.need.D && !p3.need.P && p3.run_keys.length === 0); assert.deepStrictEqual(p3.slots.discogs_orders.tabs, ['order_lines']);
 console.log('D url', p2.urls.D.slice(0, 200));
 const lib = fs.readFileSync(require('path').join(__dirname, 'lib.js'), 'utf8') + fs.readFileSync(require('path').join(__dirname, 'evaltail.js'), 'utf8');
