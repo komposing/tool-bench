@@ -50,6 +50,11 @@ runs.push({ registry_key: PK, ts: '2026-11-10T10:01:00.000Z', parent_run_id: 'r1
   { registry_key: PK, ts: '2026-11-11T09:00:00.000Z', parent_run_id: 'r2', metrics_json: mj({ started_at: '2026-11-11T08:59:00.000Z', reached: 0, counts: { collected: 0, not_found: 0, issue: 0 }, ms_per_collected: { wall: null, active: null } }) },
   { registry_key: PK, ts: '2026-11-12T09:30:00.000Z', parent_run_id: 'r3', metrics_json: mj({ started_at: '2026-11-12T09:00:00.000Z', reached: 6, counts: { collected: 5, not_found: 0, issue: 1 }, ms_per_collected: { wall: 40000, active: 30000 } }) },
   { registry_key: PK, ts: '2026-11-18T09:30:00.000Z', parent_run_id: 'r4', metrics_json: 'not json' });
+const HK = 'discogs.orders.health.refresh', hs = (day, c) => JSON.stringify({ kind: 'health_snapshot', day, counts: { 'On Track': c[0], 'At Risk': c[1], 'Priority': c[2], 'Critical': c[3], 'Order Issues': c[4] }, open: c.reduce((a, b) => a + b, 0) });
+runs.push({ registry_key: HK, ts: '2026-11-10T08:45:00.000Z', outcome: 'ok', metrics_json: null },
+  { registry_key: HK, ts: '2026-11-10T08:46:00.000Z', metrics_json: hs('2026-11-10', [9, 9, 9, 9, 9]) },
+  { registry_key: HK, ts: '2026-11-10T18:46:00.000Z', metrics_json: hs('2026-11-10', [4, 1, 0, 2, 1]) },
+  { registry_key: HK, ts: '2026-11-11T18:46:00.000Z', metrics_json: hs('2026-11-11', [6, 1, 2, 2, 3]) });
 const raw = { tabs: { 'discogs_orders|Discogs_Orders ': orders, 'discogs_orders|Discogs_Order_Items': items, 'discogs_orders|Discogs_Order_Flags': flags, 'discogs_orders|order_lines': lines, 'parcels|parcels_booked': parcels }, runs, runs_from: ps.reads.runs.from };
 
 const tabs = PV.evaluate({ op: 'tabs' }, stds, {});
@@ -84,5 +89,6 @@ t('unsettled_only hides settled rows', () => { const c2 = PV.evaluate({ op: 'con
 t('default period 90 days', () => { const c3 = PV.evaluate({ op: 'consignors', _now: NOW }, stds, raw); assert.strictEqual(c3.data.applied.from, '2026-08-24'); assert.strictEqual(c3.data.applied.to, '2026-11-21'); });
 t('picking: latest close per run, taps and empty starts left out', () => { assert.strictEqual(pt2('pick_outcomes', 'pick_collected', '2026-11-09'), 8); assert.strictEqual(pt2('pick_outcomes', 'pick_not_found', '2026-11-09'), 1); assert.strictEqual(pt2('pick_outcomes', 'pick_issue', '2026-11-09'), 1); assert.strictEqual(pt2('pick_speed', 'pick_s_active', '2026-11-09'), 25); assert.strictEqual(pt2('pick_speed', 'pick_s_wall', '2026-11-09'), 50); });
 t('picking rows stay out of the automation panels', () => { assert(!JSON.stringify(P.runs_failed).includes('picking')); assert(!JSON.stringify(P.runs_duration).includes('picking')); });
+t('health trend: last snapshot of each day, averaged over the bucket', () => { assert.strictEqual(pt2('health_trend', 'health_on_track', '2026-11-09'), 5); assert.strictEqual(pt2('health_trend', 'health_critical', '2026-11-09'), 2); assert.strictEqual(pt2('health_trend', 'health_issues', '2026-11-09'), 2); assert.strictEqual(pt2('health_trend', 'health_priority', '2026-11-09'), 1); });
 t('sizes', () => { const a = JSON.stringify(T).length; assert(a < 28000, 'std chars ' + a); });
 console.log(ok + ' passed; std chars', JSON.stringify(T).length, 'stats reply chars', JSON.stringify(st).length);
