@@ -3,7 +3,7 @@ const PV = packViews();
 const stds = { pack_tabs: JSON.parse(JSON.stringify(T)),
   discogs_reconcile: { orders: { sheet_id: 'SHEETA', orders_tab: 'Discogs_Orders ', items_tab: 'Discogs_Order_Items', statuses: ['Payment Received', 'In Progress', 'Shipped'] }, parcels: { sheet_id: 'SHEETB', booked_tab: 'parcels_booked' } },
   commerce: { statuses: { exclude: ['Merged', 'Cancelled*'] }, parties: { VRP: { name: 'VRP Music', type: 'self' }, NICK: { name: 'Nick', type: 'self' }, AW: { name: 'Andy W', type: 'consignor', commission_pct: 50 }, CH: { name: 'Charlie H', type: 'consignor', commission_pct: 25 }, PL: { name: 'Peter L', type: 'consignor', commission_pct: 25 } } },
-  pack_stages: { flags: { sheet_id: 'SHEETA', tab: 'Discogs_Order_Flags' } } };
+  run_metric: { instances: { pick_run: { registry_key: 'discogs.orders.picking' } } }, pack_stages: { flags: { sheet_id: 'SHEETA', tab: 'Discogs_Order_Flags' } } };
 const NOW = '2026-11-21';
 let ok = 0; const t = (name, fn) => { try { fn(); ok++; } catch (e) { console.log('FAIL', name, e.message); process.exitCode = 1; } };
 
@@ -43,6 +43,13 @@ const parcels = [['source_platform', 'source_order_id', 'booking_status', 'booki
   ['discogs', '1-3', 'draft', '', 9.9, '', '', 'Cat', 'X'],
   ['ebay', 'E-9', 'booked', '2026-11-05T12:00:00', 5, '', '', 'Z', 'X']];
 const runs = [{ registry_key: 'discogs.sync', ts: '2026-11-18T06:00:00.000Z', outcome: 'ok', duration_ms: 42000, chatId: 'x' }, { registry_key: 'discogs.sync', ts: '2026-11-19T06:00:00.000Z', outcome: 'upstream_error', duration_ms: 1000 }, { registry_key: 'parcel2go.orders.draft', ts: '2026-11-12T06:00:00.000Z', outcome: 'address_field_missing', duration_ms: 900 }, { registry_key: 'parcel2go.orders.draft', ts: '2026-11-12T07:00:00.000Z', outcome: 'ok', duration_ms: 900 }];
+const PK = 'discogs.orders.picking', mj = (o) => JSON.stringify(Object.assign({ kind: 'run_close', op: 'end' }, o));
+runs.push({ registry_key: PK, ts: '2026-11-10T10:01:00.000Z', parent_run_id: 'r1', metrics_json: JSON.stringify({ kind: 'event', status: 'collected' }) },
+  { registry_key: PK, ts: '2026-11-10T10:05:00.000Z', parent_run_id: 'r1', metrics_json: mj({ started_at: '2026-11-10T10:00:00.000Z', reached: 4, counts: { collected: 1, not_found: 3, issue: 0 }, ms_per_collected: { wall: 99000, active: 90000 } }) },
+  { registry_key: PK, ts: '2026-11-10T10:09:00.000Z', parent_run_id: 'r1', metrics_json: mj({ started_at: '2026-11-10T10:00:00.000Z', reached: 4, counts: { collected: 3, not_found: 1, issue: 0 }, ms_per_collected: { wall: 60000, active: 20000 } }) },
+  { registry_key: PK, ts: '2026-11-11T09:00:00.000Z', parent_run_id: 'r2', metrics_json: mj({ started_at: '2026-11-11T08:59:00.000Z', reached: 0, counts: { collected: 0, not_found: 0, issue: 0 }, ms_per_collected: { wall: null, active: null } }) },
+  { registry_key: PK, ts: '2026-11-12T09:30:00.000Z', parent_run_id: 'r3', metrics_json: mj({ started_at: '2026-11-12T09:00:00.000Z', reached: 6, counts: { collected: 5, not_found: 0, issue: 1 }, ms_per_collected: { wall: 40000, active: 30000 } }) },
+  { registry_key: PK, ts: '2026-11-18T09:30:00.000Z', parent_run_id: 'r4', metrics_json: 'not json' });
 const raw = { tabs: { 'discogs_orders|Discogs_Orders ': orders, 'discogs_orders|Discogs_Order_Items': items, 'discogs_orders|Discogs_Order_Flags': flags, 'discogs_orders|order_lines': lines, 'parcels|parcels_booked': parcels }, runs, runs_from: ps.reads.runs.from };
 
 const tabs = PV.evaluate({ op: 'tabs' }, stds, {});
@@ -75,5 +82,7 @@ t('CH settled line: nothing unsettled, in period', () => { assert.strictEqual(G.
 t('rows: period or unsettled, newest first, links', () => { assert.deepStrictEqual(G.AW.rows.map(r => r.order.text), ['1-1', '0-9']); assert.strictEqual(G.AW.rows[0].order.href, 'https://www.discogs.com/sell/order/1-1'); assert.strictEqual(G.PL.rows[0].order.href, ''); assert.strictEqual(G.PL.rows[0].channel_name, 'ebay'); assert.strictEqual(G.AW.rows[0].marker_code, 'AW'); assert.strictEqual(G.AW.rows[0].order_date, '2026-11-03'); });
 t('unsettled_only hides settled rows', () => { const c2 = PV.evaluate({ op: 'consignors', from: '2026-11-01', to: '2026-11-21', unsettled_only: true, _now: NOW }, stds, raw); assert.strictEqual(c2.data.panels[0].groups.find(g => g.key === 'CH').rows.length, 0); assert.strictEqual(c2.data.applied.unsettled_only, true); });
 t('default period 90 days', () => { const c3 = PV.evaluate({ op: 'consignors', _now: NOW }, stds, raw); assert.strictEqual(c3.data.applied.from, '2026-08-24'); assert.strictEqual(c3.data.applied.to, '2026-11-21'); });
+t('picking: latest close per run, taps and empty starts left out', () => { assert.strictEqual(pt2('pick_outcomes', 'pick_collected', '2026-11-09'), 8); assert.strictEqual(pt2('pick_outcomes', 'pick_not_found', '2026-11-09'), 1); assert.strictEqual(pt2('pick_outcomes', 'pick_issue', '2026-11-09'), 1); assert.strictEqual(pt2('pick_speed', 'pick_s_active', '2026-11-09'), 25); assert.strictEqual(pt2('pick_speed', 'pick_s_wall', '2026-11-09'), 50); });
+t('picking rows stay out of the automation panels', () => { assert(!JSON.stringify(P.runs_failed).includes('picking')); assert(!JSON.stringify(P.runs_duration).includes('picking')); });
 t('sizes', () => { const a = JSON.stringify(T).length; assert(a < 28000, 'std chars ' + a); });
 console.log(ok + ' passed; std chars', JSON.stringify(T).length, 'stats reply chars', JSON.stringify(st).length);

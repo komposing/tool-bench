@@ -20,7 +20,7 @@ const add = (nm) => { if (need[nm] || !isObj(SRC[nm])) { return; } need[nm] = tr
   (Array.isArray(pn.metrics) ? pn.metrics : []).concat((Array.isArray(pn.tiles) ? pn.tiles : []).map((t) => isObj(t) ? t.metric : '')).forEach((mk) => { if (isObj(MET[mk])) { add(S(MET[mk].source)); } }); });
 let maxDays = 0; const keys = {};
 Object.keys(need).forEach((nm) => { const s = SRC[nm];
-  if (s.kind === 'runs') { (Array.isArray(s.keys) ? s.keys : []).forEach((k) => { keys[S(k)] = true; }); maxDays = Math.max(maxDays, Number(s.max_days || 60)); return; }
+  if (s.kind === 'runs') { const kl = ref(s.keys); (Array.isArray(kl) ? kl : []).forEach((k) => { const v = S(ref(k)); if (v) { keys[v] = true; } }); maxDays = Math.max(maxDays, Number(s.max_days || 60)); return; }
   const slot = S(s.slot), sheet = S(ref(s.sheet)), tabName = S(ref(s.tab));
   if (!SLOTS[slot]) { out.errs.push('source ' + nm + ': credential slot ' + slot + ' has no read node'); return; }
   if (!sheet || !tabName) { out.errs.push('source ' + nm + ': sheet or tab did not resolve'); return; }

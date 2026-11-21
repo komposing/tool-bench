@@ -1,4 +1,4 @@
-// std pack_tabs v1 (ca.pack_tabs/1) - the guide JSON for the CA_standards row. Column names confirmed from the writer
+// std pack_tabs v3 (ca.pack_tabs/1) - the guide JSON for the CA_standards row. Column names confirmed from the writer
 // workflows on 2026-11-21 (S1530): Discogs sync bVTbjzHadHsU3cLK, health 3G75c8kP1VH2NisB, items b3RsMhNC39F5YG8S,
 // ledger lkKxu3Onw0j2z8Fj, flags ym4GSRyUxoGK9VQz, Parcel2Go collector Vhe0uMN9g4wqqERy and draft bwwAlusXGjE7OKcv.
 const LIVE = 'live', DISCOGS = 'discogs', PAID = 'paid', P2G = 'p2g_booked';
@@ -6,9 +6,9 @@ const RUN_KEYS = { $ref: 'pack_tabs:sets.run_keys' }, RUN_LABELS = { $ref: 'pack
 
 module.exports = {
   protocol: 'ca.pack_tabs/1',
-  version: 2,
+  version: 3,
   principle: 'The Pack & Ship page views are data (pack_ship/design v7, C1528). tabs lists the tab column; a tab names its page op, its controls and its panels; a panel names its kind and metrics; a metric names a source, a filter (conditions or the name of a shared entry in filters), a time column and a measure; a source names a sheet tab or the run trace by std path with a column allowlist, plus computed fields. CA_V3 Pack Views evaluates these definitions and the page draws panel kinds (kpi, trend, breakdown, ledger). A new tab, panel, metric, consignor, channel or column is an edit here; a column that is absent returns source_missing, never an estimate (I4). No buyer column may be listed (privacy.forbid_like).',
-  uses: ['pack_tabs', 'discogs_reconcile', 'commerce', 'pack_stages'],
+  uses: ['pack_tabs', 'discogs_reconcile', 'commerce', 'pack_stages', 'run_metric'],
   ranges: { default_days: 90, allowed: [30, 90, 180, 365], buckets: ['day', 'week', 'month'], default_bucket: 'week', day_bucket_max_days: 92, period_default_days: 90, period_max_days: 1100 },
   privacy: { forbid_like: ['buyer', 'recipient', 'email', 'phone', 'address', 'postcode', 'delivery_', 'paypal', 'contact', 'username'], note: 'Replies carry sums, counts, order numbers, item titles and party codes only. A listed column whose name matches forbid_like is refused before any read.' },
   filters: {
@@ -35,7 +35,7 @@ module.exports = {
         { key: 'bucket', kind: 'select', label: 'By', default: 'week', options: [{ value: 'day', label: 'Day' }, { value: 'week', label: 'Week' }, { value: 'month', label: 'Month' }] }
       ],
       note: 'Discogs and Parcel2Go only. Money is from the commerce ledger by sale date; weeks start on Monday (UTC).',
-      panels: ['headline', 'sales', 'house_take', 'vrp_net', 'vrp_items', 'payouts_owed', 'postage_margin', 'order_flow', 'order_value', 'status_mix', 'health_now', 'fulfil_median', 'fulfil_p90', 'parcels_booked', 'label_cost', 'delivery_days', 'tracking_exceptions', 'drafts_refused', 'runs_failed', 'runs_duration'] },
+      panels: ['headline', 'sales', 'house_take', 'vrp_net', 'vrp_items', 'payouts_owed', 'postage_margin', 'order_flow', 'order_value', 'status_mix', 'health_now', 'fulfil_median', 'fulfil_p90', 'pick_outcomes', 'pick_speed', 'parcels_booked', 'label_cost', 'delivery_days', 'tracking_exceptions', 'drafts_refused', 'runs_failed', 'runs_duration'] },
     { key: 'consignors', label: 'On behalf of others', icon: '🤝', kind: 'panels', op: 'consignors', range: 'period',
       controls: [
         { key: 'from', kind: 'date', label: 'From' },
@@ -79,7 +79,22 @@ module.exports = {
         { name: 'transit_days', fn: 'diff_days', args: ['dropped_off_at', 'delivered_at'] }
       ] },
     runs: { kind: 'runs', table: 'CA_qa_runs', max_days: 60, keys: ['pack.refresh', 'discogs.sync', 'discogs.orders.reconcile', 'parcel2go.orders.collect', 'discogs.orders.message.send_batch', 'parcel2go.orders.draft'], columns: ['registry_key', 'ts', 'outcome', 'duration_ms'],
-      fields: [{ name: 'duration_s', fn: 'scale', args: ['duration_ms', 0.001] }] }
+      fields: [{ name: 'duration_s', fn: 'scale', args: ['duration_ms', 0.001] }] },
+    pick_runs: { kind: 'runs', table: 'CA_qa_runs', max_days: 60, keys: [{ $ref: 'run_metric:instances.pick_run.registry_key' }], columns: ['registry_key', 'ts', 'parent_run_id', 'metrics_json'],
+      fields: [
+        { name: 'row_kind', fn: 'json_get', args: ['metrics_json', 'kind'] },
+        { name: 'started_at', fn: 'json_get', args: ['metrics_json', 'started_at'] },
+        { name: 'reached', fn: 'json_get', args: ['metrics_json', 'reached'] },
+        { name: 'collected', fn: 'json_get', args: ['metrics_json', 'counts.collected'] },
+        { name: 'not_found', fn: 'json_get', args: ['metrics_json', 'counts.not_found'] },
+        { name: 'issue', fn: 'json_get', args: ['metrics_json', 'counts.issue'] },
+        { name: 'ms_active', fn: 'json_get', args: ['metrics_json', 'ms_per_collected.active'] },
+        { name: 'ms_wall', fn: 'json_get', args: ['metrics_json', 'ms_per_collected.wall'] },
+        { name: 's_active', fn: 'scale', args: ['ms_active', 0.001] },
+        { name: 's_wall', fn: 'scale', args: ['ms_wall', 0.001] }
+      ],
+      where: [{ col: 'row_kind', op: 'eq', value: 'run_close' }, { col: 'reached', op: 'gt', value: 0 }],
+      latest_by: { key: 'parent_run_id', order: 'ts' } }
   },
   metrics: {
     gross: { label: 'Gross sales', source: 'ledger_lines', where: [DISCOGS, LIVE], time: 'order_date', measure: 'sum', value: 'item_price' },
@@ -108,6 +123,11 @@ module.exports = {
     transit_p90: { label: '90th percentile', source: 'parcels', where: ['p2g'], time: 'dropped_off_at', measure: 'p90', value: 'transit_days' },
     drafts_refused: { label: 'Drafts refused', source: 'runs', where: [{ col: 'registry_key', op: 'eq', value: 'parcel2go.orders.draft' }, { col: 'outcome', op: 'nin', value: ['ok', 'cancelled', 'expired', 'pending', 'started'] }], time: 'ts', measure: 'count' },
     runs_failed: { label: 'Failed runs', source: 'runs', where: ['chains', { col: 'outcome', op: 'nin', value: ['ok', 'busy', 'started', 'pending'] }], time: 'ts', measure: 'count', series_by: 'registry_key', series_order: RUN_KEYS, series_all: true, series_labels: RUN_LABELS },
+    pick_collected: { label: 'Collected', source: 'pick_runs', time: 'started_at', measure: 'sum', value: 'collected' },
+    pick_not_found: { label: 'Not found', source: 'pick_runs', time: 'started_at', measure: 'sum', value: 'not_found' },
+    pick_issue: { label: 'Issue', source: 'pick_runs', time: 'started_at', measure: 'sum', value: 'issue' },
+    pick_s_active: { label: 'Active time per collected item', source: 'pick_runs', time: 'started_at', measure: 'median', value: 's_active' },
+    pick_s_wall: { label: 'Elapsed time per collected item', source: 'pick_runs', time: 'started_at', measure: 'median', value: 's_wall' },
     runs_duration: { label: 'Run time', source: 'runs', where: ['chains', { col: 'outcome', op: 'eq', value: 'ok' }], time: 'ts', measure: 'median', value: 'duration_s', series_by: 'registry_key', series_order: RUN_KEYS, series_labels: RUN_LABELS }
   },
   panels: {
@@ -128,6 +148,8 @@ module.exports = {
     health_now: { kind: 'breakdown', title: 'Open orders by health (now)', unit: 'count', metrics: ['health_now'], note: 'Current values only, archived orders left out. A trend follows once the daily health snapshot is live (C1528-s5).' },
     fulfil_median: { kind: 'trend', title: 'Fulfilment speed: median', unit: 'days', chart: 'line', metrics: ['med_printed', 'med_dropped', 'med_shipped'], note: 'Days from payment, by order date. Printed counts from 9 Nov 2026, when print marking began.' },
     fulfil_p90: { kind: 'trend', title: 'Fulfilment speed: slowest tenth', unit: 'days', chart: 'line', metrics: ['p90_printed', 'p90_dropped', 'p90_shipped'], note: '90th percentile, days from payment.', kpis: false },
+    pick_outcomes: { kind: 'trend', title: 'Picking: items by outcome', unit: 'count', chart: 'stacked', metrics: ['pick_collected', 'pick_not_found', 'pick_issue'], note: 'Items handled in pick runs, by the day the run started. An item not found in one run and picked in a later run counts in both. Run trace, last 60 days.' },
+    pick_speed: { kind: 'trend', title: 'Picking: time per collected item', unit: 's', chart: 'line', metrics: ['pick_s_active', 'pick_s_wall'], note: 'Median across pick runs. Active time leaves out pauses over 60 seconds; elapsed time is the whole run. Run trace, last 60 days.' },
     parcels_booked: { kind: 'trend', title: 'Parcels booked', unit: 'count', chart: 'bar', metrics: ['parcels_booked'] },
     label_cost: { kind: 'trend', title: 'Label cost per parcel', unit: 'GBP', chart: 'line', metrics: ['label_cost'], note: 'Median recorded cost; quote or service profile cost, not an invoiced price.' },
     delivery_days: { kind: 'trend', title: 'Drop-off to delivered', unit: 'days', chart: 'line', metrics: ['transit_median', 'transit_p90'], note: 'By drop-off date, for parcels with both scans.' },

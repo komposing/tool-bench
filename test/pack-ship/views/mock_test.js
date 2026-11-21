@@ -3,12 +3,13 @@ const fs = require('fs'); const T = require('./pack_tabs.js');
 const stdRows = [{ standards_name: 'pack_tabs', standards_guide: JSON.stringify(T) }];
 const refRows = [{ standards_name: 'discogs_reconcile', standards_guide: JSON.stringify({ orders: { sheet_id: 'SHEETA', orders_tab: 'Discogs_Orders ', items_tab: 'Discogs_Order_Items', statuses: ['Payment Received', 'In Progress', 'Shipped'] }, parcels: { sheet_id: 'SHEETB', booked_tab: 'parcels_booked' } }) },
   { standards_name: 'commerce', standards_guide: JSON.stringify({ statuses: { exclude: ['Merged', 'Cancelled*'] }, parties: { VRP: { type: 'self' }, AW: { name: 'A', type: 'consignor', commission_pct: 50 } } }) },
-  { standards_name: 'pack_stages', standards_guide: JSON.stringify({ flags: { sheet_id: 'SHEETA', tab: 'Discogs_Order_Flags' } }) }];
+  { standards_name: 'pack_stages', standards_guide: JSON.stringify({ flags: { sheet_id: 'SHEETA', tab: 'Discogs_Order_Flags' } }) },
+  { standards_name: 'run_metric', standards_guide: JSON.stringify({ instances: { pick_run: { registry_key: 'discogs.orders.picking' } } }) }];
 const run = (body, nodes) => { const $ = (n) => { const d = nodes[n]; return { first: () => ({ json: d ? d[0] : undefined }), all: () => (d || []).map((j) => ({ json: j })), isExecuted: !!d }; }; return new Function('$', body)($); };
 const plan = (req) => run(fs.readFileSync(require('path').join(__dirname, 'readplan.js'), 'utf8'), { 'Pack Views Call': [req], 'Load Tabs Std': stdRows, 'Load Refs': refRows })[0].json;
 const assert = require('assert');
 const p1 = plan({ op: 'tabs' }); assert.strictEqual(p1.any, false);
-const p2 = plan({ op: 'stats' }); assert(p2.any && p2.need.D && p2.need.P, JSON.stringify(p2.errs)); assert(p2.urls.D.includes("ranges='Discogs_Orders%20'") || p2.urls.D.includes('%27Discogs_Orders%20%27'), p2.urls.D); assert.strictEqual(p2.run_keys.length, 6);
+const p2 = plan({ op: 'stats' }); assert(p2.any && p2.need.D && p2.need.P, JSON.stringify(p2.errs)); assert(p2.urls.D.includes("ranges='Discogs_Orders%20'") || p2.urls.D.includes('%27Discogs_Orders%20%27'), p2.urls.D); assert.strictEqual(p2.run_keys.length, 7); assert(p2.run_keys.includes('discogs.orders.picking'), JSON.stringify(p2.run_keys));
 const p3 = plan({ op: 'consignors' }); assert(p3.any && p3.need.D && !p3.need.P && p3.run_keys.length === 0); assert.deepStrictEqual(p3.slots.discogs_orders.tabs, ['order_lines']);
 console.log('D url', p2.urls.D.slice(0, 200));
 const lib = fs.readFileSync(require('path').join(__dirname, 'lib.js'), 'utf8') + fs.readFileSync(require('path').join(__dirname, 'evaltail.js'), 'utf8');
