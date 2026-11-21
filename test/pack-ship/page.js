@@ -1,4 +1,4 @@
-// Pack & Ship page harness (C1059, C841-s7; 2.1.0 C1141, C841-s10; 2.2.0 C1146; 2.3.0 C1194; 2.4.0 C1220; 2.5.0 C1448): runs TB:pack-ship 2.5.0 inside the built bench against a stand-in for the
+// Pack & Ship page harness (C1059, C841-s7; 2.1.0 C1141, C841-s10; 2.2.0 C1146; 2.3.0 C1194; 2.4.0 C1220; 2.5.0 C1448; 3.0.0 C1528): runs TB:pack-ship 3.0.0 inside the built bench against a stand-in for the
 // ca-v3-pack-ship front door. Synthetic orders only (no live data). Proves: the table is drawn from the stage read alone
 // (columns from stage_defs, icon colours from states), buttons follow the actions list (disabled ones show their reason, no
 // request), inputs are sent as the action names them, Refresh starts, polls and reloads, a busy guard holds the button, and a
@@ -53,9 +53,15 @@ const READ = { status: "ok", outcome: "ok", data: { outcome: "ok", count: 3, tru
   ] } };
 const sent = [];
 let busy = false, polls = 0;
+// 3.0.0 (C1528): replies for the tab ops, built by the CA_V3 Pack Views library from generated rows (views-fixture.json)
+const VF = require("./views-fixture.json");
+let tabsOff = false;
 function handle(b) {
   sent.push(b);
   const p = b.params || {};
+  if (b.op === "tabs") return tabsOff ? { status: "error", outcome: "param_rejected", message: "op must be one of orders_stages, orders_list" } : VF.tabs;
+  if (b.op === "stats") return p.range_days === 30 ? VF.stats30 : VF.stats90;
+  if (b.op === "consignors") return p.unsettled_only ? VF.consignors_unsettled : VF.consignors;
   if (b.op === "orders_stages") return Object.assign({}, READ, { data: Object.assign({}, READ.data, { window_days: p.window_days || 30 }) });
   if (b.op === "run_status") {
     if (!p.run_ref) return { status: "ok", outcome: "ok", data: { busy, busy_runs: busy ? [{ parent_run_id: "x", steps_done: 2 }] : [] } };
@@ -265,7 +271,55 @@ const ok = (name, v) => { checks.push([name, !!v]); console.log((v ? "ok   " : "
   ok("printed orders gathered in one document", (bdoc.match(/PACKING SLIP/g) || []).length === 1 && bdoc.includes("1111111-1"));
   ok("stages re-read after the run", sent.slice(-3).some(b => b.op === "orders_stages"));
   await f.locator("#qClear").click(); await p.waitForTimeout(100);
-  ok("only page ops sent", sent.every(b => ["orders_stages", "run_status", "refresh", "action"].includes(b.op)));
+  // ---- 3.0.0 (C1528): tab column and views ----
+  ok("tabs op read once at load", sent.filter(b => b.op === "tabs").length === 1);
+  const tabsTxt = await p.$$eval("#tabs button", b => b.map(x => x.dataset.tab + "|" + x.querySelector(".tl").textContent + "|" + x.getAttribute("aria-selected")));
+  ok("tab column lists the tabs the engine declares, orders selected", tabsTxt.join() === "orders|Orders|true,stats|Stats|false,consignors|On behalf of others|false");
+  ok("orders screen shown, view hidden", await p.$eval("#view", v => getComputedStyle(v).display === "none") && await p.$eval("#list", v => getComputedStyle(v).display !== "none"));
+  const rowsBefore = (await p.$$("tbody.o")).length;
+  await p.click('#tabs button[data-tab="stats"]'); await p.waitForTimeout(500);
+  const stReq = sent.filter(b => b.op === "stats");
+  ok("stats tab loads its op with the control defaults", stReq.length === 1 && stReq[0].params.range_days === 90 && stReq[0].params.bucket === "week");
+  ok("orders list, preview and orders controls hidden on another tab", await p.$eval("#list", v => getComputedStyle(v).display === "none") && await p.$eval("#prev", v => getComputedStyle(v).display === "none") && await p.$eval("#refresh", v => getComputedStyle(v).display === "none") && await p.$eval("#reload", v => getComputedStyle(v).display !== "none"));
+  const NP = VF.stats90.data.panels.length;
+  ok("one panel per panel in the reply", (await p.$$("#view section.pn")).length === NP);
+  ok("trend panels draw an SVG chart with a table view", (await p.$$("#view svg.ch")).length === VF.stats90.data.panels.filter(x => x.kind === "trend" && x.state === "ok").length && (await p.$$("#view section.pn details table")).length >= 10);
+  ok("kpi tiles from the reply", await p.$eval('section[data-panel="headline"]', s => s.querySelectorAll(".tile").length) === VF.stats90.data.panels[0].tiles.length && /£/.test(await p.$eval('section[data-panel="headline"] .tv', e => e.textContent)));
+  ok("legend for two or more series, none for one", await p.$eval('section[data-panel="sales"]', s => s.querySelectorAll(".lg span").length) === 2 && await p.$eval('section[data-panel="vrp_net"]', s => s.querySelectorAll(".lg").length) === 0);
+  ok("single-series bar panel draws columns, stacked panel draws segments", await p.$eval('section[data-panel="vrp_net"] svg', s => s.querySelectorAll("path[fill]").length) > 3 && await p.$eval('section[data-panel="house_take"] svg', s => s.querySelectorAll("path[fill]").length) > 6);
+  ok("source_missing panel says so and draws no chart", await p.$eval('section[data-panel="tracking_exceptions"]', s => /Source missing/.test(s.textContent) && !s.querySelector("svg")));
+  ok("breakdown panel lists its items", await p.$eval('section[data-panel="status_mix"]', s => s.querySelectorAll(".brk .bar").length) === VF.stats90.data.panels.find(x => x.key === "status_mix").items.length);
+  ok("text is ink, never the series colour", await p.$eval('section[data-panel="sales"] svg', s => [...s.querySelectorAll("text")].every(t => !/var\(--s\d\)/.test(t.getAttribute("fill") || ""))));
+  const box = await p.$eval('section[data-panel="sales"] svg', s => { const r = s.getBoundingClientRect(); return { x: r.left + r.width * .5, y: r.top + r.height * .4 }; });
+  await p.mouse.move(box.x, box.y); await p.waitForTimeout(150);
+  ok("hover shows a readout with every series and the crosshair", await p.$eval("#tip", t => getComputedStyle(t).display === "block" && t.querySelectorAll("div").length === 2 && /£/.test(t.textContent)) && await p.$eval('section[data-panel="sales"] svg .xh', l => l.style.visibility === "visible"));
+  await p.mouse.move(5, 5); await p.waitForTimeout(100);
+  await p.selectOption('#view select[data-ctl="range_days"]', "30"); await p.waitForTimeout(500);
+  const st2 = sent.filter(b => b.op === "stats");
+  ok("changing a control re-reads with the value as the control types it", st2.length === 2 && st2[1].params.range_days === 30 && st2[1].params.bucket === "week" && await p.$eval('#view select[data-ctl="range_days"]', e => e.value === "30"));
+  await p.click("#reload"); await p.waitForTimeout(400);
+  ok("Reload re-reads the open tab, not the orders", sent.filter(b => b.op === "stats").length === 3);
+  await p.click('#tabs button[data-tab="consignors"]'); await p.waitForTimeout(500);
+  const cq = sent.filter(b => b.op === "consignors");
+  ok("consignor tab loads its op; blank dates are not sent", cq.length === 1 && cq[0].params.unsettled_only === false && !("from" in cq[0].params) && !("to" in cq[0].params));
+  const LG = VF.consignors.data.panels[0].groups;
+  ok("one ledger group per consignor plus the unregistered code", (await p.$$eval("#view .lgr", g => g.map(x => x.dataset.group))).join() === LG.map(g => g.key).join() && LG.some(g => g.key === "unattributed:ZZ"));
+  ok("group shows name, commission line and both totals rows", await p.$eval('.lgr[data-group="AA"]', g => /Test Consignor A \(AA\)/.test(g.querySelector(".gh").textContent) && /house keeps 50%/.test(g.textContent) && g.querySelectorAll("table")[0].querySelectorAll("tbody tr").length === 2));
+  ok("unregistered code is flagged", await p.$eval('.lgr[data-group="unattributed:ZZ"] .flag', f => f.textContent === "code not registered"));
+  const links = await p.$$eval('.lgr[data-group="AA"] details a', a => a.map(x => x.href + "|" + x.target + "|" + x.rel));
+  ok("Discogs order numbers link out (https, new tab, noopener); eBay lines do not", links.length > 0 && links.every(l => /^https:\/\/www\.discogs\.com\/sell\/order\/7000000-\d+\|_blank\|noopener noreferrer$/.test(l)) && await p.$eval('.lgr[data-group="AA"]', g => /E-1/.test(g.textContent) && ![...g.querySelectorAll("a")].some(a => a.textContent === "E-1")));
+  ok("date controls show the period the engine applied", await p.$eval('#view input[data-ctl="from"]', i => i.value) === VF.consignors.data.applied.from && await p.$eval('#view input[data-ctl="to"]', i => i.value) === VF.consignors.data.applied.to);
+  await p.check('#view input[data-ctl="unsettled_only"]'); await p.waitForTimeout(500);
+  ok("toggle is sent as a boolean", sent.filter(b => b.op === "consignors").slice(-1)[0].params.unsettled_only === true);
+  await p.click("#railT"); await p.waitForTimeout(150);
+  ok("tab column collapses to icons and expands", await p.$eval("#app", a => a.classList.contains("rc")) && await p.$eval("#tabs .tl", l => getComputedStyle(l).display === "none") && await p.$eval("#rail", r => r.getBoundingClientRect().width < 60) && await p.$eval("#railT", b => b.getAttribute("aria-expanded") === "false"));
+  await p.screenshot({ path: path.join(__dirname, "views-consignors.png") });
+  await p.click("#railT"); await p.click('#tabs button[data-tab="stats"]'); await p.waitForTimeout(300);
+  ok("a loaded tab is shown again without a new read", sent.filter(b => b.op === "stats").length === 3);
+  await p.screenshot({ path: path.join(__dirname, "views-stats.png"), fullPage: false });
+  await p.focus('#tabs button[data-tab="stats"]'); await p.keyboard.press("ArrowUp"); await p.waitForTimeout(200);
+  ok("arrow keys move between tabs; orders screen returns intact", await p.$eval("#app", a => !a.classList.contains("other")) && (await p.$$("tbody.o")).length === rowsBefore && await p.$eval("#list", v => getComputedStyle(v).display !== "none"));
+  ok("only page ops sent", sent.every(b => ["orders_stages", "run_status", "refresh", "action", "tabs", "stats", "consignors"].includes(b.op)));
   const store = await p.evaluate(async () => ({ ls: localStorage.length, ss: sessionStorage.length, idb: indexedDB.databases ? (await indexedDB.databases()).length : 0, caches: (self.caches ? (await caches.keys()).length : 0) }));
   ok("no rows in localStorage, sessionStorage, IndexedDB or Cache API", store.ls === 0 && store.ss === 0 && store.idb === 0 && store.caches === 0);
   const src = require("fs").readFileSync(path.resolve(__dirname, "../../tools/pack-ship.html"), "utf8");
@@ -274,6 +328,13 @@ const ok = (name, v) => { checks.push([name, !!v]); console.log((v ? "ok   " : "
   await p.screenshot({ path: path.join(__dirname, "page.png") });
   await p.setViewportSize({ width: 390, height: 844 }); await p.waitForTimeout(300);
   await p.screenshot({ path: path.join(__dirname, "page-390.png") });
+  // an engine that does not know the tabs op: the page keeps working with the orders tab alone
+  tabsOff = true; const p2 = await ctx.newPage(); const errs2 = []; p2.on("pageerror", e => errs2.push(e.message));
+  await p2.goto("file://" + path.resolve(__dirname, "../../tools/pack-ship.html")); await p2.waitForTimeout(900);
+  ok("tabs op refused: orders tab only, table still drawn, no page error", (await p2.$$eval("#tabs button", b => b.map(x => x.dataset.tab))).join() === "orders" && (await p2.$$("tbody.o")).length === 3 && errs2.length === 0);
+  const p3 = await ctx.newPage(); await p3.addInitScript(() => { window.TOOL_CONFIG.packship.rail_collapsed = true; });
+  await p3.goto("file://" + path.resolve(__dirname, "../../tools/pack-ship.html")); await p3.waitForTimeout(500);
+  ok("rail_collapsed setting starts the column collapsed", await p3.$eval("#app", a => a.classList.contains("rc")));
   await browser.close();
   const failed = checks.filter(c => !c[1]).length;
   console.log(`${checks.length - failed}/${checks.length} checks`); process.exit(failed ? 1 : 0);

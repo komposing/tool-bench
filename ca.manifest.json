@@ -5,7 +5,7 @@
   "key": "repo:komposing/tool-bench",
   "name": "tool-bench",
   "title": "Tool Bench",
-  "version": "3.16.0",
+  "version": "3.17.0",
   "purpose": "Single-file host for small HTML tools that front CA_V3 flows: shared config injection, sandboxed runs, tool contracts naming the CA_V3 objects each tool depends on.",
   "owner": "Nick",
   "lifecycle": "active",
@@ -103,6 +103,12 @@
         ]
       },
       {
+        "key": "cap:pack.consignors",
+        "by": [
+          "TB:pack-ship"
+        ]
+      },
+      {
         "key": "cap:pack.orders.stages",
         "by": [
           "TB:pack-ship"
@@ -110,6 +116,18 @@
       },
       {
         "key": "cap:pack.refresh",
+        "by": [
+          "TB:pack-ship"
+        ]
+      },
+      {
+        "key": "cap:pack.stats",
+        "by": [
+          "TB:pack-ship"
+        ]
+      },
+      {
+        "key": "cap:pack.tabs",
         "by": [
           "TB:pack-ship"
         ]
@@ -134,6 +152,12 @@
       },
       {
         "key": "std:pack_stages",
+        "by": [
+          "TB:pack-ship"
+        ]
+      },
+      {
+        "key": "std:pack_tabs",
         "by": [
           "TB:pack-ship"
         ]
@@ -320,6 +344,11 @@
       "version": "3.16.0",
       "change": "C1448",
       "note": "Pack & Ship 2.5.0 (T763): no page-held window; orders_stages uses the contract default (30), the days box shows the window used and a typed number applies to one load. Stage lines from std pack_stages drawn under the status (tracking number linked to its https URL under Label)."
+    },
+    {
+      "version": "3.17.0",
+      "change": "C1541",
+      "note": "Pack & Ship 3.0.0 (T813, C1528): collapsible tab column from the engine (op tabs, std pack_tabs). Stats: trend charts for Discogs sales, house take, fulfilment, Parcel2Go and automation runs. On behalf of others: consignor items and totals from the commerce ledger. Orders screen unchanged."
     }
   ]
 }

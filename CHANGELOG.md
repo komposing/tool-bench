@@ -1,5 +1,28 @@
 # Changelog
 
+## 3.17.0 — C1541
+
+- **Pack & Ship 3.0.0** (`TB:pack-ship` v3.0.0, T813, master change C1528; decisions `c1528-tabs`): a **tab column** on the
+  left that collapses to icons (new setting `packship.rail_collapsed` for the starting state; under 900px it is a strip
+  across the top). The tabs, their controls and their panels come from the engine (page op `tabs`, std `pack_tabs`,
+  `ca.pack_tabs/1`), so a tab, chart or consignor added in the standard appears with no page change. The orders screen
+  is the first tab and is unchanged; if the engine refuses the `tabs` op the page shows the orders tab alone.
+- **Stats** (op `stats`, cap `pack.stats`): headline tiles and trend charts over 30 days to 12 months by day, week or
+  month: sales gross and net, house take, VRP items, consignor payouts owed, postage margin, orders and items, fulfilment
+  speed, Parcel2Go parcels, label cost and delivery time, refused drafts and automation runs. A panel whose source column
+  is absent says **Source missing** and draws nothing.
+- **On behalf of others** (op `consignors`, cap `pack.consignors`): per consignor, unsettled now and a chosen period
+  (items, sold, fees, net, commission, payout) with the item rows beneath; Discogs order numbers link out; lines held for
+  an unregistered code are grouped and flagged.
+- The page draws panel kinds only (`kpi`, `trend`, `breakdown`, `ledger`) and holds no metric logic. Charts are inline
+  SVG, one unit and one axis each, with a legend for two or more series, a hover readout and a table view. View data is
+  kept in memory only.
+- `test/pack-ship/views/`: reference copy of the CA_V3 Pack Views library with its tests, and the generator for the
+  synthetic page fixture. Harness: 112/112 (the 84 orders checks unchanged, 28 new).
+
+### Fixed
+- none
+
 ## 3.16.0 — C1448
 
 - **Pack & Ship 2.5.0** (`TB:pack-ship` v2.5.0, T763): the page **holds no window**. `orders_stages` is sent without

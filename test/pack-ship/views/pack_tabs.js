@@ -1,0 +1,162 @@
+// std pack_tabs v1 (ca.pack_tabs/1) - the guide JSON for the CA_standards row. Column names confirmed from the writer
+// workflows on 2026-11-21 (S1530): Discogs sync bVTbjzHadHsU3cLK, health 3G75c8kP1VH2NisB, items b3RsMhNC39F5YG8S,
+// ledger lkKxu3Onw0j2z8Fj, flags ym4GSRyUxoGK9VQz, Parcel2Go collector Vhe0uMN9g4wqqERy and draft bwwAlusXGjE7OKcv.
+const LIVE = 'live', DISCOGS = 'discogs', PAID = 'paid', P2G = 'p2g_booked';
+const RUN_KEYS = { $ref: 'pack_tabs:sets.run_keys' }, RUN_LABELS = { $ref: 'pack_tabs:sets.run_labels' };
+
+module.exports = {
+  protocol: 'ca.pack_tabs/1',
+  version: 2,
+  principle: 'The Pack & Ship page views are data (pack_ship/design v7, C1528). tabs lists the tab column; a tab names its page op, its controls and its panels; a panel names its kind and metrics; a metric names a source, a filter (conditions or the name of a shared entry in filters), a time column and a measure; a source names a sheet tab or the run trace by std path with a column allowlist, plus computed fields. CA_V3 Pack Views evaluates these definitions and the page draws panel kinds (kpi, trend, breakdown, ledger). A new tab, panel, metric, consignor, channel or column is an edit here; a column that is absent returns source_missing, never an estimate (I4). No buyer column may be listed (privacy.forbid_like).',
+  uses: ['pack_tabs', 'discogs_reconcile', 'commerce', 'pack_stages'],
+  ranges: { default_days: 90, allowed: [30, 90, 180, 365], buckets: ['day', 'week', 'month'], default_bucket: 'week', day_bucket_max_days: 92, period_default_days: 90, period_max_days: 1100 },
+  privacy: { forbid_like: ['buyer', 'recipient', 'email', 'phone', 'address', 'postcode', 'delivery_', 'paypal', 'contact', 'username'], note: 'Replies carry sums, counts, order numbers, item titles and party codes only. A listed column whose name matches forbid_like is refused before any read.' },
+  filters: {
+    live: [{ col: 'status', op: 'not_like_any', value: { $ref: 'commerce:statuses.exclude' } }],
+    discogs: [{ col: 'channel', op: 'prefix', value: 'discogs' }],
+    paid: [{ col: 'status', op: 'in', value: { $ref: 'discogs_reconcile:orders.statuses' } }],
+    consigned: [{ col: 'payout', op: 'filled' }],
+    unsettled: [{ col: 'settled_ref', op: 'blank' }],
+    vrp: [{ col: 'owner', op: 'eq', value: 'VRP' }],
+    p2g: [{ col: 'source_platform', op: 'eq', value: 'discogs' }],
+    p2g_booked: [{ col: 'source_platform', op: 'eq', value: 'discogs' }, { col: 'booking_status', op: 'ne', value: 'draft' }],
+    not_archived: [{ col: 'archived', op: 'nin', value: ['true', 'TRUE', 'True', 'yes', '1'] }],
+    chains: [{ col: 'registry_key', op: 'in', value: { $ref: 'pack_tabs:sets.run_keys' } }]
+  },
+  sets: {
+    run_keys: ['pack.refresh', 'discogs.sync', 'discogs.orders.reconcile', 'parcel2go.orders.collect', 'discogs.orders.message.send_batch'],
+    run_labels: { 'pack.refresh': 'Pack refresh', 'discogs.sync': 'Discogs sync', 'discogs.orders.reconcile': 'Order reconcile', 'parcel2go.orders.collect': 'Parcel2Go collect', 'discogs.orders.message.send_batch': 'Shipped messages' }
+  },
+  tabs: [
+    { key: 'orders', label: 'Orders', icon: '📦', kind: 'orders' },
+    { key: 'stats', label: 'Stats', icon: '📈', kind: 'panels', op: 'stats', range: 'days',
+      controls: [
+        { key: 'range_days', kind: 'select', label: 'Range', default: 90, options: [{ value: 30, label: '30 days' }, { value: 90, label: '90 days' }, { value: 180, label: '6 months' }, { value: 365, label: '12 months' }] },
+        { key: 'bucket', kind: 'select', label: 'By', default: 'week', options: [{ value: 'day', label: 'Day' }, { value: 'week', label: 'Week' }, { value: 'month', label: 'Month' }] }
+      ],
+      note: 'Discogs and Parcel2Go only. Money is from the commerce ledger by sale date; weeks start on Monday (UTC).',
+      panels: ['headline', 'sales', 'house_take', 'vrp_net', 'vrp_items', 'payouts_owed', 'postage_margin', 'order_flow', 'order_value', 'status_mix', 'health_now', 'fulfil_median', 'fulfil_p90', 'parcels_booked', 'label_cost', 'delivery_days', 'tracking_exceptions', 'drafts_refused', 'runs_failed', 'runs_duration'] },
+    { key: 'consignors', label: 'On behalf of others', icon: '🤝', kind: 'panels', op: 'consignors', range: 'period',
+      controls: [
+        { key: 'from', kind: 'date', label: 'From' },
+        { key: 'to', kind: 'date', label: 'To' },
+        { key: 'unsettled_only', kind: 'toggle', label: 'Unsettled items only', default: false }
+      ],
+      note: 'Discogs and eBay lines from the commerce ledger; the owner is the one frozen on the line at sale. Postage is not part of any figure.',
+      panels: ['consignor_ledger'] }
+  ],
+  sources: {
+    orders: { kind: 'sheet', slot: 'discogs_orders', sheet: { $ref: 'discogs_reconcile:orders.sheet_id' }, tab: { $ref: 'discogs_reconcile:orders.orders_tab' },
+      columns: ['order_id', 'order_date', 'status', 'total', 'shipping', 'fee', 'health', 'paid_at', 'shipped_at', 'archived'],
+      fields: [
+        { name: 'paid', fn: 'coalesce', args: ['paid_at', 'order_date'] },
+        { name: 'printed_at', fn: 'lookup', source: 'flags', their_key: 'order_ref', my_key: 'order_id', col: 'set_at', agg: 'min_time', where: [{ col: 'flag', op: 'eq', value: 'printed' }, { col: 'on', op: 'eq', value: 'yes' }] },
+        { name: 'dropped_at', fn: 'lookup', source: 'parcels', their_key: 'source_order_id', my_key: 'order_id', col: 'dropped_off_at', agg: 'min_time' },
+        { name: 'parcel_cost', fn: 'lookup', source: 'parcels', their_key: 'source_order_id', my_key: 'order_id', col: 'estimated_cost_gbp', agg: 'sum', where: [{ col: 'booking_status', op: 'ne', value: 'draft' }] },
+        { name: 'postage_margin', fn: 'sub', args: ['shipping', 'parcel_cost'] },
+        { name: 'days_to_printed', fn: 'diff_days', args: ['paid', 'printed_at'] },
+        { name: 'days_to_dropped', fn: 'diff_days', args: ['paid', 'dropped_at'] },
+        { name: 'days_to_shipped', fn: 'diff_days', args: ['paid', 'shipped_at'] }
+      ] },
+    items: { kind: 'sheet', slot: 'discogs_orders', sheet: { $ref: 'discogs_reconcile:orders.sheet_id' }, tab: { $ref: 'discogs_reconcile:orders.items_tab' },
+      columns: ['order_id', 'listing_id', 'order_date', 'order_status'] },
+    flags: { kind: 'sheet', slot: 'discogs_orders', sheet: { $ref: 'pack_stages:flags.sheet_id' }, tab: { $ref: 'pack_stages:flags.tab' },
+      columns: ['order_ref', 'flag', 'on', 'set_at'] },
+    ledger_lines: { kind: 'sheet', slot: 'discogs_orders', sheet: { $ref: 'discogs_reconcile:orders.sheet_id' }, tab: 'order_lines',
+      columns: ['channel', 'order_id', 'line_id', 'order_date', 'status', 'title', 'marker_raw', 'owner', 'owner_rule', 'item_price', 'item_fee_share', 'net', 'commission_pct', 'payout', 'settled_ref', 'currency'],
+      fields: [
+        { name: 'house', fn: 'sub', args: ['net', 'payout'] },
+        { name: 'own_net', fn: 'when', args: ['net'], where: [{ col: 'payout', op: 'blank' }, { col: 'owner_rule', op: 'ne', value: 'unattributed' }] },
+        { name: 'settled', fn: 'filled', args: ['settled_ref'] },
+        { name: 'channel_name', fn: 'before', args: ['channel', ':'] },
+        { name: 'marker_code', fn: 'match', args: ['marker_raw'], pattern: '\\(([A-Z]{2,4})\\)\\s*$', group: 1 }
+      ] },
+    parcels: { kind: 'sheet', slot: 'parcels', sheet: { $ref: 'discogs_reconcile:parcels.sheet_id' }, tab: { $ref: 'discogs_reconcile:parcels.booked_tab' },
+      columns: ['source_platform', 'source_order_id', 'booking_status', 'booking_date', 'estimated_cost_gbp', 'tracking_events', 'latest_tracking_status'],
+      fields: [
+        { name: 'dropped_off_at', fn: 'json_get', args: ['tracking_events', 'dropped_off'] },
+        { name: 'delivered_at', fn: 'json_get', args: ['tracking_events', 'delivered'] },
+        { name: 'transit_days', fn: 'diff_days', args: ['dropped_off_at', 'delivered_at'] }
+      ] },
+    runs: { kind: 'runs', table: 'CA_qa_runs', max_days: 60, keys: ['pack.refresh', 'discogs.sync', 'discogs.orders.reconcile', 'parcel2go.orders.collect', 'discogs.orders.message.send_batch', 'parcel2go.orders.draft'], columns: ['registry_key', 'ts', 'outcome', 'duration_ms'],
+      fields: [{ name: 'duration_s', fn: 'scale', args: ['duration_ms', 0.001] }] }
+  },
+  metrics: {
+    gross: { label: 'Gross sales', source: 'ledger_lines', where: [DISCOGS, LIVE], time: 'order_date', measure: 'sum', value: 'item_price' },
+    net: { label: 'Net after fees', source: 'ledger_lines', where: [DISCOGS, LIVE], time: 'order_date', measure: 'sum', value: 'net' },
+    own_net: { label: 'Own sales, net', source: 'ledger_lines', where: [DISCOGS, LIVE], time: 'order_date', measure: 'sum', value: 'own_net' },
+    commission: { label: 'Commission on consigned', source: 'ledger_lines', where: [DISCOGS, LIVE, 'consigned'], time: 'order_date', measure: 'sum', value: 'house' },
+    vrp_net: { label: 'VRP net', source: 'ledger_lines', where: [DISCOGS, LIVE, 'vrp'], time: 'order_date', measure: 'sum', value: 'net' },
+    vrp_items: { label: 'VRP items sold', source: 'ledger_lines', where: [DISCOGS, LIVE, 'vrp'], time: 'order_date', measure: 'count' },
+    payouts_owed: { label: 'Payout owed', source: 'ledger_lines', where: [DISCOGS, LIVE, 'consigned', 'unsettled'], time: 'order_date', measure: 'sum', value: 'payout', cumulative: true, series_by: 'owner', series_order: { $keys: 'commerce:parties', where: { type: 'consignor' } } },
+    payouts_owed_now: { label: 'Payouts owed now', source: 'ledger_lines', where: [DISCOGS, LIVE, 'consigned', 'unsettled'], time: 'order_date', all_time: true, measure: 'sum', value: 'payout' },
+    postage_margin: { label: 'Postage margin', source: 'orders', where: [PAID, { col: 'parcel_cost', op: 'filled' }], time: 'order_date', measure: 'sum', value: 'postage_margin' },
+    orders: { label: 'Orders', source: 'orders', where: [PAID], time: 'order_date', measure: 'count' },
+    items: { label: 'Items', source: 'items', where: [{ col: 'order_status', op: 'in', value: { $ref: 'discogs_reconcile:orders.statuses' } }], time: 'order_date', measure: 'count' },
+    order_value: { label: 'Average order total', source: 'orders', where: [PAID], time: 'order_date', measure: 'avg', value: 'total' },
+    status_mix: { label: 'Orders by status', source: 'orders', time: 'order_date', measure: 'count', group_by: 'status', order: { $ref: 'discogs_reconcile:orders.statuses' } },
+    health_now: { label: 'Open orders by health', source: 'orders', where: [{ col: 'status', op: 'in', value: ['Payment Received', 'In Progress'] }, 'not_archived'], time: 'order_date', all_time: true, measure: 'count', group_by: 'health', blank_label: 'Not scored', order: ['On Track', 'At Risk', 'Priority', 'Critical', 'Order Issues'] },
+    med_printed: { label: 'Paid to printed', source: 'orders', where: [PAID], time: 'order_date', measure: 'median', value: 'days_to_printed' },
+    med_dropped: { label: 'Paid to dropped off', source: 'orders', where: [PAID], time: 'order_date', measure: 'median', value: 'days_to_dropped' },
+    med_shipped: { label: 'Paid to Shipped', source: 'orders', where: [PAID], time: 'order_date', measure: 'median', value: 'days_to_shipped' },
+    p90_printed: { label: 'Paid to printed', source: 'orders', where: [PAID], time: 'order_date', measure: 'p90', value: 'days_to_printed' },
+    p90_dropped: { label: 'Paid to dropped off', source: 'orders', where: [PAID], time: 'order_date', measure: 'p90', value: 'days_to_dropped' },
+    p90_shipped: { label: 'Paid to Shipped', source: 'orders', where: [PAID], time: 'order_date', measure: 'p90', value: 'days_to_shipped' },
+    parcels_booked: { label: 'Parcels booked', source: 'parcels', where: [P2G], time: 'booking_date', measure: 'count' },
+    label_cost: { label: 'Label cost per parcel (median)', source: 'parcels', where: [P2G], time: 'booking_date', measure: 'median', value: 'estimated_cost_gbp' },
+    transit_median: { label: 'Median', source: 'parcels', where: ['p2g'], time: 'dropped_off_at', measure: 'median', value: 'transit_days' },
+    transit_p90: { label: '90th percentile', source: 'parcels', where: ['p2g'], time: 'dropped_off_at', measure: 'p90', value: 'transit_days' },
+    drafts_refused: { label: 'Drafts refused', source: 'runs', where: [{ col: 'registry_key', op: 'eq', value: 'parcel2go.orders.draft' }, { col: 'outcome', op: 'nin', value: ['ok', 'cancelled', 'expired', 'pending', 'started'] }], time: 'ts', measure: 'count' },
+    runs_failed: { label: 'Failed runs', source: 'runs', where: ['chains', { col: 'outcome', op: 'nin', value: ['ok', 'busy', 'started', 'pending'] }], time: 'ts', measure: 'count', series_by: 'registry_key', series_order: RUN_KEYS, series_all: true, series_labels: RUN_LABELS },
+    runs_duration: { label: 'Run time', source: 'runs', where: ['chains', { col: 'outcome', op: 'eq', value: 'ok' }], time: 'ts', measure: 'median', value: 'duration_s', series_by: 'registry_key', series_order: RUN_KEYS, series_labels: RUN_LABELS }
+  },
+  panels: {
+    headline: { kind: 'kpi', title: 'In this range', wide: true, tiles: [
+      { metric: 'gross', label: 'Gross sales', unit: 'GBP' }, { metric: 'net', label: 'Net after fees', unit: 'GBP' },
+      { metric: 'own_net', label: 'Own sales, net', unit: 'GBP' }, { metric: 'commission', label: 'Commission earned', unit: 'GBP' },
+      { metric: 'orders', label: 'Orders', unit: 'count' }, { metric: 'postage_margin', label: 'Postage margin', unit: 'GBP' },
+      { metric: 'payouts_owed_now', label: 'Payouts owed now', unit: 'GBP', note: 'all unsettled Discogs lines' }] },
+    sales: { kind: 'trend', title: 'Sales: gross and net', unit: 'GBP', chart: 'line', metrics: ['gross', 'net'], note: 'Item prices before and after the Discogs fee share. Postage is not included.' },
+    house_take: { kind: 'trend', title: 'House take', unit: 'GBP', chart: 'stacked', metrics: ['own_net', 'commission'], note: 'Net on your own items plus the commission kept on consigned items. No cost of goods is recorded, so this is income after fees, not profit after stock cost.' },
+    vrp_net: { kind: 'trend', title: 'VRP items: net', unit: 'GBP', chart: 'bar', metrics: ['vrp_net'] },
+    vrp_items: { kind: 'trend', title: 'VRP items: sold', unit: 'count', chart: 'bar', metrics: ['vrp_items'] },
+    payouts_owed: { kind: 'trend', title: 'Consignor payouts owed', unit: 'GBP', chart: 'line', metrics: ['payouts_owed'], note: 'Running balance by sale date of lines that are unsettled today. Past settlements are not replayed, so earlier points are not the balance as it stood then.' },
+    postage_margin: { kind: 'trend', title: 'Postage margin', unit: 'GBP', chart: 'bar', metrics: ['postage_margin'], note: 'Shipping charged on the order minus its Parcel2Go label cost, for orders with a booked parcel. The label cost is the recorded quote or service profile cost, not an invoiced price.' },
+    order_flow: { kind: 'trend', title: 'Orders and items', unit: 'count', chart: 'line', metrics: ['orders', 'items'] },
+    order_value: { kind: 'trend', title: 'Average order total', unit: 'GBP', chart: 'line', metrics: ['order_value'], note: 'Order total as Discogs records it.' },
+    status_mix: { kind: 'breakdown', title: 'Orders by status', unit: 'count', metrics: ['status_mix'] },
+    health_now: { kind: 'breakdown', title: 'Open orders by health (now)', unit: 'count', metrics: ['health_now'], note: 'Current values only, archived orders left out. A trend follows once the daily health snapshot is live (C1528-s5).' },
+    fulfil_median: { kind: 'trend', title: 'Fulfilment speed: median', unit: 'days', chart: 'line', metrics: ['med_printed', 'med_dropped', 'med_shipped'], note: 'Days from payment, by order date. Printed counts from 9 Nov 2026, when print marking began.' },
+    fulfil_p90: { kind: 'trend', title: 'Fulfilment speed: slowest tenth', unit: 'days', chart: 'line', metrics: ['p90_printed', 'p90_dropped', 'p90_shipped'], note: '90th percentile, days from payment.', kpis: false },
+    parcels_booked: { kind: 'trend', title: 'Parcels booked', unit: 'count', chart: 'bar', metrics: ['parcels_booked'] },
+    label_cost: { kind: 'trend', title: 'Label cost per parcel', unit: 'GBP', chart: 'line', metrics: ['label_cost'], note: 'Median recorded cost; quote or service profile cost, not an invoiced price.' },
+    delivery_days: { kind: 'trend', title: 'Drop-off to delivered', unit: 'days', chart: 'line', metrics: ['transit_median', 'transit_p90'], note: 'By drop-off date, for parcels with both scans.' },
+    tracking_exceptions: { kind: 'trend', title: 'Tracking exceptions', state: 'source_missing', note: 'parcels_booked records no exception status: the collector keeps only the furthest stage reached (T283, T290).' },
+    drafts_refused: { kind: 'trend', title: 'Parcel drafts refused', unit: 'count', chart: 'bar', metrics: ['drafts_refused'], note: 'Draft runs that ended in a refusal such as an address field missing. Run trace, last 60 days.' },
+    runs_failed: { kind: 'trend', title: 'Automation: failed runs', unit: 'count', chart: 'line', metrics: ['runs_failed'], note: 'Run trace, last 60 days.', kpis: false },
+    runs_duration: { kind: 'trend', title: 'Automation: median run time', unit: 's', chart: 'line', metrics: ['runs_duration'], note: 'Successful runs. Run trace, last 60 days.', kpis: false },
+    consignor_ledger: { kind: 'ledger', title: 'Sold on behalf of others', source: 'ledger_lines', where: [LIVE], group_by: 'owner', time: 'order_date', currency: 'GBP', row_currency: 'currency',
+      groups: { from: { $ref: 'commerce:parties' }, where: { type: 'consignor' }, label: '{name} ({key})', sub: 'house keeps {commission_pct}% after fees' },
+      ungrouped: { where: [{ col: 'owner_rule', op: 'eq', value: 'unattributed' }], by: 'marker_code', label: '({key})', flag: 'code not registered', sub: 'held until the party is added to std commerce; no payout is worked out' },
+      totals: [{ label: 'Unsettled now', where: ['unsettled'] }, { label: 'Sold in period', range: true }],
+      total_columns: [
+        { key: 'lines', label: 'Items', type: 'number', measure: 'count' },
+        { key: 'gross', label: 'Sold', type: 'money', measure: 'sum', value: 'item_price' },
+        { key: 'fees', label: 'Fees', type: 'money', measure: 'sum', value: 'item_fee_share' },
+        { key: 'net', label: 'Net', type: 'money', measure: 'sum', value: 'net' },
+        { key: 'house', label: 'Commission', type: 'money', measure: 'sum', value: 'house' },
+        { key: 'payout', label: 'Payout', type: 'money', measure: 'sum', value: 'payout' }],
+      rows: { keep_where: ['unsettled'], only_param: 'unsettled_only', max: 200,
+        columns: [
+          { key: 'order_date', label: 'Sold', type: 'date' },
+          { key: 'channel_name', label: 'Channel' },
+          { key: 'order', label: 'Order', type: 'link', field: 'order_id', href: [{ where: [{ col: 'channel', op: 'prefix', value: 'discogs' }], template: 'https://www.discogs.com/sell/order/{order_id}' }] },
+          { key: 'title', label: 'Item' },
+          { key: 'marker_code', label: 'Code' },
+          { key: 'item_price', label: 'Price', type: 'money' },
+          { key: 'item_fee_share', label: 'Fee', type: 'money' },
+          { key: 'net', label: 'Net', type: 'money' },
+          { key: 'payout', label: 'Payout', type: 'money' },
+          { key: 'settled', label: 'Settled', type: 'bool' }] } }
+  }
+};

@@ -6,11 +6,11 @@
   "format": "toolbench.tool/1",
   "id": "TB:pack-ship",
   "name": "Pack & Ship",
-  "description": "Pack and ship paid Discogs orders (ca.pack_ship/1): stage table from pack.orders.stages over its contract-default window (a typed number for one load), stage lines under a status (tracking refs under Label), Discogs order links, a row filter with one action run on all shown orders, every label page printed (tap a page to skip it), two-tap confirm. Rows in memory only.",
+  "description": "Pack and ship paid Discogs orders (ca.pack_ship/1): stage table from pack.orders.stages, Discogs order links, a row filter with one action run on all shown orders, every label page printed, two-tap confirm. A collapsible tab column (ca.pack_tabs/1) adds the views the engine declares: Stats trend charts and On behalf of others (consignor items and totals). Rows in memory only.",
   "category": "CA_V3",
-  "tags": ["discogs", "parcel2go", "shipping", "print", "ca.pack_ship/1", "ca.pack_page/1", "ca.pack_row_context/2", "ca.pack_stage_lines/1"],
-  "version": "2.5.0",
-  "contract": { "config_keys": ["packship"], "requires": ["wf:Pqjdoot0EPzoQxj0", "std:pack_stages", "cap:pack.orders.stages", "cap:pack.refresh", "cap:runs.status", "cap:print.queue.add", "cap:label.bytes"] },
+  "tags": ["discogs", "parcel2go", "shipping", "print", "ca.pack_ship/1", "ca.pack_page/1", "ca.pack_row_context/2", "ca.pack_stage_lines/1", "ca.pack_tabs/1"],
+  "version": "3.0.0",
+  "contract": { "config_keys": ["packship"], "requires": ["wf:Pqjdoot0EPzoQxj0", "std:pack_stages", "cap:pack.orders.stages", "cap:pack.refresh", "cap:runs.status", "cap:print.queue.add", "cap:label.bytes", "std:pack_tabs", "cap:pack.tabs", "cap:pack.stats", "cap:pack.consignors"] },
   "sandbox": { "scripts": true, "forms": false, "modals": true, "popups": true, "downloads": true, "sameOrigin": false },
   "config_schema": {
     "namespace": "packship",
@@ -18,7 +18,8 @@
       { "path": "url", "label": "Pack & Ship endpoint", "type": "url", "required": true, "default": "https://komposing.app.n8n.cloud/webhook/ca-v3-pack-ship" },
       { "path": "headers.X-Api-Key", "label": "Viewer key (X-Api-Key)", "type": "secret", "required": false, "secret": true, "help": "CA_V3 viewer key. Leave empty to use the key saved for the CA_V3 Viewer (cav3)." },
       { "path": "copies", "label": "Label copies", "type": "number", "default": 1, "help": "1 to 3" },
-      { "path": "auto_print", "label": "Open the print dialog after Print", "type": "boolean", "default": true }
+      { "path": "auto_print", "label": "Open the print dialog after Print", "type": "boolean", "default": true },
+      { "path": "rail_collapsed", "label": "Start with the tab column collapsed", "type": "boolean", "default": false }
     ]
   }
 }
@@ -35,7 +36,9 @@ button:disabled{opacity:.45;cursor:default}
 input,select{font:inherit;border:1px solid var(--line);border-radius:4px;padding:3px 6px;background:#fff;color:var(--ink)}
 code,.mono{font-family:var(--mono);font-size:11.5px}
 h3{font:600 10px/1 var(--mono);letter-spacing:.18em;text-transform:uppercase;color:var(--ink2);margin:0 0 8px}
-#app{display:grid;height:100%;grid-template-rows:auto 1fr;grid-template-columns:1fr 400px;grid-template-areas:"top top" "list prev"}
+#app{--rail:188px;display:grid;height:100%;grid-template-rows:auto 1fr;grid-template-columns:var(--rail) 1fr 400px;grid-template-areas:"top top top" "rail list prev"}
+#app.rc{--rail:44px} #app.other{grid-template-areas:"top top top" "rail view view"}
+#app.other #list,#app.other #prev,#app.other .t-ord{display:none} #app:not(.other) #view{display:none}
 #top{grid-area:top;display:flex;align-items:center;gap:8px;padding:6px 12px;border-bottom:1px solid var(--line);background:#fff;flex-wrap:wrap}
 #top .brand{font:600 11px var(--mono);letter-spacing:.2em;text-transform:uppercase}
 #top .sep{flex:1}
@@ -88,17 +91,44 @@ tr.hasctx td{border-bottom:0;padding-bottom:2px} tr.cx td{padding:0 8px 6px} tr.
 #toast.bad{background:var(--bad)}
 #cfg{display:none;position:absolute;top:44px;right:12px;background:#fff;border:1px solid var(--line);border-radius:6px;padding:10px;width:360px;max-width:calc(100% - 24px);box-shadow:0 6px 24px rgba(0,0,0,.12);z-index:5}
 #cfg .row{display:flex;gap:6px;align-items:center;margin:4px 0} #cfg .lbl{width:70px;color:var(--ink2)} #cfg input{flex:1}
-@media (max-width:900px){#app{grid-template-columns:1fr;grid-template-rows:auto 1fr 40%;grid-template-areas:"top" "list" "prev"} #prev{border-left:0;border-top:1px solid var(--line)}}
+/* views (C1528, ca.pack_tabs/1): tab column, panels, charts */
+#rail{grid-area:rail;border-right:1px solid var(--line);background:var(--panel);display:flex;flex-direction:column;gap:2px;padding:6px 4px;min-width:0;overflow:hidden}
+#railT{align-self:flex-end;border:0;background:none;color:var(--ink2);padding:2px 8px;font-size:14px} #app.rc #railT{align-self:center}
+#tabs{display:flex;flex-direction:column;gap:2px}
+#tabs button{display:flex;align-items:center;gap:8px;border:0;background:none;text-align:left;padding:7px 8px;border-radius:5px;color:var(--ink2);white-space:nowrap;overflow:hidden}
+#tabs button:hover{background:#E9E6DF} #tabs button[aria-selected="true"]{background:#fff;color:var(--ink);box-shadow:inset 3px 0 0 var(--acc);font-weight:600}
+#tabs .ti{width:20px;text-align:center;flex:none} #tabs .tl{overflow:hidden;text-overflow:ellipsis} #app.rc #tabs .tl{display:none} #app.rc #tabs button{justify-content:center;padding:7px 0}
+#view{grid-area:view;overflow:auto;padding:12px 16px 24px;--s1:#2a78d6;--s2:#eb6834;--s3:#1baf7a;--s4:#eda100;--s5:#e87ba4;--s6:#008300;--grid:#E6E2D9}
+#view .vbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 12px} #view .vbar h2{font:600 15px var(--sans);margin:0 8px 0 0}
+#view .vbar label{display:inline-flex;gap:5px;align-items:center;color:var(--ink2);font-size:12px}
+.vgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(420px,1fr));gap:12px;align-items:start}
+.pn{background:#fff;border:1px solid var(--line);border-radius:6px;padding:12px 14px;min-width:0;position:relative} .pn.wide{grid-column:1/-1}
+.pn h4{font:600 13px var(--sans);margin:0 0 2px} .pn .pnote{font-size:11.5px;color:var(--ink2);margin:0 0 8px}
+.pn .pstate{font-size:12px;color:var(--ink2);background:var(--panel);border-radius:4px;padding:10px;margin-top:6px} .pn .pstate.bad{color:var(--bad)} .pn .pstate.warn{color:var(--warn)}
+.tiles{display:flex;gap:18px;flex-wrap:wrap;margin:6px 0 8px} .tile .tk{font-size:11px;color:var(--ink2)} .tile .tv{font:600 20px var(--sans);font-variant-numeric:tabular-nums} .tile .td{font-size:11px;color:var(--ink2)}
+.lg{display:flex;gap:12px;flex-wrap:wrap;font-size:11.5px;color:var(--ink2);margin:4px 0 2px} .lg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+svg.ch{display:block;width:100%;height:auto;overflow:visible} svg.ch text{font:10.5px var(--sans);fill:var(--ink2)} svg.ch .g{stroke:var(--grid);stroke-width:1} svg.ch .z{stroke:var(--ink3);stroke-width:1}
+svg.ch .xh{stroke:var(--ink3);stroke-width:1;visibility:hidden} svg.ch .el{fill:var(--ink)}
+#tip{position:fixed;z-index:8;display:none;background:#fff;border:1px solid var(--line);border-radius:5px;box-shadow:0 4px 14px rgba(0,0,0,.14);padding:6px 9px;font-size:11.5px;pointer-events:none;max-width:280px}
+#tip b{display:block;margin-bottom:3px} #tip div{display:flex;gap:10px;justify-content:space-between} #tip i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px}
+.pn details{margin-top:6px} .pn summary{cursor:pointer;font-size:11.5px;color:var(--ink2)}
+.pn table{border-collapse:collapse;width:100%;font-size:12px;margin-top:4px} .pn th{position:static;text-align:left;padding:4px 8px 4px 0;background:none} .pn td{padding:3px 8px 3px 0;border-top:1px solid var(--grid);vertical-align:top}
+.pn td.n,.pn th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.brk{display:grid;grid-template-columns:max-content 1fr max-content;gap:5px 10px;align-items:center;font-size:12px;margin-top:6px} .brk .bar{height:12px;background:var(--s1);border-radius:0 4px 4px 0;min-width:1px} .brk .n{font-variant-numeric:tabular-nums;color:var(--ink)}
+.lgr{border-top:1px solid var(--line);padding-top:10px;margin-top:12px} .lgr:first-of-type{border-top:0;margin-top:4px;padding-top:0}
+.lgr .gh{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap} .lgr .gh b{font-size:14px} .lgr .flag{background:#FFF1D6;color:#7A4B00;border-radius:3px;padding:0 6px;font-size:11px}
+@media (max-width:900px){#app,#app.rc{grid-template-columns:1fr;grid-template-rows:auto auto 1fr 40%;grid-template-areas:"top" "rail" "list" "prev"} #app.other{grid-template-rows:auto auto 1fr;grid-template-areas:"top" "rail" "view"} #prev{border-left:0;border-top:1px solid var(--line)}
+  #rail{flex-direction:row;border-right:0;border-bottom:1px solid var(--line);align-items:center} #tabs{flex-direction:row} #railT{display:none} #app.rc #tabs .tl{display:inline} .vgrid{grid-template-columns:1fr}}
 </style></head>
 <body><div id="app">
 <div id="top">
   <span class="brand">Pack &amp; Ship</span>
-  <label class="small">days <input id="days" type="number" min="1" max="60" value="" placeholder="…" title="blank: the engine's default window (pack.orders.stages contract); a number here applies to this load only" style="width:52px"></label>
-  <button id="reload" title="read the stages again (no sync)">Reload</button>
-  <button id="refresh" class="pri" title="run pack.refresh: orders, items, messages, health, then parcels">Refresh</button>
-  <label class="small">copies <input id="copies" type="number" min="1" max="3" value="1" style="width:44px"></label>
+  <label class="small t-ord">days <input id="days" type="number" min="1" max="60" value="" placeholder="…" title="blank: the engine's default window (pack.orders.stages contract); a number here applies to this load only" style="width:52px"></label>
+  <button id="reload" title="read this view again (no sync)">Reload</button>
+  <button id="refresh" class="pri t-ord" title="run pack.refresh: orders, items, messages, health, then parcels">Refresh</button>
+  <label class="small t-ord">copies <input id="copies" type="number" min="1" max="3" value="1" style="width:44px"></label>
   <span class="sep"></span>
-  <span id="count" class="small"></span>
+  <span id="count" class="small t-ord"></span>
   <span id="last"></span>
   <span id="sync"><i></i><span id="syncT">idle</span></span>
   <button id="gear" title="settings">⚙</button>
@@ -110,6 +140,11 @@ tr.hasctx td{border-bottom:0;padding-bottom:2px} tr.cx td{padding:0 8px 6px} tr.
   <div class="row"><span class="lbl"></span><button id="cSave" class="pri">Save</button><button id="cClose">Close</button></div>
   <p id="cNote" class="small"></p>
 </div>
+<nav id="rail" aria-label="views">
+  <button id="railT" title="collapse the tab column" aria-controls="tabs" aria-expanded="true">‹</button>
+  <div id="tabs" role="tablist" aria-orientation="vertical"></div>
+</nav>
+<div id="view" role="tabpanel" aria-live="polite"></div>
 <div id="list">
   <div id="fbar" hidden>
     <div class="qrow"><input id="q" type="text" autocomplete="off" spellcheck="false" placeholder="filter: packed:none label:done status:&quot;In Progress&quot; follow_up!:none (Tab completes)" aria-label="filter query" aria-autocomplete="list" aria-controls="sugg"><button id="qClear" title="clear the filter">Clear</button></div>
@@ -124,7 +159,7 @@ tr.hasctx td{border-bottom:0;padding-bottom:2px} tr.cx td{padding:0 8px 6px} tr.
   <iframe id="doc" title="print document"></iframe>
 </div>
 </div>
-<div id="toast"></div>
+<div id="toast"></div><div id="tip" role="status"></div>
 <script>
 /* Pack & Ship v2 (ca.pack_ship/1, ca.pack_page/1) — Tool Bench page for C841-s7.
    The page renders only what the engine returns: stage columns, states and icons from pack.orders.stages (stage_defs, states,
@@ -141,7 +176,11 @@ tr.hasctx td{border-bottom:0;padding-bottom:2px} tr.cx td{padding:0 8px 6px} tr.
    default applies (30 since C1364), and the days box shows the window the reply names; a number typed there is sent for that
    load only. The old packship.window_days setting is no longer read (a stored value is kept, never deleted). Stage lines
    (ca.pack_stage_lines/1): any stage that declares lines in std pack_stages returns [{text, href}], drawn under its status
-   (the Label stage: tracking number linked to the tracking URL). */
+   (the Label stage: tracking number linked to the tracking URL).
+   3.0.0 (C1528, ca.pack_tabs/1): a collapsible tab column. The tabs, their controls and their panels come from the engine
+   (op tabs, std pack_tabs); the page draws panel kinds (kpi, trend, breakdown, ledger) and holds no metric logic, so a tab,
+   chart or consignor added in the standard appears with no page change. The orders screen is the first tab, unchanged. If
+   the tabs op is refused (an older engine) only the orders tab shows. View data lives in module variables only. */
 const TC = window.TOOL_CONFIG || {}, TM = window.TOOL_META || null;
 const getPath = (o, p) => p.split(".").reduce((a, k) => (a && typeof a === "object") ? a[k] : undefined, o);
 const PC = TC.packship || {};
@@ -594,8 +633,210 @@ $("#refresh").onclick = async () => {
   if (last && last.state === "done") { toast(`Refresh ${last.outcome}: ${last.steps_done} steps in ${Math.round(last.duration_ms / 1000)} s`, last.outcome !== "ok"); await loadStages(); }
   else { setSync("err", "refresh unconfirmed"); toast("Refresh not confirmed within the poll budget; Reload when it lands", true); }
 };
-$("#reload").onclick = loadStages; $("#days").onchange = loadStages;
+$("#reload").onclick = () => TAB === "orders" ? loadStages() : loadTab(TAB, true); $("#days").onchange = loadStages;
 $("#copies").value = CONF.copies;
+
+/* ============================== views (C1528, ca.pack_tabs/1) ============================== */
+// The tab column and every view but the orders screen are drawn from what the engine returns. op tabs answers
+// {tabs: [{key, label, icon, kind, op, controls: [{key, kind: select|date|toggle, label, options, default}]}]}; a tab's op
+// answers {panels: [...], notes: [...]}. Panel kinds: kpi (tiles), trend (series over time: chart line | bar | stacked, one
+// unit per panel), breakdown (labelled values), ledger (groups with totals and rows). A panel carries state ok | empty |
+// source_missing | error and a note; an unknown kind is named on the page, never guessed. Nothing here is stored.
+const TAB_ORDERS = { key: "orders", label: "Orders", icon: "📦", kind: "orders" };
+let TABS = [TAB_ORDERS], TAB = "orders";
+const TABV = {}, CHARTS = {};
+const SERIES_N = 6, sColor = i => i < SERIES_N ? `var(--s${i + 1})` : "var(--ink3)";
+const httpsUrl = u => /^https:\/\//i.test(String(u || "")) ? String(u) : "";
+function vfmt(v, unit, axis){
+  if (v === null || v === undefined || v === "" || !Number.isFinite(+v)) return "–";
+  const n = +v, u = String(unit || "");
+  if (/^[A-Z]{3}$/.test(u)) { try { return new Intl.NumberFormat("en-GB", { style: "currency", currency: u, minimumFractionDigits: axis && Number.isInteger(n) ? 0 : 2, maximumFractionDigits: axis && Number.isInteger(n) ? 0 : 2 }).format(n); } catch (e) { return n.toFixed(2) + " " + u; } }
+  const t = new Intl.NumberFormat("en-GB", { maximumFractionDigits: Math.abs(n) >= 100 || Number.isInteger(n) ? 0 : (Math.abs(n) >= 10 ? 1 : 2) }).format(n);
+  return u === "%" ? t + "%" : (u && u !== "count" ? `${t} ${u}` : t);
+}
+const dShort = t => { const d = new Date(String(t).length <= 10 ? t + "T00:00:00Z" : t); return isNaN(d) ? String(t) : d.toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }); };
+const dLong = t => { const d = new Date(String(t).length <= 10 ? t + "T00:00:00Z" : t); return isNaN(d) ? String(t) : d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }); };
+function niceScale(lo, hi){
+  if (!(hi > lo)) { hi = lo + 1; }
+  const raw = (hi - lo) / 4, mag = Math.pow(10, Math.floor(Math.log10(raw))), f = raw / mag, step = (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * mag;
+  return { lo: Math.floor(lo / step) * step, hi: Math.ceil(hi / step) * step, step };
+}
+
+async function loadTabs(){
+  let d = null; try { d = await call("tabs", {}); } catch (e) { d = null; }
+  const list = d && Array.isArray(d.tabs) ? d.tabs.filter(t => isObj(t) && filled(t.key)) : [];
+  TABS = list.some(t => t.kind === "orders" || t.key === "orders") ? list.map(t => (t.kind === "orders" || t.key === "orders") ? Object.assign({}, TAB_ORDERS, t, { key: "orders", kind: "orders" }) : t) : [TAB_ORDERS].concat(list);
+  if (!TABS.some(t => t.key === TAB)) TAB = "orders";
+  renderRail();
+}
+function renderRail(){
+  $("#tabs").innerHTML = TABS.map(t => `<button role="tab" data-tab="${esc(t.key)}" aria-selected="${t.key === TAB}" title="${esc(t.label || cap1(t.key))}"><span class="ti" aria-hidden="true">${esc(t.icon || "▫")}</span><span class="tl">${esc(t.label || cap1(t.key))}</span></button>`).join("");
+  $("#app").classList.toggle("other", TAB !== "orders");
+}
+function setRail(collapsed){ $("#app").classList.toggle("rc", collapsed); const b = $("#railT"); b.textContent = collapsed ? "›" : "‹"; b.title = collapsed ? "expand the tab column" : "collapse the tab column"; b.setAttribute("aria-expanded", String(!collapsed)); }
+$("#railT").onclick = () => setRail(!$("#app").classList.contains("rc"));
+setRail(!!PC.rail_collapsed); renderRail();
+$("#tabs").addEventListener("click", e => { const b = e.target.closest("button[data-tab]"); if (b) selectTab(b.dataset.tab); });
+$("#tabs").addEventListener("keydown", e => {
+  if (!["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight"].includes(e.key)) return;
+  const i = TABS.findIndex(t => t.key === TAB), n = TABS[(i + (e.key === "ArrowDown" || e.key === "ArrowRight" ? 1 : TABS.length - 1)) % TABS.length];
+  e.preventDefault(); selectTab(n.key); const b = $(`#tabs button[data-tab="${CSS.escape(n.key)}"]`); if (b) b.focus();
+});
+function selectTab(key){
+  if (!TABS.some(t => t.key === key)) return;
+  TAB = key; renderRail(); $("#tip").style.display = "none";
+  if (key === "orders") return;
+  const v = TABV[key]; if (!v || (!v.data && !v.loading)) loadTab(key); else renderView();
+}
+function tabParams(t){
+  const v = TABV[t.key] || (TABV[t.key] = { params: {} }), out = {};
+  (t.controls || []).forEach(c => { if (!isObj(c) || !filled(c.key)) return; const cur = v.params[c.key] !== undefined ? v.params[c.key] : c.default; if (c.kind === "toggle") out[c.key] = !!cur; else if (filled(cur)) out[c.key] = c.kind === "select" && typeof c.default === "number" ? +cur : cur; });
+  return out;
+}
+async function loadTab(key, force){
+  const t = TABS.find(x => x.key === key); if (!t || !filled(t.op)) return;
+  const v = TABV[key] || (TABV[key] = { params: {} }); if (v.loading) return;
+  v.loading = true; v.error = ""; if (force) v.data = null; if (TAB === key) renderView();
+  setSync("busy", "loading " + (t.label || key));
+  try { v.data = await call(String(t.op), tabParams(t)); setSync("ok", "ready"); }
+  catch (e) { v.error = e.message || String(e); setSync("err", "load failed"); }
+  v.loading = false; if (TAB === key) renderView();
+}
+function controlsHtml(t){
+  const v = TABV[t.key] || { params: {} }, ap = isObj(v.data) && isObj(v.data.applied) ? v.data.applied : {};
+  return (t.controls || []).filter(c => isObj(c) && filled(c.key)).map(c => {
+    const cur = v.params[c.key] !== undefined ? v.params[c.key] : (ap[c.key] !== undefined ? ap[c.key] : c.default), lab = esc(c.label || cap1(c.key)), k = esc(c.key);
+    if (c.kind === "select") return `<label>${lab} <select data-ctl="${k}">${(c.options || []).map(o => { const ov = isObj(o) ? o.value : o, ol = isObj(o) ? (o.label || o.value) : o; return `<option value="${esc(ov)}"${String(ov) === String(cur) ? " selected" : ""}>${esc(ol)}</option>`; }).join("")}</select></label>`;
+    if (c.kind === "date") return `<label>${lab} <input type="date" data-ctl="${k}" value="${esc(cur || "")}"></label>`;
+    if (c.kind === "toggle") return `<label><input type="checkbox" data-ctl="${k}"${cur ? " checked" : ""}> ${lab}</label>`;
+    return "";
+  }).join("");
+}
+$("#view").addEventListener("change", e => {
+  const c = e.target.closest("[data-ctl]"); if (!c) return;
+  const v = TABV[TAB] || (TABV[TAB] = { params: {} }); v.params[c.dataset.ctl] = c.type === "checkbox" ? c.checked : c.value; loadTab(TAB, true);
+});
+
+function renderView(){
+  const t = TABS.find(x => x.key === TAB); if (!t || t.kind === "orders") return;
+  const v = TABV[TAB] || { params: {} }, d = isObj(v.data) ? v.data : null;
+  Object.keys(CHARTS).forEach(k => delete CHARTS[k]);
+  let body;
+  if (v.error) body = `<div class="pn wide"><div class="pstate bad">${esc(v.error)}</div></div>`;
+  else if (!d) body = `<p class="small">${v.loading ? "Loading…" : "Not loaded."}</p>`;
+  else {
+    const panels = Array.isArray(d.panels) ? d.panels.filter(isObj) : [];
+    body = panels.length ? `<div class="vgrid">${panels.map((p, i) => panelHtml(p, `${TAB}-${i}`)).join("")}</div>` : `<p class="small">This view returned no panels.</p>`;
+    const notes = (Array.isArray(d.notes) ? d.notes : []).filter(filled);
+    if (notes.length) body += `<p class="small" style="margin-top:10px">${notes.map(esc).join(" · ")}</p>`;
+  }
+  const rg = d && isObj(d.range) && filled(d.range.from) ? `<span class="small">${esc(dLong(d.range.from))} to ${esc(dLong(d.range.to))}</span>` : "";
+  $("#view").innerHTML = `<div class="vbar"><h2>${esc(t.label || cap1(t.key))}</h2>${controlsHtml(t)}${rg}${v.loading && d ? '<span class="small">updating…</span>' : ""}</div>${body}`;
+}
+const STATE_TXT = { empty: "No data in this range.", source_missing: "Source missing", error: "This panel failed" };
+function panelHtml(p, id){
+  const head = `<h4>${esc(p.title || cap1(p.key || ""))}</h4>${filled(p.note) && (!p.state || p.state === "ok") ? `<p class="pnote">${esc(p.note)}</p>` : ""}`;
+  let inner;
+  if (p.state && p.state !== "ok") inner = `<div class="pstate ${p.state === "error" ? "bad" : p.state === "source_missing" ? "warn" : ""}">${esc(STATE_TXT[p.state] || cap1(p.state))}${filled(p.note) ? (p.state === "empty" ? " " : ": ") + esc(p.note) : ""}</div>`;
+  else if (p.kind === "kpi") inner = tilesHtml(p.tiles);
+  else if (p.kind === "trend") inner = tilesHtml(p.kpis) + trendHtml(p, id);
+  else if (p.kind === "breakdown") inner = breakdownHtml(p);
+  else if (p.kind === "ledger") inner = ledgerHtml(p);
+  else inner = `<div class="pstate warn">Panel kind “${esc(p.kind)}” is not drawn by this page version.</div>`;
+  return `<section class="pn${p.kind === "ledger" || p.wide ? " wide" : ""}" data-panel="${esc(p.key || id)}">${head}${inner}</section>`;
+}
+function tilesHtml(tiles){
+  const T = (Array.isArray(tiles) ? tiles : []).filter(isObj); if (!T.length) return "";
+  return `<div class="tiles">${T.map(k => {
+    let d = ""; if (Number.isFinite(+k.prev) && filled(k.prev) && Number.isFinite(+k.value)) { const df = +k.value - +k.prev; d = `<div class="td">${df > 0 ? "▲ +" : df < 0 ? "▼ −" : "＝ "}${df ? esc(vfmt(Math.abs(df), k.unit)) : "no change"} ${esc(k.prev_label || "vs previous")}</div>`; }
+    return `<div class="tile"><div class="tk">${esc(k.label || "")}</div><div class="tv">${esc(vfmt(k.value, k.unit))}</div>${d}${filled(k.note) ? `<div class="td">${esc(k.note)}</div>` : ""}</div>`;
+  }).join("")}</div>`;
+}
+// One unit per chart, one y axis. Lines are 2px with an end dot and, for up to four series, an end label; a single series may
+// be columns (max 24px, rounded data end); stacked columns keep a 2px gap between segments. A legend is drawn for two or more
+// series; text is always ink, the mark beside it carries the colour. Every chart has a hover readout and a table.
+function trendHtml(p, id){
+  const S = (Array.isArray(p.series) ? p.series : []).filter(s => isObj(s) && Array.isArray(s.points));
+  const T = [...new Set(S.flatMap(s => s.points.map(q => String(q.t))))].filter(filled).sort();
+  if (!S.length || !T.length) return `<div class="pstate">${STATE_TXT.empty}</div>`;
+  const M = S.map(s => { const m = {}; s.points.forEach(q => { if (q.v !== null && q.v !== undefined && q.v !== "" && Number.isFinite(+q.v)) m[String(q.t)] = +q.v; }); return T.map(t => t in m ? m[t] : null); });
+  const kind = p.chart === "stacked" && S.length > 1 ? "stacked" : (p.chart === "bar" && S.length === 1 ? "bar" : "line");
+  let lo = 0, hi = 0;
+  if (kind === "stacked") T.forEach((_, i) => { hi = Math.max(hi, M.reduce((a, r) => a + Math.max(0, r[i] || 0), 0)); });
+  else M.forEach(r => r.forEach(v => { if (v !== null) { lo = Math.min(lo, v); hi = Math.max(hi, v); } }));
+  const sc = niceScale(lo, hi), W = 680, H = 214, L = 52, endLab = kind === "line" && S.length <= 4, R = endLab ? 76 : 12, Tp = 10, B = 24;
+  const pw = W - L - R, ph = H - Tp - B, band = pw / T.length, x = i => L + band * (i + .5), y = v => Tp + ph * (1 - (v - sc.lo) / (sc.hi - sc.lo));
+  let g = "";
+  for (let v = sc.lo; v <= sc.hi + sc.step / 2; v += sc.step) { const yy = y(v).toFixed(1); g += `<line class="${Math.abs(v) < sc.step / 1e6 ? "z" : "g"}" x1="${L}" x2="${W - R}" y1="${yy}" y2="${yy}"/><text x="${L - 6}" y="${(+yy + 3.5).toFixed(1)}" text-anchor="end">${esc(vfmt(Math.abs(v) < sc.step / 1e6 ? 0 : v, p.unit, true))}</text>`; }
+  const every = Math.max(1, Math.ceil(T.length / 7));
+  T.forEach((t, i) => { if (i % every === 0) g += `<text x="${x(i).toFixed(1)}" y="${H - 6}" text-anchor="middle">${esc(dShort(t))}</text>`; });
+  let marks = "";
+  if (kind === "line") {
+    const ends = [];
+    M.forEach((r, si) => {
+      let dpath = "", pen = false, last = -1;
+      r.forEach((v, i) => { if (v === null) { pen = false; return; } dpath += `${pen ? "L" : "M"}${x(i).toFixed(1)},${y(v).toFixed(1)}`; pen = true; last = i; });
+      if (last < 0) return;
+      marks += `<path d="${dpath}" fill="none" stroke="${sColor(si)}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="${x(last).toFixed(1)}" cy="${y(r[last]).toFixed(1)}" r="4" fill="${sColor(si)}" stroke="#fff" stroke-width="2"/>`;
+      ends.push({ si, yy: y(r[last]), v: r[last], xx: x(last) });
+    });
+    if (endLab) { ends.sort((a, b) => a.yy - b.yy); let prev = -1e9; ends.forEach(e => { e.ly = Math.max(e.yy, prev + 12); prev = e.ly; }); ends.forEach(e => { marks += `<text class="el" x="${(e.xx + 9).toFixed(1)}" y="${(e.ly + 3.5).toFixed(1)}">${esc(vfmt(e.v, p.unit, true))}</text>`; }); }
+  } else {
+    const w = Math.max(2, Math.min(24, band - 2)), y0 = y(0);
+    const col = (xc, ya, yb, fill, round) => { const x0 = xc - w / 2, x1 = xc + w / 2, top = Math.min(ya, yb), bot = Math.max(ya, yb), h = bot - top; if (h < .5) return ""; const r = round ? Math.min(4, w / 2, h) : 0, up = ya <= yb;
+      return up ? `<path fill="${fill}" d="M${x0.toFixed(1)},${bot.toFixed(1)}V${(top + r).toFixed(1)}Q${x0.toFixed(1)},${top.toFixed(1)} ${(x0 + r).toFixed(1)},${top.toFixed(1)}H${(x1 - r).toFixed(1)}Q${x1.toFixed(1)},${top.toFixed(1)} ${x1.toFixed(1)},${(top + r).toFixed(1)}V${bot.toFixed(1)}Z"/>`
+                : `<path fill="${fill}" d="M${x0.toFixed(1)},${top.toFixed(1)}V${(bot - r).toFixed(1)}Q${x0.toFixed(1)},${bot.toFixed(1)} ${(x0 + r).toFixed(1)},${bot.toFixed(1)}H${(x1 - r).toFixed(1)}Q${x1.toFixed(1)},${bot.toFixed(1)} ${x1.toFixed(1)},${(bot - r).toFixed(1)}V${top.toFixed(1)}Z"/>`; };
+    T.forEach((_, i) => {
+      if (kind === "bar") { const v = M[0][i]; if (v !== null) marks += col(x(i), y(v), y0, sColor(0), true); return; }
+      let acc = 0; const segs = M.map((r, si) => ({ si, v: Math.max(0, r[i] || 0) })).filter(s => s.v > 0);
+      segs.forEach((s, k) => { const yb = y(acc) - (k ? 2 : 0), yt = y(acc + s.v); acc += s.v; if (yb - yt > .5) marks += col(x(i), yt, yb, sColor(s.si), k === segs.length - 1); });
+    });
+  }
+  CHARTS[id] = { T, labels: S.map(s => s.label || cap1(s.key || "")), M, unit: p.unit, L, band, W, n: T.length, kind };
+  const legend = S.length > 1 ? `<div class="lg">${S.map((s, i) => `<span><i style="background:${sColor(i)}"></i>${esc(s.label || cap1(s.key || ""))}</span>`).join("")}</div>` : "";
+  const table = `<details><summary>Table</summary><table><thead><tr><th>${esc(p.bucket_label || "Period")}</th>${S.map(s => `<th class="n">${esc(s.label || cap1(s.key || ""))}</th>`).join("")}</tr></thead><tbody>${T.map((t, i) => `<tr><td>${esc(dLong(t))}</td>${M.map(r => `<td class="n">${esc(vfmt(r[i], p.unit))}</td>`).join("")}</tr>`).join("")}</tbody></table></details>`;
+  return `${legend}<svg class="ch" data-ch="${esc(id)}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc((p.title || "chart") + ": " + S.length + " series over " + T.length + " periods; values in the table below")}">${g}${marks}<line class="xh" y1="${Tp}" y2="${Tp + ph}"/><rect x="${L}" y="${Tp}" width="${pw}" height="${ph}" fill="transparent"/></svg>${table}`;
+}
+$("#view").addEventListener("mousemove", e => {
+  const svg = e.target.closest && e.target.closest("svg[data-ch]"), tip = $("#tip");
+  document.querySelectorAll("svg.ch .xh").forEach(l => { if (!svg || l.ownerSVGElement !== svg) l.style.visibility = "hidden"; });
+  const c = svg && CHARTS[svg.dataset.ch]; if (!c) { tip.style.display = "none"; return; }
+  const r = svg.getBoundingClientRect(), mx = (e.clientX - r.left) * c.W / r.width, i = Math.floor((mx - c.L) / c.band);
+  if (i < 0 || i >= c.n) { tip.style.display = "none"; svg.querySelector(".xh").style.visibility = "hidden"; return; }
+  const xx = c.L + c.band * (i + .5), xh = svg.querySelector(".xh"); xh.setAttribute("x1", xx); xh.setAttribute("x2", xx); xh.style.visibility = "visible";
+  const total = c.kind === "stacked" ? `<div><span>Total</span><span>${esc(vfmt(c.M.reduce((a, row) => a + Math.max(0, row[i] || 0), 0), c.unit))}</span></div>` : "";
+  tip.innerHTML = `<b>${esc(dLong(c.T[i]))}</b>${c.labels.map((l, si) => `<div><span><i style="background:${sColor(si)}"></i>${esc(l)}</span><span>${esc(vfmt(c.M[si][i], c.unit))}</span></div>`).join("")}${total}`;
+  tip.style.display = "block"; const tw = tip.offsetWidth, th = tip.offsetHeight;
+  tip.style.left = Math.max(4, Math.min(window.innerWidth - tw - 4, e.clientX + 14)) + "px"; tip.style.top = Math.max(4, Math.min(window.innerHeight - th - 4, e.clientY + 14)) + "px";
+});
+$("#view").addEventListener("mouseleave", () => { $("#tip").style.display = "none"; document.querySelectorAll("svg.ch .xh").forEach(l => l.style.visibility = "hidden"); });
+function breakdownHtml(p){
+  const I = (Array.isArray(p.items) ? p.items : []).filter(isObj); if (!I.length) return `<div class="pstate">${STATE_TXT.empty}</div>`;
+  const max = Math.max(...I.map(i => Math.abs(+i.value) || 0), 0) || 1;
+  return `<div class="brk">${I.map(i => `<span>${esc(i.label || "")}</span><span><span class="bar" style="display:block;width:${(100 * (Math.abs(+i.value) || 0) / max).toFixed(1)}%"></span></span><span class="n">${esc(vfmt(i.value, p.unit))}</span>`).join("")}</div>`;
+}
+// ledger: columns and total_columns are [{key, label, type: text | money | number | date | link | bool, unit}]; a group has
+// label, sub, flag, totals [{label, values}] and rows. A link cell is {text, href} and is linked only when https.
+function cellHtml(c, v, cur){
+  const t = c.type || "text";
+  if (t === "money") return esc(vfmt(v, c.unit || cur || ""));
+  if (t === "number") return esc(vfmt(v, c.unit || "count"));
+  if (t === "date") return filled(v) ? esc(dLong(v)) : "";
+  if (t === "bool") return v === true || v === "true" ? "✓" : (v === false || v === "false" ? "–" : "");
+  if (t === "link") { const o = isObj(v) ? v : { text: v }, h = httpsUrl(o.href); return h ? `<a href="${esc(h)}" target="_blank" rel="noopener noreferrer">${esc(o.text || h)}</a>` : esc(o.text == null ? "" : o.text); }
+  return esc(v == null ? "" : v);
+}
+const numCol = c => c.type === "money" || c.type === "number";
+function ledgerHtml(p){
+  const G = (Array.isArray(p.groups) ? p.groups : []).filter(isObj), C = (Array.isArray(p.columns) ? p.columns : []).filter(isObj), TC = (Array.isArray(p.total_columns) ? p.total_columns : []).filter(isObj);
+  if (!G.length) return `<div class="pstate">${STATE_TXT.empty}</div>`;
+  return G.map(g => {
+    const cur = g.currency || p.currency || "", rows = (Array.isArray(g.rows) ? g.rows : []).filter(isObj), tots = (Array.isArray(g.totals) ? g.totals : []).filter(isObj);
+    const tt = tots.length && TC.length ? `<table><thead><tr><th></th>${TC.map(c => `<th class="${numCol(c) ? "n" : ""}">${esc(c.label || cap1(c.key))}</th>`).join("")}</tr></thead><tbody>${tots.map(t => `<tr><td>${esc(t.label || "")}</td>${TC.map(c => `<td class="${numCol(c) ? "n" : ""}">${cellHtml(c, (t.values || {})[c.key], cur)}</td>`).join("")}</tr>`).join("")}</tbody></table>` : "";
+    const rt = rows.length && C.length ? `<details${rows.length <= 12 ? " open" : ""}><summary>${rows.length} item${rows.length === 1 ? "" : "s"}${g.rows_truncated ? " (list cut; narrow the period)" : ""}</summary><table><thead><tr>${C.map(c => `<th class="${numCol(c) ? "n" : ""}">${esc(c.label || cap1(c.key))}</th>`).join("")}</tr></thead><tbody>${rows.map(r => `<tr>${C.map(c => `<td class="${numCol(c) ? "n" : ""}">${cellHtml(c, r[c.key], r.currency || cur)}</td>`).join("")}</tr>`).join("")}</tbody></table></details>` : `<p class="small">No items in this period.</p>`;
+    return `<div class="lgr" data-group="${esc(g.key || "")}"><div class="gh"><b>${esc(g.label || g.key || "")}</b>${filled(g.sub) ? `<span class="small">${esc(g.sub)}</span>` : ""}${filled(g.flag) ? `<span class="flag">${esc(g.flag)}</span>` : ""}</div>${tt}${rt}</div>`;
+  }).join("");
+}
 
 /* ============================== settings ============================== */
 $("#gear").onclick = () => { const c = $("#cfg"); c.style.display = c.style.display === "block" ? "none" : "block"; $("#cUrl").value = CONF.url; $("#cKey").value = "";
@@ -605,8 +846,8 @@ $("#cSave").onclick = () => {
   const url = $("#cUrl").value.trim(), key = $("#cKey").value.trim();
   if (url) CONF.url = url; if (key) CONF.key = key;
   if (TM && window.parent !== window) { const set = { url: CONF.url }; if (key) set["headers.X-Api-Key"] = key; window.parent.postMessage({ type: "toolbench:config:set", namespace: "packship", values: set }, "*"); }
-  $("#cfg").style.display = "none"; loadStages(); checkBusy();
+  $("#cfg").style.display = "none"; loadStages(); checkBusy(); loadTabs();
 };
 if (!CONF.key) { setSync("err", "no key"); $("#refresh").disabled = true; $("#rows").innerHTML = `<p class="small">No viewer key. ${TM ? "Set <b>Viewer key</b> for Pack &amp; Ship (or the CA_V3 Viewer) in Tool Bench Settings." : "Open ⚙ and enter the endpoint and key."}</p>`; }
-else { loadStages(); checkBusy(); }
+else { loadStages(); checkBusy(); loadTabs(); }
 </script></body></html>
