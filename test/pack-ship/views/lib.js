@@ -141,7 +141,7 @@ function packViews(){
     const SRCr = prep(isObj(T.sources) ? T.sources : {}, T, stds, errs), out = {};
     const base = (nm) => {
       const s = SRCr[nm], cols = Array.isArray(s.columns) ? s.columns.map(S) : [];
-      if (s.kind === 'runs') { const rows = (Array.isArray(raw.runs) ? raw.runs : []).filter(isObj).map((r) => { const o = {}; cols.forEach((c) => { o[c] = r[c]; }); return o; }); return { rows, missing: [], def: s }; }
+      if (s.kind === 'runs') { const ks = (Array.isArray(s.keys) ? s.keys : []).map(S); const rows = (Array.isArray(raw.runs) ? raw.runs : []).filter(isObj).filter((r) => !ks.length || ks.indexOf(S(r.registry_key)) !== -1).map((r) => { const o = {}; cols.forEach((c) => { o[c] = r[c]; }); return o; }); return { rows, missing: [], def: s }; }
       const vals = (isObj(raw.tabs) ? raw.tabs : {})[S(s.slot) + '|' + S(s.tab)];
       if (!Array.isArray(vals) || !vals.length) { return { rows: [], missing: cols, def: s, unread: true }; }
       const head = (vals[0] || []).map((h) => S(h).trim()), idx = {}, missing = [];
@@ -175,7 +175,7 @@ function packViews(){
           else if (f.fn === 'scale') { const x = num(r[a[0]]); v = x === null ? null : x * Number(a[1]); }
           else if (f.fn === 'diff_days') { const x = toMs(r[a[0]]), y = toMs(r[a[1]]); v = (x === null || y === null || y < x) ? null : Math.round(((y - x) / DAY) * 100) / 100; }
           else if (f.fn === 'coalesce') { for (let i = 0; i < a.length; i++) { if (filled(r[a[i]])) { v = r[a[i]]; break; } } }
-          else if (f.fn === 'json_get') { try { const o = typeof r[a[0]] === 'string' ? JSON.parse(r[a[0]]) : r[a[0]]; v = isObj(o) && filled(o[a[1]]) ? o[a[1]] : null; } catch (e) { v = null; } }
+          else if (f.fn === 'json_get') { try { const o = typeof r[a[0]] === 'string' ? JSON.parse(r[a[0]]) : r[a[0]]; let c = o; S(a[1]).split('.').forEach((k) => { c = isObj(c) ? c[k] : undefined; }); v = isObj(o) && filled(c) && !isObj(c) ? c : null; } catch (e) { v = null; } }
           else if (f.fn === 'filled') { v = filled(r[a[0]]); }
           else if (f.fn === 'before') { v = S(r[a[0]]).split(S(a[1]))[0]; }
           else if (f.fn === 'match') { let m = null; try { m = new RegExp(S(f.pattern)).exec(S(r[a[0]])); } catch (e) { m = null; } v = m ? S(m[Number(f.group || 1)] || '') : ''; }
@@ -186,6 +186,16 @@ function packViews(){
       });
     };
     Object.keys(out).forEach((nm) => compute(nm, 0));
+    // source-level row rules, after computed fields: where keeps matching rows; latest_by keeps one row per key (greatest order value)
+    Object.keys(out).forEach((nm) => {
+      const src = out[nm], d = src.def;
+      if (Array.isArray(d.where) && d.where.length) { const ctx = { errs }; src.rows = src.rows.filter((r) => passAll(r, d.where, ctx)); }
+      if (isObj(d.latest_by) && filled(d.latest_by.key)) {
+        const k = S(d.latest_by.key), o = S(d.latest_by.order), best = {}, order = [];
+        src.rows.forEach((r) => { const id = S(r[k]); if (!filled(id)) { return; } if (!(id in best)) { order.push(id); best[id] = r; return; } const x = toMs(r[o]), y = toMs(best[id][o]); if (x !== null && (y === null || x >= y)) { best[id] = r; } });
+        src.rows = order.map((id) => best[id]);
+      }
+    });
     return out;
   };
   const colsOf = (def) => (Array.isArray(def.columns) ? def.columns.map(S) : []).concat((Array.isArray(def.fields) ? def.fields : []).filter(isObj).map((f) => S(f.name)));
