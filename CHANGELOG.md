@@ -1,5 +1,19 @@
 # Changelog
 
+## 3.18.0 — C1584
+
+- **Barcode maker 1.0.0** (new repo tool `TB:barcode`, T826): type text and get a **Code 128** barcode drawn as a PNG
+  image, with a Download button. Every barcode made stays on the page, newest first, until it is deleted; Delete all is
+  two taps. Making the same text again moves it to the top instead of duplicating it.
+- Self-contained: the encoder is in the file (digit runs use set C, so numeric codes come out narrower), no network, no
+  CA_V3 calls, no settings. Text outside the standard keyboard characters is refused with the position named.
+- Only the text and type are kept and the images are redrawn from them. Run sandboxed in the bench the list lasts until
+  the tool is closed; opened on its own, or run with Full access, it is kept in browser storage (`barcode-maker:v1`).
+- Barcode types are one map in the file (`SYMBOLOGIES`): a new type is one entry and the type picker appears by itself.
+
+### Fixed
+- none
+
 ## 3.17.0 — C1541
 
 - **Pack & Ship 3.0.0** (`TB:pack-ship` v3.0.0, T813, master change C1528; decisions `c1528-tabs`): a **tab column** on the
