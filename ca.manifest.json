@@ -5,7 +5,7 @@
   "key": "repo:komposing/tool-bench",
   "name": "tool-bench",
   "title": "Tool Bench",
-  "version": "3.17.0",
+  "version": "3.18.0",
   "purpose": "Single-file host for small HTML tools that front CA_V3 flows: shared config injection, sandboxed runs, tool contracts naming the CA_V3 objects each tool depends on.",
   "owner": "Nick",
   "lifecycle": "active",
@@ -349,6 +349,11 @@
       "version": "3.17.0",
       "change": "C1541",
       "note": "Pack & Ship 3.0.0 (T813, C1528): collapsible tab column from the engine (op tabs, std pack_tabs). Stats: trend charts for Discogs sales, house take, fulfilment, Parcel2Go and automation runs. On behalf of others: consignor items and totals from the commerce ledger. Orders screen unchanged."
+    },
+    {
+      "version": "3.18.0",
+      "change": "C1584",
+      "note": "Barcode maker (TB:barcode v1.0.0, T826): type text, get a Code 128 barcode as a PNG; every barcode stays on the page until deleted. Self-contained: no network, no CA_V3 calls, no settings."
     }
   ]
 }
