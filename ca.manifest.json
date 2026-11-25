@@ -5,7 +5,7 @@
   "key": "repo:komposing/tool-bench",
   "name": "tool-bench",
   "title": "Tool Bench",
-  "version": "3.19.1",
+  "version": "3.20.0",
   "purpose": "Single-file host for small HTML tools that front CA_V3 flows: shared config injection, sandboxed runs, tool contracts naming the CA_V3 objects each tool depends on.",
   "owner": "Nick",
   "lifecycle": "active",
@@ -133,6 +133,12 @@
         ]
       },
       {
+        "key": "cap:pack.print_queue",
+        "by": [
+          "TB:pack-ship"
+        ]
+      },
+      {
         "key": "cap:pack.refresh",
         "by": [
           "TB:pack-ship"
@@ -146,6 +152,12 @@
       },
       {
         "key": "cap:pack.tabs",
+        "by": [
+          "TB:pack-ship"
+        ]
+      },
+      {
+        "key": "cap:pack.task",
         "by": [
           "TB:pack-ship"
         ]
@@ -406,6 +418,11 @@
       "version": "3.19.1",
       "change": "C1645",
       "note": "Label printer 1.0.1 (U1659): labels printed sideways on a DYMO with 57 x 32 mm stock and the print dialog offered no orientation. The label is now turned onto the printed page: rotation from the series media (std mint media.rotate) or the tool's new Label rotation setting."
+    },
+    {
+      "version": "3.20.0",
+      "change": "C1669",
+      "note": "Pack & Ship 3.1.0 (TB:pack-ship, T851, C1599-s7): a Queue tab with buyer-free raw orders and raw parcels tables, Print queued items (every order with a stored label that is not printed, each marked printed) and Start packing (cap pack.task). Status polls back off and stop when nothing changes."
     }
   ]
 }

@@ -1,5 +1,32 @@
 # Changelog
 
+## 3.20.0 — C1669
+
+- **Pack & Ship 3.1.0** (`TB:pack-ship` v3.1.0, T851, slice C1599-s7 of the order process change C1599): a **Queue** tab.
+  Like every view it is declared in CA_V3 (std `pack_tabs` v5: tab `queue`, op `queue`, cap `pack.print_queue`) and drawn
+  from the engine's reply, so it needs no engine change.
+- **Two raw tables, buyer-free.** Raw orders: order, status, order date, items, value, label stored, printed, packed. Raw
+  parcels: Parcel2Go ref, order ref, service, booking status, tracking status, label stored, printed; unpaid drafts are
+  always listed and a line booked outside CA_V3 shows with no order ref. No buyer name, address line, email or phone:
+  the privacy rule `privacy.forbid_like` in std `pack_tabs` is unchanged and still refuses such a column before any read.
+- The page adds two columns to the raw orders from the stage read it already holds in memory: the **post code** and the
+  **stage states** (one dot per stage). An order outside that read shows them blank. Nothing is stored.
+- **Print queued items**: prints, in one go, the stored label and packing list of every order that has a stored label
+  (`label_ready`) and is not printed. Two taps. Each order is printed through its own first-print action, exactly as its
+  row button does, so the engine marks it printed; an order with no such action is listed as not printed with the reason.
+  The page then shows the print document on the orders screen. Copies come from the copies box.
+- **Start packing**: asks CA_V3 (op `pack_task`, cap `pack.task`) to start the Telegram packing task for orders that are
+  printed and not packed, and shows the reply as it is. Until the packing task is built (C1599-s8) the reply is
+  `not_built_yet` with the orders it would start.
+- **Status polling backs off and stops.** While a Refresh run (or another sync chain) reports nothing new, each status
+  check waits 1.6 times longer than the last, up to 60 s; after 10 unchanged answers the page stops asking and says so.
+  A change puts the wait back to the engine's interval.
+- `test/pack-ship/views/`: the reference copy of std `pack_tabs` is v5 with the Queue rows, 12 new library tests and a
+  Queue fixture. Harness: 137/137 (the 112 earlier checks unchanged, 25 new).
+
+### Fixed
+- none
+
 ## 3.19.1 — C1645
 
 - **Label printer 1.0.1** (`TB:label-printer`): the label is turned onto the printed page. A label printer whose driver

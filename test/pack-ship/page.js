@@ -1,4 +1,4 @@
-// Pack & Ship page harness (C1059, C841-s7; 2.1.0 C1141, C841-s10; 2.2.0 C1146; 2.3.0 C1194; 2.4.0 C1220; 2.5.0 C1448; 3.0.0 C1528): runs TB:pack-ship 3.0.0 inside the built bench against a stand-in for the
+// Pack & Ship page harness (C1059, C841-s7; 2.1.0 C1141, C841-s10; 2.2.0 C1146; 2.3.0 C1194; 2.4.0 C1220; 2.5.0 C1448; 3.0.0 C1528; 3.1.0 C1669): runs TB:pack-ship 3.1.0 inside the built bench against a stand-in for the
 // ca-v3-pack-ship front door. Synthetic orders only (no live data). Proves: the table is drawn from the stage read alone
 // (columns from stage_defs, icon colours from states), buttons follow the actions list (disabled ones show their reason, no
 // request), inputs are sent as the action names them, Refresh starts, polls and reloads, a busy guard holds the button, and a
@@ -56,21 +56,30 @@ let busy = false, polls = 0;
 // 3.0.0 (C1528): replies for the tab ops, built by the CA_V3 Pack Views library from generated rows (views-fixture.json)
 const VF = require("./views-fixture.json");
 let tabsOff = false;
+// 3.1.0 (C1669, C1599-s7): the Queue view (op queue; an order printed in this run reads back as printed), the pack.task stub
+// reply (op pack_task) and a refresh run that never changes (stuck) for the poll backoff.
+const printedNow = new Set(); let packRefuse = false, stuck = false;
+const queueReply = () => { const q = JSON.parse(JSON.stringify(VF.queue)); q.data.panels.forEach(pn => (pn.groups || []).forEach(g => g.rows.forEach(r => { if (printedNow.has(r.order.text)) r.printed = true; }))); return q; };
 function handle(b) {
   sent.push(b);
   const p = b.params || {};
   if (b.op === "tabs") return tabsOff ? { status: "error", outcome: "param_rejected", message: "op must be one of orders_stages, orders_list" } : VF.tabs;
   if (b.op === "stats") return p.range_days === 30 ? VF.stats30 : VF.stats90;
   if (b.op === "consignors") return p.unsettled_only ? VF.consignors_unsettled : VF.consignors;
-  if (b.op === "orders_stages") return Object.assign({}, READ, { data: Object.assign({}, READ.data, { window_days: p.window_days || 30 }) });
+  if (b.op === "queue") return queueReply();
+  if (b.op === "pack_task") return packRefuse ? { status: "error", outcome: "param_rejected", message: "op must be one of orders_stages, orders_list" }
+    : { status: "ok", outcome: "ok", message: "pack.task ok", run_id: "tb-test-pt", data: { status: "ok", outcome: "not_built_yet", response: "Packing task not built yet (C1599-s8). It would start with 1 order printed and not packed: 1111111-3", orders: ["1111111-3"], count: 1, started: false } };
+  if (b.op === "orders_stages") return Object.assign({}, READ, { data: Object.assign({}, READ.data, { window_days: p.window_days || 30, orders: p.order_ref ? READ.data.orders.filter(o => o.order_ref === p.order_ref) : READ.data.orders }) });
   if (b.op === "run_status") {
     if (!p.run_ref) return { status: "ok", outcome: "ok", data: { busy, busy_runs: busy ? [{ parent_run_id: "x", steps_done: 2 }] : [] } };
+    if (stuck) return { status: "ok", outcome: "ok", data: { busy: false, run: { run_ref: p.run_ref, state: "running", outcome: "", steps_done: 2, steps: [{ key: "discogs.items.sync", outcome: "ok" }], duration_ms: 0 } } };
     polls++;
     const done = polls >= 3;
     return { status: "ok", outcome: "ok", data: { busy: false, run: { run_ref: p.run_ref, state: done ? "done" : "running", outcome: done ? "ok" : "", steps_done: done ? 5 : polls, steps: [{ key: "discogs.items.sync", outcome: "ok" }], duration_ms: 1500 } } };
   }
   if (b.op === "refresh") return busy ? { status: "ok", outcome: "busy", poll: { op: "run_status", every_ms: 300, max_ms: 3000 } } : { status: "ok", outcome: "started", run_id: "tb-test-run-1", poll: { op: "run_status", every_ms: 300, max_ms: 6000 } };
   if (b.op === "action") {
+    if (p.action === "label" && p.order_ref === "1111111-1") printedNow.add("1111111-1");
     if (p.action === "label" && p.order_ref === "1111111-1") return { status: "ok", outcome: "ok", steps: [
       { cap: "print.queue.add", status: "ok", outcome: "ok", data: { job_id: "job-1", copies: p.inputs && p.inputs.copies, packing_rows: [{ location: "A1", artist: "Artist", title: "Title", format: "LP", media_condition: "VG+", sleeve_condition: "VG" }], label_url: "" } },
       { cap: "label.bytes", status: "ok", outcome: "ok", data: pdfLabel ? { label_b64: PDF3, label_content_type: "application/pdf", label_bytes: 900 } : { label_b64: PNG, label_content_type: "image/png", label_bytes: 70 } }] };
@@ -274,7 +283,7 @@ const ok = (name, v) => { checks.push([name, !!v]); console.log((v ? "ok   " : "
   // ---- 3.0.0 (C1528): tab column and views ----
   ok("tabs op read once at load", sent.filter(b => b.op === "tabs").length === 1);
   const tabsTxt = await p.$$eval("#tabs button", b => b.map(x => x.dataset.tab + "|" + x.querySelector(".tl").textContent + "|" + x.getAttribute("aria-selected")));
-  ok("tab column lists the tabs the engine declares, orders selected", tabsTxt.join() === "orders|Orders|true,stats|Stats|false,consignors|On behalf of others|false");
+  ok("tab column lists the tabs the engine declares, orders selected", tabsTxt.join() === "orders|Orders|true,stats|Stats|false,consignors|On behalf of others|false,queue|Queue|false");
   ok("orders screen shown, view hidden", await p.$eval("#view", v => getComputedStyle(v).display === "none") && await p.$eval("#list", v => getComputedStyle(v).display !== "none"));
   const rowsBefore = (await p.$$("tbody.o")).length;
   await p.click('#tabs button[data-tab="stats"]'); await p.waitForTimeout(500);
@@ -319,7 +328,63 @@ const ok = (name, v) => { checks.push([name, !!v]); console.log((v ? "ok   " : "
   await p.screenshot({ path: path.join(__dirname, "views-stats.png"), fullPage: false });
   await p.focus('#tabs button[data-tab="stats"]'); await p.keyboard.press("ArrowUp"); await p.waitForTimeout(200);
   ok("arrow keys move between tabs; orders screen returns intact", await p.$eval("#app", a => !a.classList.contains("other")) && (await p.$$("tbody.o")).length === rowsBefore && await p.$eval("#list", v => getComputedStyle(v).display !== "none"));
-  ok("only page ops sent", sent.every(b => ["orders_stages", "run_status", "refresh", "action", "tabs", "stats", "consignors"].includes(b.op)));
+  // ---- 3.1.0 (C1669, C1599-s7): Queue tab, Print queued items, Start packing, poll backoff ----
+  printedNow.clear();
+  await p.click('#tabs button[data-tab="queue"]'); await p.waitForTimeout(500);
+  const qReq = sent.filter(b => b.op === "queue");
+  ok("Queue tab reads op queue with no params", qReq.length === 1 && Object.keys(qReq[0].params).length === 0 && (await p.$eval("#view .vbar h2", h => h.textContent)) === "Queue");
+  ok("two tables drawn: raw orders and raw parcels", (await p.$$eval("#view section.pn", x => x.map(e => e.dataset.panel + "|" + e.querySelector("h4").textContent))).join() === "raw_orders|Raw orders,raw_parcels|Raw parcels");
+  const oHead = await p.$$eval('#view section[data-panel="raw_orders"] details thead th', x => x.map(e => e.textContent));
+  ok("raw orders columns: order, status, date, items, value, post code, stages, label and print state", oHead.join() === "Order,Status,Order date,Items,Value,Post code,Stages,Label stored,Printed,Packed");
+  const oRow = ref => p.$$eval('#view section[data-panel="raw_orders"] details tbody tr', (trs, r) => { const tr = trs.find(t => t.cells[0].textContent === r); return tr ? [...tr.cells].map(c => c.textContent.trim()).concat([String(tr.querySelectorAll(".sdots .dot").length), (tr.querySelector(".sdots .dot") || { title: "" }).title]) : null; }, ref);
+  const o1 = await oRow("1111111-1"), o9 = await oRow("1111111-9"), o3 = await oRow("1111111-3");
+  ok("raw order row: status, date, item count, value, post code from the stage read, flags", !!o1 && o1[1] === "In Progress" && o1[2] === "18 Nov 2026" && o1[3] === "2" && o1[4] === "£7.80" && o1[5] === "BT28 2RN" && o1[7] === "✓" && o1[8] === "–" && o1[9] === "–");
+  ok("stage states drawn as one dot per stage with its name and state", !!o1 && o1[10] === "6" && o1[11].startsWith("Order health: done"));
+  ok("printed order shows printed; an order outside the stage read shows no post code and no stages", !!o3 && o3[7] === "✓" && o3[8] === "✓" && !!o9 && o9[5] === "" && o9[10] === "0");
+  const pHead = await p.$$eval('#view section[data-panel="raw_parcels"] details thead th', x => x.map(e => e.textContent));
+  ok("raw parcels columns: p2g ref, order ref, service, booking, tracking, label stored, printed", pHead.join() === "P2G ref,Order ref,Service,Booking,Tracking,Label stored,Printed");
+  const pRows = await p.$$eval('#view section[data-panel="raw_parcels"] details tbody tr', trs => trs.map(tr => [...tr.cells].map(c => c.textContent.trim()).join("|")));
+  ok("raw parcel rows: booked, draft and a line booked outside CA_V3", pRows.includes("P2G-TEST-1|1111111-1|Evri ParcelShop|booked|Awaiting drop off|✓|–") && pRows.includes("|1111111-2|Evri ParcelShop|draft||–|–") && pRows.includes("P2G-TEST-8||DPD Next Day|booked|In transit|–|–") && pRows.includes("P2G-TEST-3|1111111-3|Royal Mail Tracked 48|booked|Delivered|✓|✓"));
+  const qText = await p.$eval("#view", v => v.textContent);
+  ok("Queue tables carry no buyer name, username, address, email or phone", !/testbuyer|Test Buyer|Test Other|@|recipient|delivery_/i.test(qText) && !pHead.concat(oHead).some(h => /buyer|name|address|email|phone/i.test(h)));
+  ok("Print queued items counts label stored and not printed", (await p.$eval("#qPrint", b => b.textContent)) === "Print queued items (2)" && !(await p.$eval("#qPrint", b => b.disabled)));
+  const na = sent.filter(b => b.op === "action").length;
+  await p.click("#qPrint"); await p.waitForTimeout(150);
+  ok("first tap only asks, with the count", (await p.$eval("#qPrint", b => b.textContent)) === "Tap again: print 2 orders" && sent.filter(b => b.op === "action").length === na);
+  const s0 = sent.length;
+  await p.click("#qPrint"); await p.waitForTimeout(2500);
+  const after = sent.slice(s0), qa = after.filter(b => b.op === "action");
+  ok("second tap prints each queued order through its own first-print action, copies sent", qa.length === 1 && qa[0].params.order_ref === "1111111-1" && qa[0].params.action === "label" && qa[0].params.inputs.copies === 1);
+  ok("an order outside the stage read is looked up by order_ref and not printed blind", after.some(b => b.op === "orders_stages" && b.params.order_ref === "1111111-9") && !qa.some(b => b.params.order_ref === "1111111-9"));
+  const qdoc = await p.$eval("#doc", d => d.srcdoc);
+  ok("one print document with the packing list and label, shown on the orders screen", await p.$eval("#app", a => !a.classList.contains("other")) && qdoc.includes("1111111-1") && (qdoc.match(/class="pg lab"/g) || []).length === 1 && !(await p.$eval("#printBtn", b => b.disabled)));
+  ok("stages re-read after the print", after.some(b => b.op === "orders_stages" && !b.params.order_ref));
+  await p.click('#tabs button[data-tab="queue"]'); await p.waitForTimeout(500);
+  ok("Queue re-read after the print; the printed order left the queue", sent.filter(b => b.op === "queue").length === 2 && (await p.$eval("#qPrint", b => b.textContent)) === "Print queued items (1)" && (await oRow("1111111-1"))[8] === "✓");
+  const qres = await p.$$eval("#qRes div", x => x.map(e => e.className + "|" + e.textContent));
+  ok("each order's result is listed: printed, and not printed with the reason", qres.length === 2 && qres.some(r => r.startsWith("ok|1111111-1 · printed")) && qres.some(r => r === "bad|1111111-9 · not printed: the order is not in the stage read"));
+  await p.click("#qPack"); await p.waitForTimeout(300);
+  const pk = sent.filter(b => b.op === "pack_task");
+  ok("Start packing posts op pack_task with no params", pk.length === 1 && Object.keys(pk[0].params).length === 0);
+  const pkTxt = await p.$eval("#qPackRes", e => e.className + "|" + e.textContent);
+  ok("the not_built_yet reply is shown plainly with the orders it would start", pkTxt.startsWith("pack|Start packing: not_built_yet · Packing task not built yet (C1599-s8).") && pkTxt.endsWith("1 order: 1111111-3"));
+  packRefuse = true; await p.click("#qPack"); await p.waitForTimeout(300); packRefuse = false;
+  ok("a refused pack_task shows the refusal, never a success", (await p.$eval("#qPackRes", e => e.className + "|" + e.textContent)) === "pack bad|Start packing: param_rejected · op must be one of orders_stages, orders_list");
+  ok("Print and Start packing sent nothing but page ops (no Parcel2Go or message op)", after.concat(pk).every(b => ["action", "orders_stages", "queue", "pack_task", "run_status"].includes(b.op)) && qa.every(b => b.params.action === "label"));
+  await p.screenshot({ path: path.join(__dirname, "views-queue.png"), fullPage: false });
+  const bo = await p.evaluate(() => { const b = backoff(1000), w = [], go = []; ["a", "a", "a", "a", "b", "b"].forEach(x => { go.push(b.next(x)); w.push(b.wait); }); const c = backoff(5000); let n = 0; while (c.next("same") && n < 99) n++; return { w, go, n, last: c.wait, quiet: POLL.quiet, cap: POLL.cap_ms }; });
+  ok("poll backoff: the wait grows while nothing changes and returns to the engine's interval on a change", bo.w.join() === "1000,1600,2560,4096,1000,1600" && bo.go.every(Boolean));
+  ok("poll backoff: stops after POLL.quiet unchanged answers; the wait never passes the cap", bo.n === bo.quiet && bo.last <= bo.cap && bo.quiet === 10);
+  await p.focus('#tabs button[data-tab="queue"]'); await p.keyboard.press("ArrowDown"); await p.waitForTimeout(200);
+  await p.evaluate(() => { POLL.quiet = 2; POLL.grow = 1; });
+  stuck = true; const pl0 = sent.filter(b => b.op === "run_status" && b.params.run_ref).length;
+  await f.locator("#refresh").click(); await p.waitForTimeout(4200);
+  const pl1 = sent.filter(b => b.op === "run_status" && b.params.run_ref).length;
+  ok("a refresh that shows no change stops polling and frees the button", pl1 - pl0 === 3 && !(await fr.$eval("#refresh", b => b.disabled)) && /polling stopped/.test(await fr.$eval("#toast", t => t.textContent)));
+  await p.waitForTimeout(2300);
+  ok("no further status polls after the stop", sent.filter(b => b.op === "run_status" && b.params.run_ref).length === pl1);
+  stuck = false; await p.evaluate(() => { POLL.quiet = 10; POLL.grow = 1.6; });
+  ok("only page ops sent", sent.every(b => ["orders_stages", "run_status", "refresh", "action", "tabs", "stats", "consignors", "queue", "pack_task"].includes(b.op)));
   const store = await p.evaluate(async () => ({ ls: localStorage.length, ss: sessionStorage.length, idb: indexedDB.databases ? (await indexedDB.databases()).length : 0, caches: (self.caches ? (await caches.keys()).length : 0) }));
   ok("no rows in localStorage, sessionStorage, IndexedDB or Cache API", store.ls === 0 && store.ss === 0 && store.idb === 0 && store.caches === 0);
   const src = require("fs").readFileSync(path.resolve(__dirname, "../../tools/pack-ship.html"), "utf8");

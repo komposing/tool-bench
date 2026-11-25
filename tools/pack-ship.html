@@ -6,11 +6,11 @@
   "format": "toolbench.tool/1",
   "id": "TB:pack-ship",
   "name": "Pack & Ship",
-  "description": "Pack and ship paid Discogs orders (ca.pack_ship/1): stage table from pack.orders.stages, Discogs order links, a row filter with one action run on all shown orders, every label page printed, two-tap confirm. A collapsible tab column (ca.pack_tabs/1) adds the views the engine declares: Stats trend charts and On behalf of others (consignor items and totals). Rows in memory only.",
+  "description": "Pack and ship paid Discogs orders (ca.pack_ship/1): stage table from pack.orders.stages, a row filter with one action run on all shown orders, every label page printed, two-tap confirm. A collapsible tab column (ca.pack_tabs/1) adds the views the engine declares: Stats, On behalf of others and Queue (raw orders and parcels, Print queued items, Start packing). Rows in memory only.",
   "category": "CA_V3",
   "tags": ["discogs", "parcel2go", "shipping", "print", "ca.pack_ship/1", "ca.pack_page/1", "ca.pack_row_context/2", "ca.pack_stage_lines/1", "ca.pack_tabs/1"],
-  "version": "3.0.0",
-  "contract": { "config_keys": ["packship"], "requires": ["wf:Pqjdoot0EPzoQxj0", "std:pack_stages", "cap:pack.orders.stages", "cap:pack.refresh", "cap:runs.status", "cap:print.queue.add", "cap:label.bytes", "std:pack_tabs", "cap:pack.tabs", "cap:pack.stats", "cap:pack.consignors"] },
+  "version": "3.1.0",
+  "contract": { "config_keys": ["packship"], "requires": ["wf:Pqjdoot0EPzoQxj0", "std:pack_stages", "cap:pack.orders.stages", "cap:pack.refresh", "cap:runs.status", "cap:print.queue.add", "cap:label.bytes", "std:pack_tabs", "cap:pack.tabs", "cap:pack.stats", "cap:pack.consignors", "cap:pack.print_queue", "cap:pack.task"] },
   "sandbox": { "scripts": true, "forms": false, "modals": true, "popups": true, "downloads": true, "sameOrigin": false },
   "config_schema": {
     "namespace": "packship",
@@ -80,7 +80,11 @@ tr.hasctx td{border-bottom:0;padding-bottom:2px} tr.cx td{padding:0 8px 6px} tr.
 #chips button,#filters button{padding:1px 8px;font-size:11.5px;border-radius:12px} #chips button.on{background:var(--ink);color:#fff;border-color:var(--ink)} #chips button.neg{background:#FDECEA;border-color:var(--bad);color:var(--bad);text-decoration:line-through}
 #chips .n{color:var(--ink3);margin-left:3px} #chips button.on .n{color:#cfd5da} #chips .dot{width:9px;height:9px;margin-right:4px;vertical-align:-1px}
 #bulk{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0 0;font-size:12px} #bulk select{font-size:12px} #bulk .res{flex-basis:100%;font:11.5px var(--mono);color:var(--ink2);max-height:120px;overflow:auto} #bulk .res .bad{color:var(--bad)} #bulk .res .ok{color:var(--ok)}
-#bulk button.arm{background:var(--warn);border-color:var(--warn);color:#fff}
+#bulk button.arm,.qbar button.arm{background:var(--warn);border-color:var(--warn);color:#fff}
+.qbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 12px;padding:10px;background:var(--panel);border:1px solid var(--line);border-radius:6px}
+.qbar .res{flex-basis:100%;font:11.5px var(--mono);color:var(--ink2);max-height:140px;overflow:auto} .qbar .res .bad{color:var(--bad)} .qbar .res .ok{color:var(--ok)}
+.qbar .pack{flex-basis:100%;font-size:12px;border-top:1px solid var(--line);padding-top:8px} .qbar .pack.bad b{color:var(--bad)} .qbar .pack .mono{display:block;margin-top:4px;word-break:break-word;color:var(--ink2)}
+.sdots{display:inline-flex;gap:3px;align-items:center} .sdots .dot{width:11px;height:11px}
 #filters{display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin:0 0 8px}
 #filters button{padding:1px 9px;font-size:11.5px;border-radius:12px} #filters button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
 #filters .n{color:var(--ink3);margin-left:3px} #filters button.on .n{color:#cfd5da}
@@ -180,7 +184,12 @@ svg.ch .xh{stroke:var(--ink3);stroke-width:1;visibility:hidden} svg.ch .el{fill:
    3.0.0 (C1528, ca.pack_tabs/1): a collapsible tab column. The tabs, their controls and their panels come from the engine
    (op tabs, std pack_tabs); the page draws panel kinds (kpi, trend, breakdown, ledger) and holds no metric logic, so a tab,
    chart or consignor added in the standard appears with no page change. The orders screen is the first tab, unchanged. If
-   the tabs op is refused (an older engine) only the orders tab shows. View data lives in module variables only. */
+   the tabs op is refused (an older engine) only the orders tab shows. View data lives in module variables only.
+   3.1.0 (C1669, C1599-s7, T851): the Queue tab (std pack_tabs tab kind queue, op queue). Its two tables come from the engine
+   like any view (raw orders, raw parcels; buyer-free). The page adds, from the stage read it already holds in memory, the
+   post code and the stage states beside each raw order, and two buttons: Print queued items (every order with a stored label
+   that is not printed, each through its own first-print action, one print document) and Start packing (op pack_task; the
+   reply is shown as it is). Status polls wait longer while nothing changes and stop after POLL.quiet unchanged answers. */
 const TC = window.TOOL_CONFIG || {}, TM = window.TOOL_META || null;
 const getPath = (o, p) => p.split(".").reduce((a, k) => (a && typeof a === "object") ? a[k] : undefined, o);
 const PC = TC.packship || {};
@@ -611,26 +620,32 @@ async function checkBusy(){
   catch (e) { /* the button stays usable; the start itself is guarded */ }
   if (!REFRESH.run) setRefresh(false); return false;
 }
-async function waitNotBusy(every, max){ const t0 = Date.now(); while (Date.now() - t0 < max) { await sleep(every); if (!(await checkBusy())) return true; } return false; }
+// 3.1.0 (C1669): a status poll that sees no change waits longer before the next one (grow, up to cap_ms) and polling stops
+// after quiet unchanged answers in a row; a change puts the wait back to the engine's every_ms. next(stamp) is false when it is time to stop.
+const POLL = { grow: 1.6, cap_ms: 60000, quiet: 10 };
+function backoff(every){ let wait = every, same = 0, last; return { get wait(){ return wait; }, get same(){ return same; }, next(stamp){ if (stamp === last) { same += 1; wait = Math.min(POLL.cap_ms, Math.round(wait * POLL.grow)); } else { same = 0; wait = every; last = stamp; } return same < POLL.quiet; } }; }
+async function waitNotBusy(every, max){ const t0 = Date.now(), bo = backoff(every); while (Date.now() - t0 < max) { await sleep(bo.wait); if (!(await checkBusy())) return true; if (!bo.next("busy")) break; } return false; }
 $("#refresh").onclick = async () => {
   setRefresh(true, "Starting…"); setSync("busy", "starting refresh");
   let r;
   try { r = await call("refresh", {}, true); } catch (e) { setRefresh(false); setSync("err", "error"); toast(e.message, true); return; }
   const poll = isObj(r.poll) ? r.poll : {}; const every = bound(poll.every_ms, 1000, 60000, 5000), max = bound(poll.max_ms, 10000, 3600000, 600000);
-  if (r.outcome === "busy") { toast("Another sync chain is running; Refresh waits for it", true); setRefresh(true, "Sync running"); setSync("busy", "sync chain running"); if (await waitNotBusy(every, max)) loadStages(); return; }
+  if (r.outcome === "busy") { toast("Another sync chain is running; Refresh waits for it", true); setRefresh(true, "Sync running"); setSync("busy", "sync chain running"); if (await waitNotBusy(every, max)) loadStages(); else { setRefresh(false); setSync("err", "sync still running"); toast("The other sync chain is still running; status polling stopped. Reload when it is done", true); } return; }
   if (r.status !== "ok" || r.outcome !== "started" || !r.run_id) { setRefresh(false); setSync("err", r.outcome || "refused"); toast(`refresh ${r.outcome || "refused"}: ${r.message || ""}`, true); return; }
   REFRESH.run = r.run_id; REFRESH.poll = poll;
-  const t0 = Date.now(); let last = null;
+  const t0 = Date.now(), bo = backoff(every); let last = null, quiet = false;
   while (Date.now() - t0 < max) {
-    await sleep(every);
-    let s; try { s = await call(String(poll.op || "run_status"), { run_ref: REFRESH.run }, true); } catch (e) { setSync("err", "poll error"); continue; }
-    const run = isObj(s.data) ? s.data.run : null; if (!run) continue; last = run;
+    await sleep(bo.wait);
+    let s; try { s = await call(String(poll.op || "run_status"), { run_ref: REFRESH.run }, true); } catch (e) { setSync("err", "poll error"); if (!bo.next("error")) { quiet = true; break; } continue; }
+    const run = isObj(s.data) ? s.data.run : null; if (!run) { if (!bo.next("no run")) { quiet = true; break; } continue; } last = run;
     const step = run.steps && run.steps.length ? run.steps[run.steps.length - 1].key : "";
     setRefresh(true, `Running ${Math.round((Date.now() - t0) / 1000)} s`); setSync("busy", `refresh ${run.state}${run.steps_done ? ` · step ${run.steps_done}${step ? " " + step : ""}` : ""}`);
     if (run.state === "done") break;
+    if (!bo.next(`${run.state}|${run.steps_done}|${step}`)) { quiet = true; break; }
   }
   REFRESH.run = ""; setRefresh(false);
   if (last && last.state === "done") { toast(`Refresh ${last.outcome}: ${last.steps_done} steps in ${Math.round(last.duration_ms / 1000)} s`, last.outcome !== "ok"); await loadStages(); }
+  else if (quiet) { setSync("err", "refresh unconfirmed"); toast(`Refresh: nothing changed in ${POLL.quiet} status checks, so polling stopped; Reload when it lands`, true); }
   else { setSync("err", "refresh unconfirmed"); toast("Refresh not confirmed within the poll budget; Reload when it lands", true); }
 };
 $("#reload").onclick = () => TAB === "orders" ? loadStages() : loadTab(TAB, true); $("#days").onchange = loadStages;
@@ -725,13 +740,13 @@ function renderView(){
   if (v.error) body = `<div class="pn wide"><div class="pstate bad">${esc(v.error)}</div></div>`;
   else if (!d) body = `<p class="small">${v.loading ? "Loading…" : "Not loaded."}</p>`;
   else {
-    const panels = Array.isArray(d.panels) ? d.panels.filter(isObj) : [];
+    const panels = (Array.isArray(d.panels) ? d.panels.filter(isObj) : []).map(p => isQueueTab(t) ? queueDecorate(p) : p);
     body = panels.length ? `<div class="vgrid">${panels.map((p, i) => panelHtml(p, `${TAB}-${i}`)).join("")}</div>` : `<p class="small">This view returned no panels.</p>`;
     const notes = (Array.isArray(d.notes) ? d.notes : []).filter(filled);
     if (notes.length) body += `<p class="small" style="margin-top:10px">${notes.map(esc).join(" · ")}</p>`;
   }
   const rg = d && isObj(d.range) && filled(d.range.from) ? `<span class="small">${esc(dLong(d.range.from))} to ${esc(dLong(d.range.to))}</span>` : "";
-  $("#view").innerHTML = `<div class="vbar"><h2>${esc(t.label || cap1(t.key))}</h2>${controlsHtml(t)}${rg}${v.loading && d ? '<span class="small">updating…</span>' : ""}</div>${body}`;
+  $("#view").innerHTML = `<div class="vbar"><h2>${esc(t.label || cap1(t.key))}</h2>${controlsHtml(t)}${rg}${v.loading && d ? '<span class="small">updating…</span>' : ""}</div>${isQueueTab(t) && d ? queueBarHtml(d) : ""}${body}`;
 }
 const STATE_TXT = { empty: "No data in this range.", source_missing: "Source missing", error: "This panel failed" };
 function panelHtml(p, id){
@@ -822,6 +837,7 @@ function cellHtml(c, v, cur){
   if (t === "money") return esc(vfmt(v, c.unit || cur || ""));
   if (t === "number") return esc(vfmt(v, c.unit || "count"));
   if (t === "date") return filled(v) ? esc(dLong(v)) : "";
+  if (t === "stages") return stagesHtml(v);
   if (t === "bool") return v === true || v === "true" ? "✓" : (v === false || v === "false" ? "–" : "");
   if (t === "link") { const o = isObj(v) ? v : { text: v }, h = httpsUrl(o.href); return h ? `<a href="${esc(h)}" target="_blank" rel="noopener noreferrer">${esc(o.text || h)}</a>` : esc(o.text == null ? "" : o.text); }
   return esc(v == null ? "" : v);
@@ -837,6 +853,94 @@ function ledgerHtml(p){
     return `<div class="lgr" data-group="${esc(g.key || "")}"><div class="gh"><b>${esc(g.label || g.key || "")}</b>${filled(g.sub) ? `<span class="small">${esc(g.sub)}</span>` : ""}${filled(g.flag) ? `<span class="flag">${esc(g.flag)}</span>` : ""}</div>${tt}${rt}</div>`;
   }).join("");
 }
+
+/* ============================== queue (3.1.0, C1669, C1599-s7) ============================== */
+// The Queue tab is drawn like any view. This section adds what the page alone knows and what its two buttons do; which panel,
+// columns and op it reads are the names in QCFG, nothing else. The print queue is read from the raw orders panel: rows whose
+// label_ready is true and printed is false. Print queued items runs, for each of those orders, the order's own first-print
+// action (the enabled action whose cap is print.queue.add and that asks for no confirm) through op action, exactly as the row
+// button does, and puts every slip and label in one print document; the engine marks each order printed (std pack_stages
+// print.on_done). An order with no such action is listed as not printed, never guessed. Start packing posts op pack_task and
+// shows the reply as it is. Post code and stage states are joined here from the stage read held in memory (buyer fields never
+// pass through a capability reply); an order outside that read shows them blank.
+const QCFG = { orders_panel: "raw_orders", order: "order", ready: "label_ready", printed: "printed", after: "total", pack_op: "pack_task", print_cap: "print.queue.add" };
+const QUEUE = { armed: false, running: false, done: 0, total: 0, results: [], packing: false, pack: null };
+let QUEUE_T = 0;
+const isQueueTab = t => !!t && (t.kind === "queue" || t.key === "queue");
+const queuePanel = d => ((isObj(d) && Array.isArray(d.panels)) ? d.panels : []).find(p => isObj(p) && p.key === QCFG.orders_panel) || null;
+const refOf = r => { const v = isObj(r) ? r[QCFG.order] : ""; return String(isObj(v) ? (v.text == null ? "" : v.text) : (v == null ? "" : v)); };
+function queueRefs(d){
+  const p = queuePanel(d), out = []; if (!p || (p.state && p.state !== "ok")) return out;
+  (Array.isArray(p.groups) ? p.groups : []).forEach(g => (isObj(g) && Array.isArray(g.rows) ? g.rows : []).forEach(r => { const ref = refOf(r); if (isObj(r) && r[QCFG.ready] === true && r[QCFG.printed] === false && filled(ref) && !out.includes(ref)) out.push(ref); }));
+  return out;
+}
+function stagesHtml(v){
+  const L = (Array.isArray(v) ? v : []).filter(isObj); if (!L.length) return "";
+  const lab = k => { const sd = VIEW.stage_defs.find(x => x.key === k); return (sd && sd.label) || k; };
+  return `<span class="sdots">${L.map(s => `<span class="dot" style="background:${iconColor(s.state)}" title="${esc(lab(s.key) + ": " + s.state + (filled(s.text) ? " · " + s.text : ""))}" aria-label="${esc(lab(s.key) + " " + s.state)}"></span>`).join("")}</span>`;
+}
+function queueDecorate(p){
+  if (p.key !== QCFG.orders_panel || !Array.isArray(p.columns) || !Array.isArray(p.groups)) return p;
+  const cols = p.columns.slice(), at = cols.findIndex(c => isObj(c) && c.key === QCFG.after);
+  cols.splice(at === -1 ? cols.length : at + 1, 0, { key: "_postcode", label: "Post code", type: "text" }, { key: "_stages", label: "Stages", type: "stages" });
+  const groups = p.groups.map(g => isObj(g) && Array.isArray(g.rows) ? Object.assign({}, g, { rows: g.rows.map(r => { const o = VIEW.orders.find(x => x.order_ref === refOf(r)); return o ? Object.assign({}, r, { _postcode: ctxOf(o).buyer_postcode || "", _stages: o.stages || [] }) : r; }) }) : g);
+  return Object.assign({}, p, { columns: cols, groups });
+}
+function queueBarHtml(d){
+  const p = queuePanel(d), n = queueRefs(d).length, readable = !!p && (!p.state || p.state === "ok");
+  const tip = readable ? `prints the stored label and packing list of every order with a stored label that is not printed (${PAGE_INPUT.copies()} cop${PAGE_INPUT.copies() === 1 ? "y" : "ies"}), then marks each printed` : "the raw orders table did not load, so the print queue is not known";
+  const pb = QUEUE.running ? `<button id="qPrint" disabled>Printing ${QUEUE.done}/${QUEUE.total}…</button>`
+    : `<button id="qPrint" class="${QUEUE.armed ? "arm" : "pri"}" ${n ? "" : "disabled"} title="${esc(tip)}">${QUEUE.armed ? `Tap again: print ${n} order${n === 1 ? "" : "s"}` : `Print queued items (${n})`}</button>`;
+  const kb = `<button id="qPack" ${QUEUE.packing || QUEUE.running ? "disabled" : ""} title="starts the Telegram packing task for orders that are printed and not packed">${QUEUE.packing ? "Asking…" : "Start packing"}</button>`;
+  const hint = `<span class="small">${readable ? (n ? `${n} order${n === 1 ? "" : "s"} with a stored label, not printed` : "print queue empty") : "print queue not readable"}</span>`;
+  const res = QUEUE.results.length ? `<div class="res" id="qRes">${QUEUE.results.map(r => `<div class="${r.ok ? "ok" : "bad"}">${esc(r.ref)} · ${esc(r.text)}</div>`).join("")}</div>` : "";
+  const k = QUEUE.pack, pk = k ? `<div class="pack${k.ok ? "" : " bad"}" id="qPackRes"><b>Start packing: ${esc(k.outcome)}</b>${filled(k.text) ? " · " + esc(k.text) : ""}${k.orders.length ? `<span class="mono">${k.orders.length} order${k.orders.length === 1 ? "" : "s"}: ${k.orders.map(esc).join(", ")}</span>` : ""}</div>` : "";
+  return `<div class="qbar">${pb}${kb}${hint}${res}${pk}</div>`;
+}
+async function orderFor(ref){
+  let o = VIEW.orders.find(x => x.order_ref === ref); if (o) return o;
+  try { const d = await call("orders_stages", { order_ref: ref }); o = (Array.isArray(d.orders) ? d.orders : []).find(x => isObj(x) && x.order_ref === ref) || null; } catch (e) { o = null; }
+  return o;
+}
+async function printQueue(key){
+  const refs = queueRefs((TABV[key] || {}).data); if (!refs.length || QUEUE.running) return;
+  Object.assign(QUEUE, { running: true, done: 0, total: refs.length, results: [] }); renderView();
+  const jobs = [];
+  for (const ref of refs) {
+    const o = await orderFor(ref), a = o && (o.actions || []).find(x => isObj(x) && x.enabled && x.cap === QCFG.print_cap && x.confirm !== true);
+    if (!a) QUEUE.results.push({ ref, ok: false, text: o ? "not printed: this order has no first-print action (not booked, or already printed)" : "not printed: the order is not in the stage read" });
+    else {
+      const inputs = {}; (Array.isArray(a.inputs) ? a.inputs : []).forEach(nm => { if (PAGE_INPUT[nm]) inputs[nm] = PAGE_INPUT[nm](); });
+      const r = await runAction(o, a, inputs, { bulk: true });
+      if (r && r.job) jobs.push(r.job);
+      QUEUE.results.push({ ref, ok: !!(r && r.ok && r.job), text: r && r.ok && !r.job ? "not printed: the reply carried no print data" : (r && r.text) || "no reply" });
+    }
+    QUEUE.done += 1; if (TAB === key) renderView();
+  }
+  QUEUE.running = false;
+  const bad = QUEUE.results.filter(x => !x.ok).length;
+  if (jobs.length) { selectTab("orders"); await printJobs(jobs); }
+  if (bad || !jobs.length) toast(`Print queued items: ${QUEUE.results.length - bad} printed${bad ? `, ${bad} not (see the Queue tab)` : ""}`, bad > 0);
+  loadStages(); if (TAB === key) loadTab(key, true); else if (TABV[key]) TABV[key].data = null;
+}
+async function startPacking(){
+  if (QUEUE.packing) return;
+  QUEUE.packing = true; QUEUE.pack = null; renderView(); setSync("busy", "start packing");
+  let j = null, err = "";
+  try { j = await call(QCFG.pack_op, {}, true); } catch (e) { err = e.message || String(e); }
+  const d = j && isObj(j.data) ? j.data : (j || {});
+  const outcome = err ? "error" : String(d.outcome && d.outcome !== "ok" ? d.outcome : (j.outcome || d.outcome || j.status || "no outcome"));
+  const orders = (Array.isArray(d.orders) ? d.orders : (j && Array.isArray(j.orders) ? j.orders : [])).map(x => String(x));
+  QUEUE.pack = { ok: !err && j.status === "ok", outcome, text: err || String(d.response || d.message || j.message || j.response || ""), orders };
+  QUEUE.packing = false; setSync(QUEUE.pack.ok ? "ok" : "err", "start packing: " + outcome); renderView();
+}
+$("#view").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b || b.disabled) return;
+  if (b.id === "qPack") { startPacking(); return; }
+  if (b.id !== "qPrint") return;
+  if (!QUEUE.armed) { QUEUE.armed = true; clearTimeout(QUEUE_T); QUEUE_T = setTimeout(() => { QUEUE.armed = false; if (isQueueTab(TABS.find(x => x.key === TAB))) renderView(); }, 4000); renderView(); return; }
+  QUEUE.armed = false; clearTimeout(QUEUE_T); printQueue(TAB);
+});
 
 /* ============================== settings ============================== */
 $("#gear").onclick = () => { const c = $("#cfg"); c.style.display = c.style.display === "block" ? "none" : "block"; $("#cUrl").value = CONF.url; $("#cKey").value = "";
