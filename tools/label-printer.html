@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Label printer</title>
+<script type="application/json" id="toolbench-tool">
+{
+  "format": "toolbench.tool/1",
+  "id": "TB:label-printer",
+  "name": "Label printer",
+  "description": "Prints sequences of barcode stock labels (ca.mint/1): pick a preset, mint the next numbers with a two-tap confirm or reprint ones already issued, and print them one label per page (code in plain text above a Code 128 barcode, 57 x 32 mm by default). Series, presets, next numbers and the label design come from CA_V3 (std mint) through the page gateway; nothing is numbered in the page.",
+  "category": "Labels",
+  "tags": ["barcode", "code128", "labels", "dymo", "mint", "ca.mint/1", "ca.page/1"],
+  "version": "1.0.0",
+  "contract": { "config_keys": ["labelprinter"], "requires": ["std:mint", "std:page_gateway", "cap:mint.series", "cap:mint.issue", "cap:mint.reprint", "wf:VhEt0ddqYGKuNaId", "wf:gCMFANIhqv079zzS"] },
+  "sandbox": { "scripts": true, "forms": false, "modals": true, "popups": false, "downloads": false, "sameOrigin": false },
+  "config_schema": {
+    "namespace": "labelprinter",
+    "fields": [
+      { "path": "url", "label": "Page gateway endpoint", "type": "url", "required": true, "default": "https://komposing.app.n8n.cloud/webhook/ca-v3-page" },
+      { "path": "headers.X-Api-Key", "label": "Viewer key (X-Api-Key)", "type": "secret", "required": false, "secret": true, "help": "CA_V3 viewer key. Leave empty to use the key saved for the CA_V3 Viewer (cav3)." },
+      { "path": "series", "label": "Mint series", "type": "string", "default": "vrp_label", "help": "A series key declared in std mint" },
+      { "path": "auto_print", "label": "Open the print dialog when labels are ready", "type": "boolean", "default": true }
+    ]
+  }
+}
+</script>
+<style>
+:root{--bg:#FBFAF7;--panel:#F3F1EC;--line:#DEDAD1;--ink:#12161A;--ink2:#5B6670;--ink3:#8A939B;--acc:#1E66D0;--bad:#C0392B;--ok:#2E7D32;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;--sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:13px/1.4 var(--sans)}
+body{padding:20px;max-width:860px;margin:0 auto}
+h1{font:600 14px/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;margin:0 0 4px}
+h2{font:600 10px/1 var(--mono);letter-spacing:.18em;text-transform:uppercase;color:var(--ink2);margin:20px 0 8px}
+#sub{color:var(--ink2);margin:0 0 6px;min-height:18px}
+button{font:inherit;cursor:pointer;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:4px;padding:6px 12px}
+button:hover{border-color:var(--ink3)} button.pri{background:var(--acc);color:#fff;border-color:var(--acc)}
+button.arm{background:var(--bad);border-color:var(--bad);color:#fff} button:disabled{opacity:.45;cursor:default}
+input{font:inherit;border:1px solid var(--line);border-radius:4px;padding:7px 9px;background:#fff;color:var(--ink)}
+input:focus,button:focus-visible{outline:2px solid var(--acc);outline-offset:1px}
+.presets{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}
+.preset{text-align:left;padding:10px 12px;border-radius:6px;display:block;width:100%}
+.preset b{font:600 15px/1.2 var(--mono);display:block}
+.preset span{color:var(--ink2);display:block;margin-top:2px}
+.preset small{color:var(--ink3);font-family:var(--mono);display:block;margin-top:4px}
+.preset.on{border-color:var(--acc);box-shadow:inset 0 0 0 1px var(--acc)}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.row label{color:var(--ink2)} .row input[type=number]{width:84px} .row input[type=text]{flex:1 1 240px;min-width:0;font-family:var(--mono)}
+.hint{color:var(--ink2);margin:6px 0 0;min-height:18px} .hint.bad{color:var(--bad)} .hint.ok{color:var(--ok)}
+#out{display:none}
+#codes{font-family:var(--mono);background:var(--panel);border-radius:6px;padding:10px 12px;overflow-wrap:anywhere}
+#doc{width:100%;height:300px;border:1px solid var(--line);border-radius:6px;background:#888;margin-top:8px}
+footer{color:var(--ink3);font:11.5px/1.5 var(--mono);margin-top:18px}
+</style></head><body>
+<h1>Label printer</h1>
+<p id="sub">Loading the series…</p>
+
+<h2>Preset</h2>
+<div id="presets" class="presets"></div>
+
+<h2>New labels</h2>
+<div class="row">
+  <label for="count">How many</label><input id="count" type="number" min="1" value="10" inputmode="numeric">
+  <button id="mint" class="pri" disabled>Mint</button>
+</div>
+<p id="mintHint" class="hint"></p>
+
+<h2>Reprint</h2>
+<div class="row">
+  <input id="re" type="text" autocomplete="off" spellcheck="false" placeholder="A code, a list or a range, e.g. VRPT00003-00007" aria-label="Codes to reprint">
+  <button id="reprint" disabled>Reprint</button>
+</div>
+<p id="reHint" class="hint"></p>
+
+<div id="out">
+  <h2 id="outH">Labels</h2>
+  <div id="codes"></div>
+  <div class="row" style="margin-top:8px"><button id="print" class="pri">Print</button><span id="outNote" class="hint" style="margin:0"></span></div>
+  <iframe id="doc" title="Labels to print"></iframe>
+</div>
+<footer id="foot"></footer>
+
+<script>
+/*<encoders>*/
+/* Code 128 (same encoder as TB:barcode): text -> string of 1 (bar) and 0 (space) modules. */
+var C128 = ("212222 222122 222221 121223 121322 131222 122213 122312 132212 221213 221312 231212 112232 122132 122231 113222 " +
+  "123122 123221 223211 221132 221231 213212 223112 312131 311222 321122 321221 312212 322112 322211 212123 212321 " +
+  "232121 111323 131123 131321 112313 132113 132311 211313 231113 231311 112133 112331 132131 113123 113321 133121 " +
+  "313121 211331 231131 213113 213311 213131 311123 311321 331121 312113 312311 332111 314111 221411 431111 111224 " +
+  "111422 121124 121421 141122 141221 112214 112412 122114 122411 142112 142211 241211 221114 413111 241112 134111 " +
+  "111242 121142 121241 114212 124112 124211 411212 421112 421211 212141 214121 412121 111143 111341 131141 114113 " +
+  "114311 411113 411311 113141 114131 311141 411131 211412 211214 211232 2331112").split(" ");
+function code128Values(text){
+  var n = text.length, i, c;
+  if (!n) throw new Error("Nothing to encode.");
+  for (i = 0; i < n; i++){ c = text.charCodeAt(i); if (c < 32 || c > 126) throw new Error("Code 128 can't encode “" + text.charAt(i) + "” in " + text + "."); }
+  function digits(from){ var k = from; while (k < n && text.charCodeAt(k) >= 48 && text.charCodeAt(k) <= 57) k++; return k - from; }
+  var d = digits(0), set = ((d === n && n % 2 === 0) || d >= 4) ? "C" : "B", out = [set === "C" ? 105 : 104];
+  i = 0;
+  while (i < n){
+    if (set === "C"){ if (digits(i) >= 2){ out.push(parseInt(text.substr(i, 2), 10)); i += 2; } else { out.push(100); set = "B"; } }
+    else { d = digits(i);
+      if (d >= 4 && (i + d === n || d >= 6)){ if (d % 2){ out.push(text.charCodeAt(i) - 32); i++; } out.push(99); set = "C"; }
+      else { out.push(text.charCodeAt(i) - 32); i++; } }
+  }
+  var sum = out[0]; for (i = 1; i < out.length; i++) sum += out[i] * i;
+  out.push(sum % 103, 106); return out;
+}
+function code128Modules(text){
+  var s = "", v = code128Values(text), p, j, w;
+  for (p = 0; p < v.length; p++){ w = C128[v[p]]; for (j = 0; j < w.length; j++) s += (j % 2 ? "0" : "1").repeat(+w[j]); }
+  return s;
+}
+var SYMBOLOGIES = { code128: code128Modules };
+
+/* One label as SVG in millimetres. The module width is a whole number of printer dots, so a thermal head prints
+   every bar on its dot grid; the design (sizes, positions, dpi) is data from the series, with these defaults. */
+var DESIGN_DEFAULT = { symbology: "code128", dpi: 300, margin_mm: 3, text: { top_mm: 2.2, height_mm: 8.2, max_width_mm: 50, font: "Arial, Helvetica, sans-serif" },
+                       barcode: { top_mm: 12.6, height_mm: 10.5, max_width_mm: 46, quiet_modules: 10 } };
+function merge(a, b){ var o = {}, k; for (k in a) o[k] = a[k]; for (k in (b || {})) o[k] = (b[k] && typeof b[k] === "object" && !Array.isArray(b[k]) && a[k] && typeof a[k] === "object") ? merge(a[k], b[k]) : b[k]; return o; }
+function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+function labelSvg(code, media, design){
+  var d = merge(DESIGN_DEFAULT, design), W = +media.w_mm, H = +media.h_mm;
+  var enc = SYMBOLOGIES[d.symbology]; if (!enc) throw new Error("Label design names an unknown barcode type: " + d.symbology);
+  var m = enc(code), dot = 25.4 / d.dpi, q = d.barcode.quiet_modules;
+  var dots = Math.floor((d.barcode.max_width_mm / m.length) / dot);
+  while (dots >= 2 && (m.length + 2 * q) * dots * dot > W) dots--;   // bars fit max_width; quiet zones must fit the label
+  if (dots < 2) throw new Error(code + " is too long for a " + W + " mm label at " + d.dpi + " dpi.");
+  var mw = dots * dot, bw = m.length * mw, x0 = (W - bw) / 2, rects = "", i = 0, j;
+  while (i < m.length){ if (m[i] === "1"){ j = i; while (j < m.length && m[j] === "1") j++; rects += '<rect x="' + (x0 + i * mw).toFixed(4) + '" y="' + d.barcode.top_mm + '" width="' + ((j - i) * mw).toFixed(4) + '" height="' + d.barcode.height_mm + '"/>'; i = j; } else i++; }
+  var fs = d.text.height_mm, est = code.length * fs * 0.62, tl = est > d.text.max_width_mm ? ' textLength="' + d.text.max_width_mm + '" lengthAdjust="spacingAndGlyphs"' : "";
+  return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + W + " " + H + '" width="' + W + 'mm" height="' + H + 'mm" shape-rendering="crispEdges">' +
+    '<text x="' + (W / 2) + '" y="' + (d.text.top_mm + fs * 0.78).toFixed(3) + '" text-anchor="middle" font-family="' + esc(d.text.font) + '" font-size="' + fs + '"' + tl + ">" + esc(code) + "</text>" + rects + "</svg>";
+}
+/* Reprint input: codes separated by commas or spaces; a range is CODE-CODE or CODE-NUMBER (same prefix). */
+function parseCodes(input, max){
+  var out = [], parts = String(input || "").toUpperCase().split(/[\s,;]+/).filter(Boolean);
+  parts.forEach(function(p){
+    var r = /^([A-Z][A-Z0-9:]*?)(\d+)-(?:([A-Z][A-Z0-9:]*?))?(\d+)$/.exec(p);
+    if (!r){ if (!/^[A-Z0-9:]+$/.test(p)) throw new Error("“" + p + "” is not a code or a range."); out.push(p); return; }
+    if (r[3] && r[3] !== r[1]) throw new Error("A range must stay in one prefix: " + p);
+    var a = parseInt(r[2], 10), b = parseInt(r[4], 10), pad = r[2].length, k;
+    if (b < a) throw new Error("Range runs backwards: " + p);
+    if (b - a + 1 > max) throw new Error("Range " + p + " is more than " + max + " labels.");
+    for (k = a; k <= b; k++) out.push(r[1] + String(k).padStart(pad, "0"));
+  });
+  out = out.filter(function(c, i){ return out.indexOf(c) === i; });
+  if (!out.length) throw new Error("Type a code or a range to reprint.");
+  if (out.length > max) throw new Error("That is " + out.length + " labels; the most in one go is " + max + ".");
+  return out;
+}
+/*</encoders>*/
+
+var $ = function(id){ return document.getElementById(id); };
+var TC = window.TOOL_CONFIG || {}, PAGE = "TB:label-printer";
+function getPath(o, p){ return p.split(".").reduce(function(a, k){ return a && typeof a === "object" ? a[k] : undefined; }, o); }
+var PC = TC.labelprinter || {};
+var CONF = { url: PC.url || "https://komposing.app.n8n.cloud/webhook/ca-v3-page",
+             key: getPath(PC, "headers.X-Api-Key") || getPath(TC, "cav3.dashboard.headers.X-Api-Key") || "",
+             series: PC.series || "vrp_label", autoPrint: PC.auto_print !== false };
+var S = null, KEY = "", ARMED = false, ARM_T = 0, BUSY = false;
+
+/* Every gateway reply is {status, outcome, message, data}. A refusal is thrown with the gateway's own words. */
+async function call(op, params){
+  if (!CONF.key) throw new Error("No viewer key: set it in Tool Bench Settings (Label printer or CA_V3 Viewer).");
+  var res, txt, j;
+  try { res = await fetch(CONF.url, { method: "POST", headers: { "Content-Type": "application/json", "X-Api-Key": CONF.key },
+                                      body: JSON.stringify({ page: PAGE, op: op, params: params || {} }), cache: "no-store" }); }
+  catch (e) { throw new Error("Page gateway unreachable (network or CORS): " + (e.message || e)); }
+  txt = await res.text();
+  try { j = JSON.parse(txt); } catch (e) { throw new Error("HTTP " + res.status + ": " + (txt.slice(0, 140) || "empty response")); }
+  if (Array.isArray(j)) j = j[0] || {};
+  if (!res.ok || j.status === "error" || (j.outcome && j.outcome !== "ok")) throw new Error(j.message || (op + " " + (j.outcome || "refused") + " (HTTP " + res.status + ")"));
+  return j.data && typeof j.data === "object" ? j.data : j;
+}
+function hint(id, text, cls){ var e = $(id); e.textContent = text || ""; e.className = "hint" + (cls ? " " + cls : ""); }
+function fmt(key, seq){ return key + String(seq).padStart(S.pad || 5, "0"); }
+function cur(){ return (S.keys || []).filter(function(k){ return k.key === KEY; })[0]; }
+/* A preset is a series key: its design is a name in the series' designs map (std mint designs), looked up by the code's prefix. */
+function designFor(code){ var k = (S.keys || []).filter(function(x){ return code.indexOf(x.key) === 0; })[0]; return (k && S.designs && S.designs[k.design]) || {}; }
+function count(){ var n = parseInt($("count").value, 10); return isFinite(n) ? n : 0; }
+
+function drawPresets(){
+  var box = $("presets"); box.textContent = "";
+  (S.keys || []).forEach(function(k){
+    var b = document.createElement("button"); b.className = "preset" + (k.key === KEY ? " on" : ""); b.setAttribute("aria-pressed", k.key === KEY ? "true" : "false");
+    [["b", k.key], ["span", k.label || ""], ["small", "next " + fmt(k.key, k.next)]].forEach(function(p){ var e = document.createElement(p[0]); e.textContent = p[1]; b.appendChild(e); });
+    b.onclick = function(){ KEY = k.key; disarm(); drawPresets(); drawMint(); };
+    box.appendChild(b);
+  });
+}
+function drawMint(){
+  var k = cur(), n = count(), max = S.batch_max || 50, ok = !!k && n >= 1 && n <= max && !BUSY;
+  $("count").max = max; $("mint").disabled = !ok; $("reprint").disabled = BUSY;
+  $("mint").className = ARMED ? "arm" : "pri";
+  if (!k){ $("mint").textContent = "Mint"; hint("mintHint", "Pick a preset first."); return; }
+  var range = n > 1 ? fmt(k.key, k.next) + " to " + fmt(k.key, k.next + n - 1) : fmt(k.key, k.next);
+  $("mint").textContent = BUSY ? "Working…" : ARMED ? "Tap again to mint " + n : "Mint " + (n >= 1 ? n : "");
+  if (n < 1 || n > max) hint("mintHint", "Between 1 and " + max + " labels in one go.", "bad");
+  else if (ARMED) hint("mintHint", "This issues " + range + " for good. Numbers are never reused.", "bad");
+  else hint("mintHint", "Next would be " + range + ". CA_V3 gives the real numbers when you mint.");
+}
+function disarm(){ ARMED = false; clearTimeout(ARM_T); }
+
+function showLabels(title, codes, note){
+  var media = S.media || { w_mm: 57, h_mm: 32 }, W = +media.w_mm, H = +media.h_mm, pages;
+  pages = codes.map(function(c){ return '<section class="pg">' + labelSvg(c, media, designFor(c)) + "</section>"; }).join("");
+  $("doc").srcdoc = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>' + esc(codes[0] + (codes.length > 1 ? " +" + (codes.length - 1) : "")) + "</title><style>" +
+    "@page{size:" + W + "mm " + H + "mm;margin:0} html,body{margin:0;background:#fff} .pg{width:" + W + "mm;height:" + H + "mm;overflow:hidden;page-break-after:always;break-after:page} .pg:last-child{page-break-after:auto;break-after:auto} svg{display:block}" +
+    "@media screen{body{background:#888;padding:8px;display:flex;flex-wrap:wrap;gap:8px} .pg{background:#fff;border-radius:2mm;box-shadow:0 1px 4px rgba(0,0,0,.4)}}" +
+    "</style></head><body>" + pages + '<script>addEventListener("message",function(e){if(e.data&&e.data.type==="labelprinter:print"){focus();print();}});<\/script></body></html>';
+  $("outH").textContent = title; $("codes").textContent = codes.join("  "); hint("outNote", note || "", "ok");
+  $("out").style.display = "block";
+  if (CONF.autoPrint) setTimeout(doPrint, 500);
+}
+function doPrint(){ var w = $("doc").contentWindow; if (w) w.postMessage({ type: "labelprinter:print" }, "*"); }
+
+async function load(){
+  try {
+    S = await call("series", { series: CONF.series });
+    if (!S || !Array.isArray(S.keys) || !S.keys.length) throw new Error("Series " + CONF.series + " has no presets.");
+    if (!cur()) KEY = "";
+    $("sub").textContent = (S.title || CONF.series) + " · " + (S.media ? S.media.w_mm + " × " + S.media.h_mm + " mm" : "") + (S.media && S.media.printer ? " · " + S.media.printer : "");
+    drawPresets(); drawMint();
+  } catch (e) { $("sub").textContent = e.message; $("sub").style.color = "var(--bad)"; }
+}
+$("count").addEventListener("input", function(){ disarm(); if (S) drawMint(); });
+$("mint").onclick = async function(){
+  var k = cur(), n = count(); if (!k || BUSY) return;
+  if (!ARMED){ ARMED = true; ARM_T = setTimeout(function(){ ARMED = false; drawMint(); }, 4000); drawMint(); return; }
+  disarm(); BUSY = true; drawMint();
+  try {
+    var r = await call("issue", { series: CONF.series, key: k.key, count: n });
+    showLabels("Minted " + r.codes.length + " new label" + (r.codes.length === 1 ? "" : "s"), r.codes, "Issued by CA_V3" + (r.batch_id ? " · batch " + r.batch_id : ""));
+    hint("mintHint", "");
+  } catch (e) { hint("mintHint", e.message, "bad"); BUSY = false; await load(); return; }
+  BUSY = false; await load();
+};
+$("reprint").onclick = async function(){
+  var codes;
+  try { codes = parseCodes($("re").value, (S && S.batch_max) || 50); } catch (e) { hint("reHint", e.message, "bad"); return; }
+  BUSY = true; if (S) drawMint(); hint("reHint", "Checking " + codes.length + " code" + (codes.length === 1 ? "" : "s") + "…");
+  try {
+    var r = await call("reprint", { series: CONF.series, codes: codes });
+    showLabels("Reprint of " + r.codes.length + " label" + (r.codes.length === 1 ? "" : "s"), r.codes, "All were issued before; the counter has not moved");
+    hint("reHint", "");
+  } catch (e) { hint("reHint", e.message, "bad"); }
+  BUSY = false; if (S) drawMint();
+};
+$("re").addEventListener("keydown", function(e){ if (e.key === "Enter") $("reprint").click(); });
+$("print").onclick = doPrint;
+(function(){
+  var block = {}; try { block = JSON.parse($("toolbench-tool").textContent); } catch (e) {}
+  $("foot").textContent = (block.name || "Label printer") + " v" + (block.version || "?") + " · series " + CONF.series + " · set the printer's paper size to the label size and scale to 100%";
+  load();
+})();
+</script>
+</body></html>

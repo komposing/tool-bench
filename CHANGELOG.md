@@ -1,5 +1,23 @@
 # Changelog
 
+## 3.19.0 — C1645
+
+- **Label printer 1.0.0** (new repo tool `TB:label-printer`, T846): prints **sequences of barcode stock labels**. Pick a
+  preset (for the first series: VRPD, VRPT, VRPP, VRPR, VRPB), choose how many and **mint** them with two taps, or
+  **reprint** codes that were already issued (a code, a list or a range such as `VRPT00003-00007`). Labels print one per
+  page at the series' label size (57 x 32 mm for a DYMO LabelWriter): the code in plain text above a Code 128 barcode,
+  drawn as SVG with every bar on a whole number of printer dots.
+- The page numbers nothing and holds no series data. Presets, next numbers, label size and label design come from CA_V3
+  (`std:mint`, ca.mint/1) and every number is issued by `mint.issue`; a reprint is checked by `mint.reprint`, which
+  refuses a code that was never minted. A refusal shows the capability's own words.
+- First tool on the **page gateway** (`std:page_gateway`, ca.page/1; endpoint `webhook/ca-v3-page`): the page posts
+  `{page, op, params}` with the viewer key, and which capability an op runs is data. Settings: endpoint, viewer key
+  (falls back to the CA_V3 Viewer key), series, and whether the print dialog opens by itself.
+- Print: set the printer's paper size to the label size and scale to 100%.
+
+### Fixed
+- none
+
 ## 3.18.0 — C1584
 
 - **Barcode maker 1.0.0** (new repo tool `TB:barcode`, T826): type text and get a **Code 128** barcode drawn as a PNG
