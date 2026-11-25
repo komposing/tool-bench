@@ -30,9 +30,19 @@ for (let d = 60; d < 90; d++) { const day = new Date(t0 + d * D).toISOString().s
   const row = (h, cc) => ({ registry_key: 'discogs.orders.health.refresh', ts: new Date(t0 + d * D + 3600e3 * h).toISOString(), outcome: 'ok', duration_ms: 0, metrics_json: JSON.stringify({ kind: 'health_snapshot', day, counts: { 'On Track': cc[0], 'At Risk': cc[1], 'Priority': cc[2], 'Critical': cc[3], 'Order Issues': cc[4] }, open: cc.reduce((a, b) => a + b, 0) }) });
   if (d % 2) { runs.push(row(8, c.map((x) => x + 1))); } runs.push(row(18, c)); }
 const raw = { tabs: { 'discogs_orders|Discogs_Orders ': orders, 'discogs_orders|Discogs_Order_Items': items, 'discogs_orders|Discogs_Order_Flags': flags, 'discogs_orders|order_lines': lines, 'parcels|parcels_booked': parcels }, runs, runs_from: plan.reads.runs.from };
+// v5 (C1669): the Queue view for the page harness. Order refs match the harness stage read (1111111-1..3); 1111111-9 is queued
+// but outside that read. Rows carry buyer-like columns the allowlist must drop.
+const qday = (n) => new Date(Date.UTC(2026, 10, 21) - n * D).toISOString().slice(0, 10);
+const rawQ = { tabs: {
+  'discogs_orders|Discogs_Orders ': [['order_id', 'buyer', 'order_date', 'status', 'total', 'archived', 'buyer_postcode'], ['1111111-1', 'testbuyer1', qday(3), 'In Progress', 7.8, '', 'BT28 2RN'], ['1111111-2', 'testbuyer2', qday(2), 'Payment Received', 30, '', '00184'], ['1111111-3', 'testbuyer3', qday(6), 'Shipped', 14, '', 'ZZ1 1ZZ'], ['1111111-9', 'testbuyer9', qday(1), 'In Progress', 22, '', 'ZZ9 9ZZ']],
+  'discogs_orders|Discogs_Order_Items': [['order_id', 'listing_id'], ['1111111-1', 'A'], ['1111111-1', 'B'], ['1111111-2', 'C'], ['1111111-3', 'D'], ['1111111-9', 'E']],
+  'discogs_orders|Discogs_Order_Flags': [['order_ref', 'flag', 'on', 'set_at'], ['1111111-1', 'label_ready', 'yes', qday(2)], ['1111111-3', 'label_ready', 'yes', qday(5)], ['1111111-3', 'printed', 'yes', qday(5)], ['1111111-9', 'label_ready', 'yes', qday(1)]],
+  'parcels|parcels_booked': [['source_platform', 'source_order_id', 'p2g_order_id', 'selected_service', 'booking_status', 'booking_date', 'latest_tracking_status', 'recipient_name', 'delivery_postcode'], ['discogs', '1111111-1', 'P2G-TEST-1', 'Evri ParcelShop', 'booked', qday(2) + 'T10:00:00', 'Awaiting drop off', 'Test Buyer One', 'BT28 2RN'], ['discogs', '1111111-2', '', 'Evri ParcelShop', 'draft', '', '', 'Test Buyer Two', '00184'], ['discogs', '1111111-3', 'P2G-TEST-3', 'Royal Mail Tracked 48', 'booked', qday(5) + 'T10:00:00', 'Delivered', 'Test Buyer Three', 'ZZ1 1ZZ'], ['', '', 'P2G-TEST-8', 'DPD Next Day', 'booked', qday(4) + 'T10:00:00', 'In transit', 'Test Other', 'ZZ8 8ZZ'], ['discogs', '1111111-9', 'P2G-TEST-9', 'Evri ParcelShop', 'booked', qday(1) + 'T10:00:00', 'Awaiting drop off', 'Test Buyer Nine', 'ZZ9 9ZZ']] } };
 const env = (r) => ({ status: 'ok', outcome: 'ok', message: r.message, run_id: 'tb-test', data: r.data, protocol: 'ca.pack_ship/1' });
 const out = { note: 'Synthetic. Built by the CA_V3 Pack Views library (C1528) from generated rows; no live data.', tabs: env(PV.evaluate({ op: 'tabs' }, stds, {})),
   stats90: env(PV.evaluate({ op: 'stats', range_days: 90, bucket: 'week', _now: NOW }, stds, raw)), stats30: env(PV.evaluate({ op: 'stats', range_days: 30, bucket: 'week', _now: NOW }, stds, raw)),
-  consignors: env(PV.evaluate({ op: 'consignors', _now: NOW }, stds, raw)), consignors_unsettled: env(PV.evaluate({ op: 'consignors', unsettled_only: true, _now: NOW }, stds, raw)) };
+  consignors: env(PV.evaluate({ op: 'consignors', _now: NOW }, stds, raw)), consignors_unsettled: env(PV.evaluate({ op: 'consignors', unsettled_only: true, _now: NOW }, stds, raw)),
+  queue: env(PV.evaluate({ op: 'queue', _now: NOW }, stds, rawQ)) };
+if (/testbuyer|Test Buyer|BT28|ZZ9/.test(JSON.stringify(out.queue))) { throw new Error('queue fixture carries buyer text'); }
 require('fs').writeFileSync(process.argv[2], JSON.stringify(out));
 console.log('fixture chars', JSON.stringify(out).length, 'orders', n, 'states', out.stats90.data.panels.map(p => p.key + ':' + p.state).join(' '));

@@ -1,12 +1,15 @@
-// std pack_tabs v4 (ca.pack_tabs/1) - the guide JSON for the CA_standards row. Column names confirmed from the writer
+// std pack_tabs v5 (ca.pack_tabs/1) - the guide JSON for the CA_standards row. Column names confirmed from the writer
 // workflows on 2026-11-21 (S1530): Discogs sync bVTbjzHadHsU3cLK, health 3G75c8kP1VH2NisB, items b3RsMhNC39F5YG8S,
 // ledger lkKxu3Onw0j2z8Fj, flags ym4GSRyUxoGK9VQz, Parcel2Go collector Vhe0uMN9g4wqqERy and draft bwwAlusXGjE7OKcv.
+// v5 (C1669, C1599-s7): the Queue tab (op queue): sources queue_orders and queue_parcels, ledger panels raw_orders and raw_parcels.
+// Parcel columns p2g_order_id and selected_service are named in std parcel2go_sink tabs.booked.owned.
+const FLAG = (name, key, flag) => ({ name, fn: 'lookup', source: 'flags', their_key: 'order_ref', my_key: key, col: 'flag', agg: 'first', where: [{ col: 'flag', op: 'eq', value: flag }, { col: 'on', op: 'eq', value: 'yes' }] });
 const LIVE = 'live', DISCOGS = 'discogs', PAID = 'paid', P2G = 'p2g_booked';
 const RUN_KEYS = { $ref: 'pack_tabs:sets.run_keys' }, RUN_LABELS = { $ref: 'pack_tabs:sets.run_labels' };
 
 module.exports = {
   protocol: 'ca.pack_tabs/1',
-  version: 4,
+  version: 5,
   principle: 'The Pack & Ship page views are data (pack_ship/design v7, C1528). tabs lists the tab column; a tab names its page op, its controls and its panels; a panel names its kind and metrics; a metric names a source, a filter (conditions or the name of a shared entry in filters), a time column and a measure; a source names a sheet tab or the run trace by std path with a column allowlist, plus computed fields. CA_V3 Pack Views evaluates these definitions and the page draws panel kinds (kpi, trend, breakdown, ledger). A new tab, panel, metric, consignor, channel or column is an edit here; a column that is absent returns source_missing, never an estimate (I4). No buyer column may be listed (privacy.forbid_like).',
   uses: ['pack_tabs', 'discogs_reconcile', 'commerce', 'pack_stages', 'run_metric'],
   ranges: { default_days: 90, allowed: [30, 90, 180, 365], buckets: ['day', 'week', 'month'], default_bucket: 'week', day_bucket_max_days: 92, period_default_days: 90, period_max_days: 1100 },
@@ -43,9 +46,24 @@ module.exports = {
         { key: 'unsettled_only', kind: 'toggle', label: 'Unsettled items only', default: false }
       ],
       note: 'Discogs and eBay lines from the commerce ledger; the owner is the one frozen on the line at sale. Postage is not part of any figure.',
-      panels: ['consignor_ledger'] }
+      panels: ['consignor_ledger'] },
+    { key: 'queue', label: 'Queue', icon: '🖨', kind: 'queue', op: 'queue', range: 'period', controls: [],
+      note: 'Raw rows, buyer-free. The print queue is every order with a stored label (label_ready) that is not printed.',
+      panels: ['raw_orders', 'raw_parcels'] }
   ],
   sources: {
+    queue_orders: { kind: 'sheet', slot: 'discogs_orders', sheet: { $ref: 'discogs_reconcile:orders.sheet_id' }, tab: { $ref: 'discogs_reconcile:orders.orders_tab' },
+      columns: ['order_id', 'order_date', 'status', 'total', 'archived'],
+      fields: [
+        { name: 'item_count', fn: 'lookup', source: 'items', their_key: 'order_id', my_key: 'order_id', col: 'listing_id', agg: 'count' },
+        FLAG('label_flag', 'order_id', 'label_ready'), { name: 'label_ready', fn: 'filled', args: ['label_flag'] },
+        FLAG('printed_flag', 'order_id', 'printed'), { name: 'printed', fn: 'filled', args: ['printed_flag'] },
+        FLAG('packed_flag', 'order_id', 'packed'), { name: 'packed', fn: 'filled', args: ['packed_flag'] }] },
+    queue_parcels: { kind: 'sheet', slot: 'parcels', sheet: { $ref: 'discogs_reconcile:parcels.sheet_id' }, tab: { $ref: 'discogs_reconcile:parcels.booked_tab' },
+      columns: ['source_platform', 'source_order_id', 'p2g_order_id', 'selected_service', 'booking_status', 'booking_date', 'latest_tracking_status'],
+      fields: [
+        FLAG('label_flag', 'source_order_id', 'label_ready'), { name: 'label_stored', fn: 'filled', args: ['label_flag'] },
+        FLAG('printed_flag', 'source_order_id', 'printed'), { name: 'printed', fn: 'filled', args: ['printed_flag'] }] },
     orders: { kind: 'sheet', slot: 'discogs_orders', sheet: { $ref: 'discogs_reconcile:orders.sheet_id' }, tab: { $ref: 'discogs_reconcile:orders.orders_tab' },
       columns: ['order_id', 'order_date', 'status', 'total', 'shipping', 'fee', 'health', 'paid_at', 'shipped_at', 'archived'],
       fields: [
@@ -148,6 +166,29 @@ module.exports = {
     runs_duration: { label: 'Run time', source: 'runs', where: ['chains', { col: 'outcome', op: 'eq', value: 'ok' }], time: 'ts', measure: 'median', value: 'duration_s', series_by: 'registry_key', series_order: RUN_KEYS, series_labels: RUN_LABELS }
   },
   panels: {
+    raw_orders: { kind: 'ledger', title: 'Raw orders', source: 'queue_orders', where: ['not_archived'], time: 'order_date', currency: 'GBP',
+      note: 'Orders by order date in the period; an order waiting in the print queue is always listed.',
+      ungrouped: { where: [], by: '', label: 'Orders' }, totals: [], total_columns: [],
+      rows: { keep_where: [{ col: 'label_ready', op: 'eq', value: 'true' }, { col: 'printed', op: 'eq', value: 'false' }], max: 200, columns: [
+        { key: 'order', label: 'Order', type: 'link', field: 'order_id', href: [{ where: [], template: 'https://www.discogs.com/sell/order/{order_id}' }] },
+        { key: 'status', label: 'Status' },
+        { key: 'order_date', label: 'Order date', type: 'date' },
+        { key: 'item_count', label: 'Items', type: 'number' },
+        { key: 'total', label: 'Value', type: 'money' },
+        { key: 'label_ready', label: 'Label stored', type: 'bool' },
+        { key: 'printed', label: 'Printed', type: 'bool' },
+        { key: 'packed', label: 'Packed', type: 'bool' }] } },
+    raw_parcels: { kind: 'ledger', title: 'Raw parcels', source: 'queue_parcels', where: [], time: 'booking_date',
+      note: 'Parcel2Go lines by booking date in the period; unpaid drafts are always listed. A line with no order ref was booked outside CA_V3.',
+      ungrouped: { where: [], by: '', label: 'Parcels' }, totals: [], total_columns: [],
+      rows: { keep_where: [{ col: 'booking_status', op: 'eq', value: 'draft' }], max: 200, columns: [
+        { key: 'p2g_order_id', label: 'P2G ref' },
+        { key: 'order', label: 'Order ref', type: 'link', field: 'source_order_id', href: [{ where: [{ col: 'source_platform', op: 'eq', value: 'discogs' }], template: 'https://www.discogs.com/sell/order/{source_order_id}' }] },
+        { key: 'selected_service', label: 'Service' },
+        { key: 'booking_status', label: 'Booking' },
+        { key: 'latest_tracking_status', label: 'Tracking' },
+        { key: 'label_stored', label: 'Label stored', type: 'bool' },
+        { key: 'printed', label: 'Printed', type: 'bool' }] } },
     headline: { kind: 'kpi', title: 'In this range', wide: true, tiles: [
       { metric: 'gross', label: 'Gross sales', unit: 'GBP' }, { metric: 'net', label: 'Net after fees', unit: 'GBP' },
       { metric: 'own_net', label: 'Own sales, net', unit: 'GBP' }, { metric: 'commission', label: 'Commission earned', unit: 'GBP' },

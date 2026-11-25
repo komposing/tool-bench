@@ -15,10 +15,17 @@ console.log('D url', p2.urls.D.slice(0, 200));
 const lib = fs.readFileSync(require('path').join(__dirname, 'lib.js'), 'utf8') + fs.readFileSync(require('path').join(__dirname, 'evaltail.js'), 'utf8');
 const hd = ['channel', 'order_id', 'line_id', 'order_date', 'status', 'title', 'marker_raw', 'owner', 'owner_rule', 'item_price', 'item_fee_share', 'net', 'commission_pct', 'payout', 'settled_ref', 'currency'];
 const ev = (req, pl, extra) => run(lib, Object.assign({ 'Pack Views Call': [req], 'Load Tabs Std': stdRows, 'Load Refs': refRows, 'Read Plan': [pl] }, extra))[0].json;
-const e1 = ev({ op: 'tabs' }, p1, {}); assert.strictEqual(e1.outcome, 'ok'); assert.strictEqual(e1.data.tabs.length, 3); assert.strictEqual(e1.item_count, 3);
+const e1 = ev({ op: 'tabs' }, p1, {}); assert.strictEqual(e1.outcome, 'ok'); assert.strictEqual(e1.data.tabs.length, 4); assert.strictEqual(e1.item_count, 4); assert.strictEqual(e1.data.tabs[3].op, 'queue');
 const e3 = ev({ op: 'consignors' }, p3, { 'Read Sheet D': [{ valueRanges: [{ values: [hd, ['discogs:1', '9-1', 'L', new Date().toISOString().slice(0, 10), 'Shipped', 'LP', 'x (AW)', 'AW', 'marker_code', 10, 1, 9, 50, 4.5, '', 'GBP']] }] }], 'Read Runs': [{}] });
 assert.strictEqual(e3.outcome, 'ok', e3.message); assert.strictEqual(e3.data.panels[0].groups[0].totals[0].values.payout, 4.5);
 const e2 = ev({ op: 'stats' }, p2, { 'Read Sheet D': [{ valueRanges: [] }], 'Read Runs': [{}] }); assert.strictEqual(e2.outcome, 'ok'); assert(e2.data.panels.every((p) => ['source_missing', 'empty'].includes(p.state)), e2.data.panels.map((p) => p.key + ':' + p.state).join(' '));
 const e4 = ev({ op: 'stats', range_days: 45 }, p2, {}); assert.strictEqual(e4.outcome, 'param_rejected');
+// v5 (C1669): the Queue view reads both spreadsheets through the two pre-wired read nodes and the node bodies need no change
+const p6 = plan({ op: 'queue' }); assert(p6.any && p6.need.D && p6.need.P && !p6.run_keys.length, JSON.stringify(p6.errs));
+assert.deepStrictEqual(p6.slots.discogs_orders.tabs.length, 3); assert.deepStrictEqual(p6.slots.parcels.tabs, ['parcels_booked']);
+const today = new Date().toISOString().slice(0, 10);
+const e6 = ev({ op: 'queue' }, p6, { 'Read Sheet D': [{ valueRanges: p6.slots.discogs_orders.tabs.map((t) => ({ values: /Flags/.test(t) ? [['order_ref', 'flag', 'on', 'set_at'], ['9-1', 'label_ready', 'yes', today]] : /Items/.test(t) ? [['order_id', 'listing_id'], ['9-1', 'L1']] : [['order_id', 'order_date', 'status', 'total', 'archived'], ['9-1', today, 'In Progress', 12, '']] })) }],
+  'Read Sheet P': [{ valueRanges: [{ values: [['source_platform', 'source_order_id', 'p2g_order_id', 'selected_service', 'booking_status', 'booking_date', 'latest_tracking_status'], ['discogs', '9-1', 'P1', 'Evri', 'booked', today, '']] }] }], 'Read Runs': [{}] });
+assert.strictEqual(e6.outcome, 'ok', e6.message); assert.strictEqual(e6.data.panels[0].groups[0].rows[0].label_ready, true); assert.strictEqual(e6.data.panels[1].groups[0].rows[0].p2g_order_id, 'P1');
 const e5 = ev({ op: 'bogus' }, plan({ op: 'bogus' }), {}); assert.strictEqual(e5.outcome, 'param_rejected');
 console.log('node bodies ok; eval code chars', lib.length, 'plan chars', fs.readFileSync(require('path').join(__dirname, 'readplan.js'), 'utf8').length);
