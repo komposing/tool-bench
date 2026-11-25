@@ -1,5 +1,17 @@
 # Changelog
 
+## 3.19.1 — C1645
+
+- **Label printer 1.0.1** (`TB:label-printer`): the label is turned onto the printed page. A label printer whose driver
+  feeds the short edge first (a DYMO LabelWriter with 57 x 32 mm labels) needs the page as 32 x 57 mm with the label
+  drawn a quarter turn round; the page size the tool sets also hides the browser's own orientation choice, so the tool
+  now carries it. Rotation comes from the series (`std:mint` series `media.rotate`: 0, 90, 180 or 270) and can be
+  overridden per device with the new setting **Label rotation on the printed page** (series, 0, 90, 180, 270). The line
+  under the labels says which page size and turn were used.
+
+### Fixed
+- U1659: labels printed in portrait on the DYMO and the print dialog offered no way to change orientation
+
 ## 3.19.0 — C1645
 
 - **Label printer 1.0.0** (new repo tool `TB:label-printer`, T846): prints **sequences of barcode stock labels**. Pick a

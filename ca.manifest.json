@@ -5,7 +5,7 @@
   "key": "repo:komposing/tool-bench",
   "name": "tool-bench",
   "title": "Tool Bench",
-  "version": "3.19.0",
+  "version": "3.19.1",
   "purpose": "Single-file host for small HTML tools that front CA_V3 flows: shared config injection, sandboxed runs, tool contracts naming the CA_V3 objects each tool depends on.",
   "owner": "Nick",
   "lifecycle": "active",
@@ -401,6 +401,11 @@
       "version": "3.19.0",
       "change": "C1645",
       "note": "Label printer (TB:label-printer v1.0.0, T846): prints sequences of barcode stock labels from a CA_V3 mint series (ca.mint/1) through the page gateway (ca.page/1). Presets, next numbers and the label design are data; mint with two taps or reprint issued codes; one 57 x 32 mm Code 128 label per page."
+    },
+    {
+      "version": "3.19.1",
+      "change": "C1645",
+      "note": "Label printer 1.0.1 (U1659): labels printed sideways on a DYMO with 57 x 32 mm stock and the print dialog offered no orientation. The label is now turned onto the printed page: rotation from the series media (std mint media.rotate) or the tool's new Label rotation setting."
     }
   ]
 }

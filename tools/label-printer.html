@@ -9,7 +9,7 @@
   "description": "Prints sequences of barcode stock labels (ca.mint/1): pick a preset, mint the next numbers with a two-tap confirm or reprint ones already issued, and print them one label per page (code in plain text above a Code 128 barcode, 57 x 32 mm by default). Series, presets, next numbers and the label design come from CA_V3 (std mint) through the page gateway; nothing is numbered in the page.",
   "category": "Labels",
   "tags": ["barcode", "code128", "labels", "dymo", "mint", "ca.mint/1", "ca.page/1"],
-  "version": "1.0.0",
+  "version": "1.0.1",
   "contract": { "config_keys": ["labelprinter"], "requires": ["std:mint", "std:page_gateway", "cap:mint.series", "cap:mint.issue", "cap:mint.reprint", "wf:VhEt0ddqYGKuNaId", "wf:gCMFANIhqv079zzS"] },
   "sandbox": { "scripts": true, "forms": false, "modals": true, "popups": false, "downloads": false, "sameOrigin": false },
   "config_schema": {
@@ -18,7 +18,8 @@
       { "path": "url", "label": "Page gateway endpoint", "type": "url", "required": true, "default": "https://komposing.app.n8n.cloud/webhook/ca-v3-page" },
       { "path": "headers.X-Api-Key", "label": "Viewer key (X-Api-Key)", "type": "secret", "required": false, "secret": true, "help": "CA_V3 viewer key. Leave empty to use the key saved for the CA_V3 Viewer (cav3)." },
       { "path": "series", "label": "Mint series", "type": "string", "default": "vrp_label", "help": "A series key declared in std mint" },
-      { "path": "auto_print", "label": "Open the print dialog when labels are ready", "type": "boolean", "default": true }
+      { "path": "auto_print", "label": "Open the print dialog when labels are ready", "type": "boolean", "default": true },
+      { "path": "rotate", "label": "Label rotation on the printed page", "type": "enum", "values": ["series", "0", "90", "180", "270"], "default": "series", "help": "series uses the rotation the mint series declares for its media. Change it if labels come out sideways (90 or 270) or upside down (add 180)." }
     ]
   }
 }
@@ -118,7 +119,7 @@ var DESIGN_DEFAULT = { symbology: "code128", dpi: 300, margin_mm: 3, text: { top
                        barcode: { top_mm: 12.6, height_mm: 10.5, max_width_mm: 46, quiet_modules: 10 } };
 function merge(a, b){ var o = {}, k; for (k in a) o[k] = a[k]; for (k in (b || {})) o[k] = (b[k] && typeof b[k] === "object" && !Array.isArray(b[k]) && a[k] && typeof a[k] === "object") ? merge(a[k], b[k]) : b[k]; return o; }
 function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
-function labelSvg(code, media, design){
+function labelSvg(code, media, design, rotate){
   var d = merge(DESIGN_DEFAULT, design), W = +media.w_mm, H = +media.h_mm;
   var enc = SYMBOLOGIES[d.symbology]; if (!enc) throw new Error("Label design names an unknown barcode type: " + d.symbology);
   var m = enc(code), dot = 25.4 / d.dpi, q = d.barcode.quiet_modules;
@@ -128,8 +129,17 @@ function labelSvg(code, media, design){
   var mw = dots * dot, bw = m.length * mw, x0 = (W - bw) / 2, rects = "", i = 0, j;
   while (i < m.length){ if (m[i] === "1"){ j = i; while (j < m.length && m[j] === "1") j++; rects += '<rect x="' + (x0 + i * mw).toFixed(4) + '" y="' + d.barcode.top_mm + '" width="' + ((j - i) * mw).toFixed(4) + '" height="' + d.barcode.height_mm + '"/>'; i = j; } else i++; }
   var fs = d.text.height_mm, est = code.length * fs * 0.62, tl = est > d.text.max_width_mm ? ' textLength="' + d.text.max_width_mm + '" lengthAdjust="spacingAndGlyphs"' : "";
-  return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + W + " " + H + '" width="' + W + 'mm" height="' + H + 'mm" shape-rendering="crispEdges">' +
-    '<text x="' + (W / 2) + '" y="' + (d.text.top_mm + fs * 0.78).toFixed(3) + '" text-anchor="middle" font-family="' + esc(d.text.font) + '" font-size="' + fs + '"' + tl + ">" + esc(code) + "</text>" + rects + "</svg>";
+  var inner = '<text x="' + (W / 2) + '" y="' + (d.text.top_mm + fs * 0.78).toFixed(3) + '" text-anchor="middle" font-family="' + esc(d.text.font) + '" font-size="' + fs + '"' + tl + ">" + esc(code) + "</text>" + rects;
+  // The label is drawn W x H and then turned onto the printed page: a quarter turn swaps the page to H x W, which is how a
+  // label printer whose driver feeds the short edge first (DYMO 57 x 32) expects it.
+  var r = pageOf(media, rotate), t = { 0: "", 90: "translate(" + H + ",0) rotate(90)", 180: "translate(" + W + "," + H + ") rotate(180)", 270: "translate(0," + W + ") rotate(-90)" }[r.rotate];
+  return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + r.w + " " + r.h + '" width="' + r.w + 'mm" height="' + r.h + 'mm" shape-rendering="crispEdges">' +
+    (t ? '<g transform="' + t + '">' + inner + "</g>" : inner) + "</svg>";
+}
+/* The printed page for a label: rotation 0 or 180 keeps W x H, 90 or 270 makes it H x W. Anything else is treated as 0. */
+function pageOf(media, rotate){
+  var r = [0, 90, 180, 270].indexOf(+rotate) >= 0 ? +rotate : 0, W = +media.w_mm, H = +media.h_mm;
+  return (r === 90 || r === 270) ? { rotate: r, w: H, h: W } : { rotate: r, w: W, h: H };
 }
 /* Reprint input: codes separated by commas or spaces; a range is CODE-CODE or CODE-NUMBER (same prefix). */
 function parseCodes(input, max){
@@ -156,7 +166,7 @@ function getPath(o, p){ return p.split(".").reduce(function(a, k){ return a && t
 var PC = TC.labelprinter || {};
 var CONF = { url: PC.url || "https://komposing.app.n8n.cloud/webhook/ca-v3-page",
              key: getPath(PC, "headers.X-Api-Key") || getPath(TC, "cav3.dashboard.headers.X-Api-Key") || "",
-             series: PC.series || "vrp_label", autoPrint: PC.auto_print !== false };
+             series: PC.series || "vrp_label", autoPrint: PC.auto_print !== false, rotate: String(PC.rotate === undefined ? "series" : PC.rotate) };
 var S = null, KEY = "", ARMED = false, ARM_T = 0, BUSY = false;
 
 /* Every gateway reply is {status, outcome, message, data}. A refusal is thrown with the gateway's own words. */
@@ -177,6 +187,8 @@ function fmt(key, seq){ return key + String(seq).padStart(S.pad || 5, "0"); }
 function cur(){ return (S.keys || []).filter(function(k){ return k.key === KEY; })[0]; }
 /* A preset is a series key: its design is a name in the series' designs map (std mint designs), looked up by the code's prefix. */
 function designFor(code){ var k = (S.keys || []).filter(function(x){ return code.indexOf(x.key) === 0; })[0]; return (k && S.designs && S.designs[k.design]) || {}; }
+/* Rotation: the tool setting when it names an angle, else what the series declares for its media (std mint media.rotate), else 0. */
+function rotation(){ return CONF.rotate !== "series" && CONF.rotate !== "" ? +CONF.rotate : +((S.media || {}).rotate || 0); }
 function count(){ var n = parseInt($("count").value, 10); return isFinite(n) ? n : 0; }
 
 function drawPresets(){
@@ -202,13 +214,14 @@ function drawMint(){
 function disarm(){ ARMED = false; clearTimeout(ARM_T); }
 
 function showLabels(title, codes, note){
-  var media = S.media || { w_mm: 57, h_mm: 32 }, W = +media.w_mm, H = +media.h_mm, pages;
-  pages = codes.map(function(c){ return '<section class="pg">' + labelSvg(c, media, designFor(c)) + "</section>"; }).join("");
+  var media = S.media || { w_mm: 57, h_mm: 32 }, rot = rotation(), pg = pageOf(media, rot), pages;
+  pages = codes.map(function(c){ return '<section class="pg">' + labelSvg(c, media, designFor(c), rot) + "</section>"; }).join("");
   $("doc").srcdoc = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>' + esc(codes[0] + (codes.length > 1 ? " +" + (codes.length - 1) : "")) + "</title><style>" +
-    "@page{size:" + W + "mm " + H + "mm;margin:0} html,body{margin:0;background:#fff} .pg{width:" + W + "mm;height:" + H + "mm;overflow:hidden;page-break-after:always;break-after:page} .pg:last-child{page-break-after:auto;break-after:auto} svg{display:block}" +
+    "@page{size:" + pg.w + "mm " + pg.h + "mm;margin:0} html,body{margin:0;background:#fff} .pg{width:" + pg.w + "mm;height:" + pg.h + "mm;overflow:hidden;page-break-after:always;break-after:page} .pg:last-child{page-break-after:auto;break-after:auto} svg{display:block}" +
     "@media screen{body{background:#888;padding:8px;display:flex;flex-wrap:wrap;gap:8px} .pg{background:#fff;border-radius:2mm;box-shadow:0 1px 4px rgba(0,0,0,.4)}}" +
     "</style></head><body>" + pages + '<script>addEventListener("message",function(e){if(e.data&&e.data.type==="labelprinter:print"){focus();print();}});<\/script></body></html>';
-  $("outH").textContent = title; $("codes").textContent = codes.join("  "); hint("outNote", note || "", "ok");
+  $("outH").textContent = title; $("codes").textContent = codes.join("  ");
+  hint("outNote", (note ? note + " · " : "") + "page " + pg.w + " × " + pg.h + " mm" + (pg.rotate ? ", label turned " + pg.rotate + "°" : ""), "ok");
   $("out").style.display = "block";
   if (CONF.autoPrint) setTimeout(doPrint, 500);
 }
@@ -250,7 +263,7 @@ $("re").addEventListener("keydown", function(e){ if (e.key === "Enter") $("repri
 $("print").onclick = doPrint;
 (function(){
   var block = {}; try { block = JSON.parse($("toolbench-tool").textContent); } catch (e) {}
-  $("foot").textContent = (block.name || "Label printer") + " v" + (block.version || "?") + " · series " + CONF.series + " · set the printer's paper size to the label size and scale to 100%";
+  $("foot").textContent = (block.name || "Label printer") + " v" + (block.version || "?") + " · series " + CONF.series + " · print at 100% scale; if labels come out sideways or upside down, change Label rotation in this tool's settings";
   load();
 })();
 </script>
