@@ -5,7 +5,7 @@
   "key": "repo:komposing/tool-bench",
   "name": "tool-bench",
   "title": "Tool Bench",
-  "version": "3.18.0",
+  "version": "3.19.0",
   "purpose": "Single-file host for small HTML tools that front CA_V3 flows: shared config injection, sandboxed runs, tool contracts naming the CA_V3 objects each tool depends on.",
   "owner": "Nick",
   "lifecycle": "active",
@@ -103,6 +103,24 @@
         ]
       },
       {
+        "key": "cap:mint.issue",
+        "by": [
+          "TB:label-printer"
+        ]
+      },
+      {
+        "key": "cap:mint.reprint",
+        "by": [
+          "TB:label-printer"
+        ]
+      },
+      {
+        "key": "cap:mint.series",
+        "by": [
+          "TB:label-printer"
+        ]
+      },
+      {
         "key": "cap:pack.consignors",
         "by": [
           "TB:pack-ship"
@@ -151,6 +169,12 @@
         ]
       },
       {
+        "key": "std:mint",
+        "by": [
+          "TB:label-printer"
+        ]
+      },
+      {
         "key": "std:pack_stages",
         "by": [
           "TB:pack-ship"
@@ -160,6 +184,18 @@
         "key": "std:pack_tabs",
         "by": [
           "TB:pack-ship"
+        ]
+      },
+      {
+        "key": "std:page_gateway",
+        "by": [
+          "TB:label-printer"
+        ]
+      },
+      {
+        "key": "wf:gCMFANIhqv079zzS",
+        "by": [
+          "TB:label-printer"
         ]
       },
       {
@@ -184,6 +220,12 @@
         "key": "wf:Pqjdoot0EPzoQxj0",
         "by": [
           "TB:pack-ship"
+        ]
+      },
+      {
+        "key": "wf:VhEt0ddqYGKuNaId",
+        "by": [
+          "TB:label-printer"
         ]
       },
       {
@@ -354,6 +396,11 @@
       "version": "3.18.0",
       "change": "C1584",
       "note": "Barcode maker (TB:barcode v1.0.0, T826): type text, get a Code 128 barcode as a PNG; every barcode stays on the page until deleted. Self-contained: no network, no CA_V3 calls, no settings."
+    },
+    {
+      "version": "3.19.0",
+      "change": "C1645",
+      "note": "Label printer (TB:label-printer v1.0.0, T846): prints sequences of barcode stock labels from a CA_V3 mint series (ca.mint/1) through the page gateway (ca.page/1). Presets, next numbers and the label design are data; mint with two taps or reprint issued codes; one 57 x 32 mm Code 128 label per page."
     }
   ]
 }
