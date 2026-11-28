@@ -1,0 +1,92 @@
+{
+  "about": "Fixtures for scripts/write-routes.mjs (ca.repo/1 v6, C2119-s4). check-change runs them before checking the branch: an undeclared write must fail, a declared one must pass.",
+  "cases": [
+    {
+      "name": "reads only, nothing declared",
+      "expect": "pass",
+      "write_routes": [],
+      "files": { "src/app.js": "const res = await fetch(c.url, { headers, signal: ctrl.signal, cache: 'no-store' });\nawait fetch('https://komposing.app.n8n.cloud/webhook/ca-v3-state-v3');\n" }
+    },
+    {
+      "name": "undeclared POST to a literal url fails",
+      "expect": "fail",
+      "match": "is not a declared write route",
+      "write_routes": [],
+      "files": { "src/board.js": "await fetch('https://komposing.app.n8n.cloud/webhook/ca-v3-board-post', { method: 'POST', body });\n" }
+    },
+    {
+      "name": "undeclared POST to an expression fails",
+      "expect": "fail",
+      "match": "is not a declared write route",
+      "write_routes": [],
+      "files": { "src/board.js": "const BOARD = 'https://komposing.app.n8n.cloud/webhook/ca-v3-board-post';\nawait fetch(c.boardUrl, {\n  method: \"POST\",\n  body: JSON.stringify(post)\n});\n" }
+    },
+    {
+      "name": "declared board.post with a marker passes",
+      "expect": "pass",
+      "write_routes": [{ "key": "board.post", "url": "https://komposing.app.n8n.cloud/webhook/ca-v3-board-post", "method": "POST" }],
+      "files": {
+        "src/app.js": "const DEFAULTS = { boardUrl: 'https://komposing.app.n8n.cloud/webhook/ca-v3-board-post' };\n",
+        "src/board.js": "// ca-write: board.post\nconst res = await fetch(c.boardUrl, { method: 'POST', headers, body: JSON.stringify(post) });\n"
+      }
+    },
+    {
+      "name": "declared board.post addressed by a literal url passes",
+      "expect": "pass",
+      "write_routes": [{ "key": "board.post", "url": "https://komposing.app.n8n.cloud/webhook/ca-v3-board-post", "method": "POST" }],
+      "files": { "src/board.js": "await fetch('https://komposing.app.n8n.cloud/webhook/ca-v3-board-post?v=1', { method: 'POST', body });\n" }
+    },
+    {
+      "name": "a second, undeclared POST beside a declared one fails",
+      "expect": "fail",
+      "match": "ca-v3-other",
+      "write_routes": [{ "key": "board.post", "url": "https://komposing.app.n8n.cloud/webhook/ca-v3-board-post", "method": "POST" }],
+      "files": { "src/board.js": "await fetch('https://komposing.app.n8n.cloud/webhook/ca-v3-board-post', { method: 'POST', body });\nawait fetch('https://komposing.app.n8n.cloud/webhook/ca-v3-other', { method: 'POST', body });\n" }
+    },
+    {
+      "name": "marker naming an undeclared key fails",
+      "expect": "fail",
+      "match": "which is not a declared write route",
+      "write_routes": [{ "key": "board.post", "url": "https://komposing.app.n8n.cloud/webhook/ca-v3-board-post", "method": "POST" }],
+      "files": { "src/board.js": "const u = 'https://komposing.app.n8n.cloud/webhook/ca-v3-board-post';\n// ca-write: board.post\nawait fetch(u, { method: 'POST' });\n// ca-write: tasks.delete\nawait fetch(u2, { method: 'DELETE' });\n" }
+    },
+    {
+      "name": "method differing from the route fails",
+      "expect": "fail",
+      "match": "does not match route board.post method POST",
+      "write_routes": [{ "key": "board.post", "url": "https://komposing.app.n8n.cloud/webhook/ca-v3-board-post", "method": "POST" }],
+      "files": { "src/board.js": "const u = 'https://komposing.app.n8n.cloud/webhook/ca-v3-board-post';\n// ca-write: board.post\nawait fetch(u, { method: 'PUT' });\n" }
+    },
+    {
+      "name": "non-literal method counts as a write",
+      "expect": "fail",
+      "match": "non-literal method",
+      "write_routes": [],
+      "files": { "src/x.js": "await fetch(url, { method: m, body });\n" }
+    },
+    {
+      "name": "XMLHttpRequest POST, sendBeacon and a post form fail undeclared",
+      "expect": "fail",
+      "match": "sendBeacon",
+      "write_routes": [],
+      "files": {
+        "src/x.js": "const x = new XMLHttpRequest(); x.open('POST', 'https://example.org/a');\nnavigator.sendBeacon('https://example.org/b', data);\n",
+        "src/index.html": "<form method=\"post\" action=\"https://example.org/c\"></form><form method=\"dialog\" id=\"settings-form\"></form>\n"
+      }
+    },
+    {
+      "name": "declared route that nothing calls fails",
+      "expect": "fail",
+      "match": "declared but no write call",
+      "write_routes": [{ "key": "board.post", "url": "https://komposing.app.n8n.cloud/webhook/ca-v3-board-post", "method": "POST" }],
+      "files": { "src/app.js": "const DEFAULTS = { boardUrl: 'https://komposing.app.n8n.cloud/webhook/ca-v3-board-post' };\n" }
+    },
+    {
+      "name": "write_routes absent fails",
+      "expect": "fail",
+      "match": "write_routes missing",
+      "write_routes": null,
+      "files": {}
+    }
+  ]
+}

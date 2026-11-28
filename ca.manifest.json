@@ -5,7 +5,7 @@
   "key": "repo:komposing/tool-bench",
   "name": "tool-bench",
   "title": "Tool Bench",
-  "version": "3.20.0",
+  "version": "3.20.1",
   "purpose": "Single-file host for small HTML tools that front CA_V3 flows: shared config injection, sandboxed runs, tool contracts naming the CA_V3 objects each tool depends on.",
   "owner": "Nick",
   "lifecycle": "active",
@@ -29,6 +29,32 @@
     "src/bench.html",
     "tools/registry.json",
     "tools/"
+  ],
+  "write_routes": [
+    {
+      "key": "drafting.engine",
+      "url": "https://komposing.app.n8n.cloud/webhook/ca-v3-drafting",
+      "method": "POST",
+      "why": "TB:drafting-table: ca.draft/1 ops to the Drafting Engine (std drafting)"
+    },
+    {
+      "key": "v4.hub_page",
+      "url": "https://komposing.app.n8n.cloud/webhook/ca-v4-hub-page",
+      "method": "POST",
+      "why": "TB:drafting-table: CA_V4 Hub page entry (ca.payload/1, D20)"
+    },
+    {
+      "key": "page.gateway",
+      "url": "https://komposing.app.n8n.cloud/webhook/ca-v3-page",
+      "method": "POST",
+      "why": "TB:label-printer: page gateway ops (mint.issue, mint.reprint, mint.series)"
+    },
+    {
+      "key": "pack_ship.engine",
+      "url": "https://komposing.app.n8n.cloud/webhook/ca-v3-pack-ship",
+      "method": "POST",
+      "why": "TB:pack-ship: Pack & Ship ops (std pack_tabs, pack_stages)"
+    }
   ],
   "storage": {
     "key": "toolbench:v3",
@@ -423,6 +449,11 @@
       "version": "3.20.0",
       "change": "C1669",
       "note": "Pack & Ship 3.1.0 (TB:pack-ship, T851, C1599-s7): a Queue tab with buyer-free raw orders and raw parcels tables, Print queued items (every order with a stored label that is not printed, each marked printed) and Start packing (cap pack.task). Status polls back off and stop when nothing changes."
+    },
+    {
+      "version": "3.20.1",
+      "change": "C2119",
+      "note": "ca.repo/1 v6 (C2119-s4): write_routes allowlist; the four existing write routes declared (drafting.engine, v4.hub_page, page.gateway, pack_ship.engine); check-change fails an undeclared write call. Drafting Table 1.3.1, Label printer 1.0.2, Pack & Ship 3.1.1: ca-write markers only."
     }
   ]
 }
