@@ -9,7 +9,7 @@
   "description": "Prints sequences of barcode stock labels (ca.mint/1): pick a preset, mint the next numbers with a two-tap confirm or reprint ones already issued, and print them one label per page (code in plain text above a Code 128 barcode, 57 x 32 mm by default). Series, presets, next numbers and the label design come from CA_V3 (std mint) through the page gateway; nothing is numbered in the page.",
   "category": "Labels",
   "tags": ["barcode", "code128", "labels", "dymo", "mint", "ca.mint/1", "ca.page/1"],
-  "version": "1.0.1",
+  "version": "1.0.2",
   "contract": { "config_keys": ["labelprinter"], "requires": ["std:mint", "std:page_gateway", "cap:mint.series", "cap:mint.issue", "cap:mint.reprint", "wf:VhEt0ddqYGKuNaId", "wf:gCMFANIhqv079zzS"] },
   "sandbox": { "scripts": true, "forms": false, "modals": true, "popups": false, "downloads": false, "sameOrigin": false },
   "config_schema": {
@@ -173,6 +173,7 @@ var S = null, KEY = "", ARMED = false, ARM_T = 0, BUSY = false;
 async function call(op, params){
   if (!CONF.key) throw new Error("No viewer key: set it in Tool Bench Settings (Label printer or CA_V3 Viewer).");
   var res, txt, j;
+  // ca-write: page.gateway (ca.manifest.json write_routes, ca.repo/1 v6)
   try { res = await fetch(CONF.url, { method: "POST", headers: { "Content-Type": "application/json", "X-Api-Key": CONF.key },
                                       body: JSON.stringify({ page: PAGE, op: op, params: params || {} }), cache: "no-store" }); }
   catch (e) { throw new Error("Page gateway unreachable (network or CORS): " + (e.message || e)); }

@@ -8,9 +8,11 @@
 // Fails closed (I4) when: the branch matches neither lane; a commit lacks its lane's trailers or
 // names a different change/increment than its siblings; source changed without a version bump;
 // the version went backwards; the CHANGELOG has no entry for the version; a released version's
-// commit or a storage migration was rewritten.
+// commit or a storage migration was rewritten; ca.repo/1 v6 (C2119-s4): an app source file makes a write call that
+// does not resolve to a route in write_routes, or a declared route is unused (scripts/write-routes.mjs, fixtures first).
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
+import { selfTest as writeRoutesSelfTest, checkWriteRoutes, scopeFiles } from "./write-routes.mjs";
 import { readJson, semverCmp, TRAILER_RE, V4_TRAILER_RE, readToolBlock, BUG_TRAILER_RE, parseFixed } from "./lib.mjs";
 
 const [base = "origin/main", branch = process.env.GITHUB_HEAD_REF || ""] = process.argv.slice(2);
@@ -82,6 +84,12 @@ for (const file of changed.filter(f => /^tools\/.+\.html?$/.test(f))) {
   if (!now) { errors.push(`${file}: no valid toolbench-tool block`); continue; }
   if (was && was.version && semverCmp(now.version, was.version) <= 0) errors.push(`${file}: changed but version is ${now.version} (was ${was.version}); bump it in the file's block`);
   if (was && was.id && now.id !== was.id) errors.push(`${file}: id changed ${was.id} -> ${now.id}; a new id is a new tool`);
+}
+// Write routes (ca.repo/1 v6): the app is read-only except the routes the manifest declares.
+errors.push(...writeRoutesSelfTest());
+{
+  const tracked = git("ls-files").split("\n").filter(Boolean);
+  errors.push(...checkWriteRoutes(manifest.write_routes, Object.fromEntries(scopeFiles(manifest, tracked).map(f => [f, readFileSync(f, "utf8")]))));
 }
 const changelog = readFileSync("CHANGELOG.md", "utf8");
 // Errors and fixes (ca.repo/1 v3): a release lists exactly the bugs its commits fix.

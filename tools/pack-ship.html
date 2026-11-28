@@ -9,7 +9,7 @@
   "description": "Pack and ship paid Discogs orders (ca.pack_ship/1): stage table from pack.orders.stages, a row filter with one action run on all shown orders, every label page printed, two-tap confirm. A collapsible tab column (ca.pack_tabs/1) adds the views the engine declares: Stats, On behalf of others and Queue (raw orders and parcels, Print queued items, Start packing). Rows in memory only.",
   "category": "CA_V3",
   "tags": ["discogs", "parcel2go", "shipping", "print", "ca.pack_ship/1", "ca.pack_page/1", "ca.pack_row_context/2", "ca.pack_stage_lines/1", "ca.pack_tabs/1"],
-  "version": "3.1.0",
+  "version": "3.1.1",
   "contract": { "config_keys": ["packship"], "requires": ["wf:Pqjdoot0EPzoQxj0", "std:pack_stages", "cap:pack.orders.stages", "cap:pack.refresh", "cap:runs.status", "cap:print.queue.add", "cap:label.bytes", "std:pack_tabs", "cap:pack.tabs", "cap:pack.stats", "cap:pack.consignors", "cap:pack.print_queue", "cap:pack.task"] },
   "sandbox": { "scripts": true, "forms": false, "modals": true, "popups": true, "downloads": true, "sameOrigin": false },
   "config_schema": {
@@ -217,6 +217,7 @@ async function call(op, params, soft){
   if (!CONF.key) throw new Error("No viewer key: set it in Tool Bench Settings (Pack & Ship or CA_V3 Viewer) or in ⚙");
   let res;
   try {
+    // ca-write: pack_ship.engine (ca.manifest.json write_routes, ca.repo/1 v6)
     res = await fetch(CONF.url, { method: "POST", headers: { "Content-Type": "application/json", "X-Api-Key": CONF.key },
       body: JSON.stringify({ op, params: params || {} }), cache: "no-store" });
   } catch (e) { throw new Error("Pack & Ship endpoint unreachable (network or CORS): " + (e.message || e)); }

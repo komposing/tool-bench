@@ -1,5 +1,25 @@
 # Changelog
 
+## 3.20.1 — C2119
+
+- **Write routes allowlist** (ca.repo/1 v6, C2119-s4, T959; doc `board/design` R6). The bench and its tools are read-only
+  except the routes `write_routes` in `ca.manifest.json` declares (`[{key, url, method}]`, optional `why`; method POST,
+  PUT, PATCH or DELETE). The four write routes the tools already use are declared as data: `drafting.engine`
+  (`webhook/ca-v3-drafting`), `v4.hub_page` (`webhook/ca-v4-hub-page`), `page.gateway` (`webhook/ca-v3-page`) and
+  `pack_ship.engine` (`webhook/ca-v3-pack-ship`), all POST.
+- `scripts/write-routes.mjs` (shared byte for byte with komposing/ca-v3-viewer) scans the app source (`source`) for write
+  calls: `fetch` or `new Request` with a write method (a non-literal method counts as a write), `XMLHttpRequest.open` with a
+  write method, `navigator.sendBeacon`, and `<form method="post">`. Each must resolve to a declared route, by a
+  `ca-write: <key>` marker comment on the call's line or the two lines above, or by a literal URL equal to the route's url;
+  a key, url or method that does not match fails, and so does a declared route that no call uses or whose url is not in
+  the source. `check-change` runs the fixtures (`scripts/fixtures/write-routes.json`: an undeclared POST fails, a declared
+  `board.post` passes) and then the check. The vendored manifest schema now requires `write_routes`.
+- Drafting Table 1.3.1, Label printer 1.0.2, Pack & Ship 3.1.1: a `ca-write` marker comment on each write call. No
+  behaviour change.
+
+### Fixed
+- none
+
 ## 3.20.0 — C1669
 
 - **Pack & Ship 3.1.0** (`TB:pack-ship` v3.1.0, T851, slice C1599-s7 of the order process change C1599): a **Queue** tab.

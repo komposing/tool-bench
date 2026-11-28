@@ -9,7 +9,7 @@
   "description": "Paired concept-modelling board (ca.draft/1): palette, board, inspector, analysis and finder over the CA_V3 Drafting Engine; the op log is the draft, replayed live on the std poll budget. Layers: global, data model, process flow. Approvals (CA_V4): exchanges lane (open decisions on hub threads, decided through the Hub page entry, ca.payload/1) and a proposals stub.",
   "category": "CA_V3",
   "tags": ["drafting", "design", "paired", "ca.draft/1", "ca.payload/1", "ca_v4"],
-  "version": "1.3.0",
+  "version": "1.3.1",
   "contract": { "config_keys": ["drafting"], "requires": ["wf:VkS7B5UucVMrNwWm", "std:drafting"] },
   "sandbox": { "scripts": true, "forms": false, "modals": false, "popups": false, "downloads": false, "sameOrigin": false },
   "config_schema": {
@@ -350,6 +350,7 @@ async function call(op, params, signal){
   if (!CONF.key) throw new Error("No viewer key: set it in Tool Bench Settings (Drafting Table or CA_V3 Viewer) or in ⚙");
   let res;
   try {
+    // ca-write: drafting.engine (ca.manifest.json write_routes, ca.repo/1 v6)
     res = await fetch(CONF.url, { method: "POST", headers: { "Content-Type": "application/json", "X-Api-Key": CONF.key },
       body: JSON.stringify(Object.assign({ op }, params || {})), cache: "no-store", signal: signal || undefined });
   } catch (e) { if (e && e.name === "AbortError") throw e; throw new Error("Drafting endpoint unreachable (network or CORS): " + (e.message || e)); }
@@ -374,6 +375,7 @@ async function callV4(url, key, params){
   const envelope = { protocol: "ca.payload/1", key, session_ref: PAGE_SID, principal: { surface: "page", tool: "drafting-table", tool_session_id: PAGE_SID }, params: params || {} };
   let res, txt;
   try {
+    // ca-write: v4.hub_page (ca.manifest.json write_routes, ca.repo/1 v6)
     res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify(envelope), cache: "no-store" });
     txt = await res.text();
   } catch (e) { return refused("unreachable", "page entry unreachable (network, CORS or sign-in): " + (e && e.message || e)); }
